@@ -1,4 +1,5 @@
 //!
+//! Contains comms data structures representing jobs and results.
 //!
 //! \file comms/datatypes.hpp
 //! \author Lachlan McCalman
@@ -21,20 +22,23 @@ namespace stateline
     //! Abstraction of job specification.
     struct JobData
     {
-      //! of job
+      //! Type of job
       uint type;
-      //! common to all jobs
+
+      //! Data common to all jobs
       std::string globalData;
-      //! specific to this job
+
+      //! Data specific to this job
       std::string jobData;
     };
 
     //! Abstraction of job results.
     struct ResultData
     {
-      //! of job
+      //! Type of job
       uint type;
-      //! results data
+
+      //! Results data
       std::string data;
     };
 

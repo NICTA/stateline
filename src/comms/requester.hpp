@@ -12,12 +12,10 @@
 
 #pragma once
 
-// Standard Library
 #include <string>
-// Prerequisites
 #include <glog/logging.h>
 #include <zmq.hpp>
-// Project
+
 #include "comms/datatypes.hpp"
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
@@ -28,11 +26,8 @@ namespace stateline
   namespace comms
   {
     //! Requester object that takes jobs and returns results. Communicates with
-    //! a delegator living in a (possibly) different thread.
+    //! a delegator in a (possibly) different thread.
     //!
-    //! \tparam JobType The type of a job specification.
-    //! \tparam ResultType The type being return as a result.
-    //!/
     class Requester
     {
     public:
@@ -122,12 +117,12 @@ namespace stateline
     private:
       // Communicates with another inproc socket in the delegator
       zmq::socket_t socket_;
+
       // Used to keep track of the batch submissions
       std::map<uint, std::vector<ResultData>> batches_;
       std::map<uint, uint> batchSizes_;
       std::map<uint, uint> batchNComplete_;
     };
-
   } // namespace comms
 } // namespace obsidian
 

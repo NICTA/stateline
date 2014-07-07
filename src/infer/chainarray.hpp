@@ -12,7 +12,7 @@
 #pragma once
 
 #include "db/db.hpp"
-#include "mcmctypes.hpp"
+#include "infer/state.hpp"
 
 namespace stateline
 {
@@ -178,58 +178,6 @@ namespace stateline
         std::vector<std::vector<State>> cache_;
         db::Database& db_;
     };
-
-    namespace internal
-    {
-      //! Represents the different types of entries that the database can contain.
-      //!
-      enum class DbEntryType
-      {
-        //! Indicates that the database entry is the state vector of a chain.
-        STATE,
-
-        //! Indicates that the database entry is the length of a chain.
-        LENGTH,
-        
-        //! Indicates that the database entry is the step size of a chain.
-        SIGMA,
-        
-        //! Indicates that the database entry is the inverse temperature of a chain.
-        BETA
-      };
-
-      //! Get the key string representing a database entry of a particular chain.
-      //!
-      //! \param id The id of the chain.
-      //! \param index A value representing the index of the value. This is useful
-      //!              for time series or array data (such as the chain states).
-      //! \param t The type of entry.
-      //! \return A string representing the database key that is to store this entry.
-      //!
-      std::string toDbString(uint id, uint index, const DbEntryType& t);
-
-      //! Get the key string representing a database entry of a particular chain. 
-      //!
-      //! \param id The id of the chain.
-      //! \param t The type of entry.
-      //! \return A string representing the database key that is to store this entry.
-      //!
-      std::string toDbString(uint id, const DbEntryType& t);
-
-      //! Convert a database string value into a floating point value.
-      //!
-      //! \param data The string data from database.
-      //! \return A floating point value that the string data represents.
-      //!
-      double doubleFromDb(const std::string& data);
-
-      //! Convert a database string value into an unsigned integer value. 
-      //!
-      //! \param data The string data from database.
-      //! \return An unsigned integer value that the string data represents.
-      //!
-      uint uintFromDb(const std::string& data);
-    } // namespace internal
 
   } // namespace mcmc
 } // namespace obsidian

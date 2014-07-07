@@ -89,6 +89,5 @@ namespace stateline
       return bouncyBounds(proposal, min, max);
     };
     
-    
   }
 }

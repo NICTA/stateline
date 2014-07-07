@@ -7,8 +7,6 @@
 
 ADD_LIBRARY(db db.cpp)
 
-ADD_EXECUTABLE ( test-db testdb.cpp )
-
-TARGET_LINK_LIBRARIES ( test-db db ${obsidianBaseLibraries})
-
-REGISTER_UNIT_TESTS( test-db )
+#ADD_EXECUTABLE ( test-db testdb.cpp )
+#TARGET_LINK_LIBRARIES ( test-db db ${obsidianBaseLibraries})
+#REGISTER_UNIT_TESTS( test-db )

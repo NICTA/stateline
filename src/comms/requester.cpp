@@ -7,9 +7,11 @@
 //!
 
 #include "comms/requester.hpp"
-#include "serial/serial.hpp"
+
 #include <iterator>
 #include <string>
+
+#include "comms/serial.hpp"
 
 namespace stateline
 {
@@ -22,7 +24,7 @@ namespace stateline
     //!
     void sendJob(zmq::socket_t& socket, const JobData& job)
     {
-      Message m( { }, stateline::comms::JOB, { serialise(job.type), job.globalData, job.jobData });
+      Message m({ }, stateline::comms::JOB, { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
       send(socket, m);
     }
 
@@ -35,8 +37,11 @@ namespace stateline
     {
       std::vector<std::string> idStrings;
       for (auto i : ids)
+      {
         idStrings.push_back(std::to_string(i));
-      Message m(idStrings, stateline::comms::JOB, { serialise(job.type), job.globalData, job.jobData });
+      }
+
+      Message m(idStrings, stateline::comms::JOB, { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
       send(socket, m);
     }
 
@@ -47,10 +52,13 @@ namespace stateline
     //!
     ResultData receiveResult(zmq::socket_t& socket)
     {
-      ResultData r;
       Message m = receive(socket);
-      unserialise(m.data[0], r.type);
-      r.data = m.data[1];
+
+      ResultData r {
+        detail::unserialise<std::uint32_t>(m.data[0]),
+        m.data[1]
+      };
+
       return r;
     }
 
@@ -62,12 +70,18 @@ namespace stateline
     std::pair<std::vector<uint>, ResultData> receiveResultAndIDs(zmq::socket_t& socket)
     {
       std::vector<uint> indices;
-      ResultData r;
       Message m = receive(socket);
       for (auto& a : m.address)
+      {
         indices.push_back((uint) std::stoi(a));
-      unserialise(m.data[0], r.type);
-      r.data = m.data[1];
+      }
+
+      ResultData r
+      {
+        detail::unserialise<std::uint32_t>(m.data[0]);
+        m.data[1];
+      };
+
       return std::make_pair(indices, r);
     }
 
@@ -84,7 +98,6 @@ namespace stateline
       sendJob(socket_, j);
       return receiveResult(socket_);
     }
-    ;
 
     void Requester::submit(uint id, const JobData& j)
     {
@@ -94,8 +107,7 @@ namespace stateline
     std::pair<uint, ResultData> Requester::retrieve()
     {
       auto r = receiveResultAndIDs(socket_);
-      return
-      { r.first[0], r.second};
+      return { r.first[0], r.second};
     }
 
     std::vector<ResultData> Requester::batch(const std::vector<JobData>& jobs)
@@ -113,7 +125,6 @@ namespace stateline
       }
       return results;
     }
-    ;
 
     void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
     {
@@ -136,9 +147,12 @@ namespace stateline
         stateline::comms::Message r = stateline::comms::receive(socket_);
         uint batchNum = std::stoul(r.address[0]);
         uint idx = std::stoul(r.address[1]);
-        ResultData res;
-        unserialise(r.data[0], res.type);
-        res.data = r.data[1];
+        ResultData res
+        {
+          detail::unserialise(r.data[0]);
+          r.data[1];
+        };
+
         batches_[batchNum][idx] = res;
         batchNComplete_[batchNum]++;
         if (batchNComplete_[batchNum] == batchSizes_[batchNum])

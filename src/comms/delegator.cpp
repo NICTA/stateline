@@ -7,18 +7,16 @@
 //!
 
 #include "comms/delegator.hpp"
-#include "comms/datatypes.hpp"
-#include "serial/serial.hpp"
 
 #include <string>
 
-namespace ph = std::placeholders;
+#include "comms/datatypes.hpp"
+#include "comms/serial.hpp"
 
 namespace stateline
 {
   namespace comms
   {
-
     Delegator::Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId, const std::vector<std::string>& jobSpecData,
                          const std::vector<std::string>& jobResultsData, const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
@@ -31,6 +29,8 @@ namespace stateline
           requestQueues_(jobId.size()),
           heartbeat_(context_, settings.heartbeat)
     {
+      namespace ph = std::placeholders;
+
       std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(context_, ZMQ_ROUTER));
       std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context_, ZMQ_PAIR));
       std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(context_, ZMQ_ROUTER));
@@ -98,7 +98,7 @@ namespace stateline
       LOG(INFO)<< "Initialising worker " << msgHelloFromWorker.address.back();
       // what jobs will this worker do?
       std::vector<uint> jobs;
-      unserialise(msgHelloFromWorker.data[0], jobs);
+      detail::unserialise<std::uint32_t>(msgHelloFromWorker.data[0], jobs);
 
       std::vector<std::string> repData;
       repData.push_back(commonSpecData_);
@@ -142,8 +142,7 @@ namespace stateline
 
     void Delegator::sendJob(const Message& msgRequestFromMinion)
     {
-      uint id;
-      unserialise(msgRequestFromMinion.data[0], id);
+      uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
 
       // Ensure that we don't try to do jobs that the delegator does not have specs for
       if (!jobIdMap_.count(id))
@@ -173,8 +172,7 @@ namespace stateline
 
     void Delegator::newJob(const Message& msgJobFromRequester)
     {
-      uint id;
-      unserialise(msgJobFromRequester.data[0], id);
+      uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
 
       std::deque<std::vector<std::string>>& queue = requestQueues_[jobIdMap_[id]];
 
@@ -226,8 +224,7 @@ namespace stateline
       //and push them back onto the (appropriate) job queue
       for (auto const& j : workerToJobMap_[worker])
       {
-        uint id;
-        unserialise(j.data[0], id);
+        uint id = detail::unserialise<std::uint32_t>(j.data[0]);
         VLOG(1) << "Requeueing " << j << "onto queue " << id;
         jobQueues_[jobIdMap_[id]].push_front(j);
       }

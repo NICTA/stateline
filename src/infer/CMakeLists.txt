@@ -8,10 +8,10 @@
 ADD_LIBRARY(chainarray chainarray.cpp
                        metropolis.cpp)
                      
-ADD_EXECUTABLE(test-chainarray testchainarray.cpp)
-TARGET_LINK_LIBRARIES(test-chainarray chainarray db serial ${obsidianBaseLibraries})
-REGISTER_UNIT_TESTS(test-chainarray)
-
-ADD_EXECUTABLE(test-diagnostics testdiagnostics.cpp)
-TARGET_LINK_LIBRARIES(test-diagnostics ${obsidianBaseLibraries})
-REGISTER_UNIT_TESTS(test-diagnostics)
+#ADD_EXECUTABLE(test-chainarray testchainarray.cpp)
+#TARGET_LINK_LIBRARIES(test-chainarray chainarray db serial ${obsidianBaseLibraries})
+#REGISTER_UNIT_TESTS(test-chainarray)
+#
+#ADD_EXECUTABLE(test-diagnostics testdiagnostics.cpp)
+#TARGET_LINK_LIBRARIES(test-diagnostics ${obsidianBaseLibraries})
+#REGISTER_UNIT_TESTS(test-diagnostics)

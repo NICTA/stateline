@@ -9,7 +9,8 @@
 //!
 
 #include "comms/worker.hpp"
-#include "serial/commstypes.hpp"
+#include "comms/serial.hpp"
+
 #include <cstdlib>
 
 namespace stateline
@@ -80,7 +81,7 @@ namespace stateline
       router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
 
       // Initialise the connection and problemspec
-      router_.send(SocketID::NETWORK, Message(HELLO, { serialise(jobIDs) }));
+      router_.send(SocketID::NETWORK, Message(HELLO, { detail::serialise<std::uint32_t>(jobIDs) }));
       auto msgProblemSpec = router_.receive(SocketID::NETWORK);
       VLOG(3) << "Received " << msgProblemSpec;
       globalSpec_ = msgProblemSpec.data[0];

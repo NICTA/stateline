@@ -1,12 +1,11 @@
 //!
-//! Datatypes for MCMC.
+//! State class for MCMC.
 //!
-//! \file infer/mcmctypes.hpp
+//! \file infer/state.hpp
 //! \author Lachlan McCalman
-//! \date December 2013
+//! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
-//!
 
 #pragma once
 

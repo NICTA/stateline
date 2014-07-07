@@ -7,6 +7,6 @@
 
 ADD_LIBRARY(distrib multigaussian.cpp)
 
-ADD_EXECUTABLE ( test-distrib-gaussian testgaussian.cpp )
-TARGET_LINK_LIBRARIES (test-distrib-gaussian ${obsidianAlgoLibraries} ${obsidianBaseLibraries})
-REGISTER_UNIT_TESTS( test-distrib-gaussian )
+#ADD_EXECUTABLE ( test-distrib-gaussian testgaussian.cpp )
+#TARGET_LINK_LIBRARIES (test-distrib-gaussian ${obsidianAlgoLibraries} ${obsidianBaseLibraries})
+#REGISTER_UNIT_TESTS( test-distrib-gaussian )

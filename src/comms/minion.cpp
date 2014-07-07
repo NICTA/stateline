@@ -7,14 +7,18 @@
 //!
 
 #include "comms/minion.hpp"
-#include "serial/serial.hpp"
+
+#include <cstdint>
+
+#include "comms/serial.hpp"
 
 namespace stateline
 {
   namespace comms
   {
     Minion::Minion(Worker& w, uint jobID)
-        : socket_(w.zmqContext(), ZMQ_DEALER), jobIDString_(serialise(jobID))
+        : socket_(w.zmqContext(), ZMQ_DEALER),
+          jobIDString_(detail::serialise<std::uint32_t>(jobID))
     {
       auto socketID = stateline::comms::randomSocketID();
       stateline::comms::setSocketID(socketID, socket_);
@@ -39,8 +43,9 @@ namespace stateline
       }
       VLOG(3) << addrString;
       JobData j;
+
       // type, globalData, JobData IN THAT ORDER
-      unserialise(r.data[0], j.type);
+      j.type = detail::unserialise<std::uint32_t>(r.data[0]);
       j.globalData = r.data[1];
       j.jobData = r.data[2];
       return j;
@@ -49,7 +54,8 @@ namespace stateline
     void Minion::submitResult(const ResultData& result)
     {
       // Order of data: Result type, result data, new job type request
-      Message m(requesterAddress_, JOBSWAP, { serialise(result.type), result.data, jobIDString_ });
+      Message m(requesterAddress_, JOBSWAP,
+          { detail::serialise<std::uint32_t>(result.type), result.data, jobIDString_ });
 
       VLOG(3) << "Minion submitting " << m;
       send(socket_, m);
@@ -57,4 +63,3 @@ namespace stateline
 
   } // namespace comms
 } // namespace obsidian
-

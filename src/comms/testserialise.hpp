@@ -6,28 +6,20 @@
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <glog/logging.h>
 #include "gtest/gtest.h"
-
-#include "comms/messages.hpp"
-#include "serial/serial.hpp"
+#include <glog/logging.h>
 #include <Eigen/Core>
 
-namespace obsidian
-{
-  bool operator==(const GravResults& g, const GravResults& p)
-  {
-    return (g.likelihood == p.likelihood) && (g.readings == p.readings);
-  }
-}
-using namespace obsidian;
-using namespace obsidian::comms;
+#include "comms/messages.hpp"
+#include "serial/utility.hpp"
+
+using namespace stateline;
+using namespace stateline::comms;
+
 namespace stateline
 {
-
   namespace comms
   {
-
     class Serialise: public testing::Test
     {
     public:
@@ -109,15 +101,5 @@ namespace stateline
     EXPECT_EQ(m, matrix_);
   }
 
-// already tested in serial
-//    TEST_F(Serialise, gravResults)
-//    {
-//      std::string s =  serialise(gravResults_);
-//      GravResults p;
-//      unserialise(s, p);
-//      EXPECT_EQ(gravResults_, p);
-//    }
-
-}
- // namespace comms
-}// namespace obsidian
+  } // namespace comms
+}// namespace stateline

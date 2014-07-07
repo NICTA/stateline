@@ -14,7 +14,7 @@
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/delegator.hpp"
-#include "serial/commstypes.hpp"
+#include "serial/comms.hpp"
 
 #include <Eigen/Core>
 
