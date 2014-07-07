@@ -1,0 +1,12 @@
+Dependencies
+============
+
+zlib - (zlib licence)
+boost 1_55_0 - (boost software licence)
+cppzmq - (BSD?)
+eigen 3.2.0 - (MPL2)
+google log - (New BSD licence) 
+google test - (New BSD licence)
+leveldb - (New BSD licence)
+protobuf - (New BSD Licence)
+zeromq - (LGPL)

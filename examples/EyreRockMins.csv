@@ -1,0 +1,25 @@
+# RockMins: The minimum value the rock properties can take in the inversion.
+# In Order: 
+# Density in kg/m^3
+# LogSusceptibility  in Log(unitless) 
+# ThermalConductivity in Watts/(metres Kelvin)
+# ThermalProductivity in Watts/metre^3
+# LogResistivityX in Log(ohm metres)
+# LogResistivityY in Log(ohm metres)
+# LogResistivityZ in Log(ohm metres)
+# ResistivityPhase in degrees between 0 and 90
+# PWaveVelocity in metres/second 
+#
+# All logs are assumed to be base 10.
+
+
+
+1700
+-10
+0
+0
+0
+-1e+06
+-1e+06
+-1e+06
+-1e+06

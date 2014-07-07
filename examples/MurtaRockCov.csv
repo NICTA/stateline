@@ -1,0 +1,25 @@
+# RockCov: This file represents the covariance matrix for the multivariate
+# Gaussian prior over all the rock properties. The order of rock properties is
+# the same in this file as in the mean file.
+# In Order: 
+# Density in kg/m^3
+# LogSusceptibility  in Log(unitless) 
+# ThermalConductivity in Watts/(metres Kelvin)
+# ThermalProductivity in Watts/metre^3
+# LogResistivityX in Log(ohm metres)
+# LogResistivityY in Log(ohm metres)
+# LogResistivityZ in Log(ohm metres)
+# ResistivityPhase in degrees between 0 and 90
+# PWaveVelocity in metres/second 
+#
+# All logs are assumed to be base 10.
+
+18906,0,0,0,0,0,0,0,0
+0,0.3025,0,0,0,0,0,0,0
+0,0,0.2401,0,0,0,0,0,0
+0,0,0,1.7135e-12,0,0,0,0,0
+0,0,0,0,0.04,0,0,0,0
+0,0,0,0,0,1,0,0,0
+0,0,0,0,0,0,1,0,0
+0,0,0,0,0,0,0,1,0
+0,0,0,0,0,0,0,0,2.5e+05
