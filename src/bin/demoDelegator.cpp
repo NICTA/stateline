@@ -17,7 +17,7 @@
 #include <thread>
 
 #include "app/logging.hpp"
-#include "app/async.hpp"
+#include "app/delegator.hpp"
 #include "infer/mcmc.hpp"
 #include "infer/metropolis.hpp"
 #include "infer/adaptive.hpp"

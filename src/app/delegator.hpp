@@ -1,8 +1,9 @@
 //!
-//! Contains commonly used async policies.
+//! Contains commonly used async policies and delegator helper functions.
 //!
-//! \file app/async.hpp
+//! \file app/delegator.hpp
 //! \author Lachlan McCalman
+//! \author Darren Shen
 //! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
