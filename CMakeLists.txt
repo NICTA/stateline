@@ -125,8 +125,7 @@ TARGET_LINK_LIBRARIES(gtest logging)
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                      ${ZMQ_INCLUDE_DIR}
-                     ${GLOG_INCLUDE_DIR}
-                     ${Boost_INCLUDE_DIR}
+                     ${GLOG_INCLUDE_DIR} ${Boost_INCLUDE_DIR}
                      ${EIGEN3_INCLUDE_DIR}
                      ${GTEST_DIR}
                      ${GTEST_INCLUDE_DIR})
@@ -221,9 +220,8 @@ ADD_SUBPROJECT(src/likelihood)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY})
-SET(STATELINE_SERVER delegator requester serverheartbeat chainarray db
-                     ${ZMQ_LIBRARY} ${GLOG_LIBRARY} ${LEVELDB_LIBRARY})
+SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY} logging)
+SET(STATELINE_SERVER delegator requester serverheartbeat chainarray db)
 SET(STATELINE_CLIENT worker minion clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/async.hpp)
