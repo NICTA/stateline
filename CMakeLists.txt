@@ -92,12 +92,9 @@ SET(Boost_ADDITIONAL_VERSIONS "1_55_0")
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_STATIC_RUNTIME ON)
 
-FIND_PACKAGE(Boost REQUIRED COMPONENTS date_time
-                                       thread
-                                       program_options
+FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
-                                       timer
                                        serialization)
 
 # ZeroMQ
@@ -125,7 +122,8 @@ TARGET_LINK_LIBRARIES(gtest logging)
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                      ${ZMQ_INCLUDE_DIR}
-                     ${GLOG_INCLUDE_DIR} ${Boost_INCLUDE_DIR}
+                     ${GLOG_INCLUDE_DIR}
+                     ${Boost_INCLUDE_DIR}
                      ${EIGEN3_INCLUDE_DIR}
                      ${GTEST_DIR}
                      ${GTEST_INCLUDE_DIR})
