@@ -1,8 +1,0 @@
-# ContactPointSensors: This file specifies the location of drillholes that have
-# intersected surfaces defined in the problem. The data should be input as
-# x,y,b1,b2,.. where the 'b1' and 'b2' are integers denoting which layers were
-# intersected. For example, if a drillhole intersected boundaries the first and
-# third boundary and was at location 100,200 the line would be
-# 100,200,0,2
-# Note that indices start from 0, and distances are in metres with positive
-# metres being further under the ground
