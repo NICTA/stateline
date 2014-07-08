@@ -116,7 +116,8 @@ FIND_PACKAGE(Leveldb)
 MESSAGE(STATUS "GTEST directory: ${GTEST_SRC_DIR}")
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
-ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${GTEST_DIR}/src/gtest_main.cc)
+ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
+TARGET_LINK_LIBRARIES(gtest logging)
 
 ##############################################################################
 # INCLUDE DIRECTORIES
