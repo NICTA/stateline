@@ -9,9 +9,10 @@
 //! \copyright (c) 2014, NICTA
 //!
 
+#include "db/db.hpp"
+
 #include <glog/logging.h>
 
-#include "db/db.hpp"
 #include "leveldb/write_batch.h"
 #include "leveldb/cache.h"
 #include "leveldb/options.h"
@@ -22,7 +23,7 @@ namespace stateline
   namespace db
   {
     Database::Database(const DBSettings& s)
-        : cacheNumBytes_(s.cacheSizeMB * 1048576)
+        : cacheNumBytes_(s.cacheSizeMB * 1024 * 1024)
     {
       options_.block_cache = leveldb::NewLRUCache(cacheNumBytes_); // Cache in MB
       options_.filter_policy = leveldb::NewBloomFilterPolicy(10); // smart filtering -- bits per key?
