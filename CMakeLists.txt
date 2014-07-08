@@ -58,9 +58,9 @@ ENDIF(NO_LOGGING)
 
 # Conditional linking of logging
 MACRO(LINK_LOGGING projectName)
-    IF(NOT NO_LOGGING)
-      TARGET_LINK_LIBRARIES(${projectName} ${GLOG_LIBRARY})
-    ENDIF (NOT NO_LOGGING)
+  IF(NOT NO_LOGGING)
+    TARGET_LINK_LIBRARIES(${projectName} ${GLOG_LIBRARY})
+  ENDIF (NOT NO_LOGGING)
 ENDMACRO(LINK_LOGGING projectName)
 
 ##############################################################################
@@ -191,7 +191,7 @@ ADD_SUBPROJECT(src/likelihood)
 # Build final libraries for server and client
 ##############################################################################
 SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY} logging)
-SET(STATELINE_SERVER delegator requester serverheartbeat chainarray db)
+SET(STATELINE_SERVER delegator requester serverheartbeat chainarray)
 SET(STATELINE_CLIENT worker minion clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/async.hpp)

@@ -5,15 +5,10 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-ADD_LIBRARY(chainarray chainarray.cpp
-                       metropolis.cpp)
+ADD_LIBRARY(chainarray chainarray.cpp metropolis.cpp)
+TARGET_LINK_LIBRARIES(chainarray db ${Boost_SERIALIZATION_LIBRARY})
 
-TARGET_LINK_LIBRARIES(chainarray ${Boost_SERIALIZATION_LIBRARY})
-                     
-#ADD_EXECUTABLE(test-chainarray testchainarray.cpp)
-#TARGET_LINK_LIBRARIES(test-chainarray chainarray db serial ${obsidianBaseLibraries})
-#REGISTER_UNIT_TESTS(test-chainarray)
-#
-#ADD_EXECUTABLE(test-diagnostics testdiagnostics.cpp)
-#TARGET_LINK_LIBRARIES(test-diagnostics ${obsidianBaseLibraries})
-#REGISTER_UNIT_TESTS(test-diagnostics)
+ADD_TEST(test-chainarray testchainarray.cpp chainarray
+                         ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+
+ADD_TEST(test-diagnostics testdiagnostics.cpp ${Boost_SYSTEM_LIBRARY})

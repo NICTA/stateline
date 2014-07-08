@@ -54,12 +54,17 @@ namespace stateline
       writeOptions_.sync = false;
     }
 
-    uint Database::cacheSize()
+    DBSettings Database::settings() const
+    {
+      return settings_;
+    }
+
+    uint Database::cacheSize() const
     {
       return cacheNumBytes_;
     }
 
-    std::string Database::get(const leveldb::Slice& key)
+    std::string Database::get(const leveldb::Slice& key) const
     {
       std::string s;
       leveldb::Status status = db_->Get(readOptions_, key, &s);

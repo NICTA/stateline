@@ -45,13 +45,11 @@ namespace stateline
         //! \param tempFactor The ratio between the temperatures of consecutive chains in a stack.
         //! \param initialSigma The initial step sizes of the chains.
         //! \param sigmaFactor The ratio between the temperatures of consectuive chains in a stack.
-        //! \param db The database to store chain data.
+        //! \param d The database settings used to store chain data.
         //! \param cacheLength The size of the memory cache used to store the chains.
-        //! \param recover If set to true, chain data will be recovered from the database
-        //                 otherwise, the MCMC will start from the beginning.
         //!
         ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma,
-            double sigmaFactor, db::Database& db, uint cacheLength, bool recover);
+            double sigmaFactor, const DBSettings &d, uint cacheLength);
 
         //! Get the length of a chain.
         //!
@@ -151,17 +149,11 @@ namespace stateline
         //!
         uint numTotalChains() const;
 
-        //! Forcibly flush the cache for a particular chain.
+        //! Forcibly flush the cache for a particular chain to disk.
         //!
         //! \param id The id of the chain to flush.
         //!
-        void flushCache(uint id);
-
-        //! Recover a particular chain from cached.
-        //!
-        //! \param id The id of the chain to recover.
-        //!
-        void recoverFromCache(uint id);
+        void flushToDisk(uint id);
 
       private:
         uint lengthOnDisk(uint id);
@@ -170,13 +162,19 @@ namespace stateline
         State stateFromDisk(uint id, uint index);
         State stateFromCache(uint id, uint index);
 
+        //! Recover a particular chain from disk.
+        //!
+        //! \param id The id of the chain to recover.
+        //!
+        void recoverFromDisk(uint id);
+
         uint nstacks_;
         uint nchains_;
         uint cacheLength_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
-        db::Database& db_;
+        db::Database db_;
     };
 
   } // namespace mcmc

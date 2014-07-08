@@ -44,8 +44,8 @@ namespace stateline
       //! \param interrupted A flag used to monitor whether the sampler has been interrupted.
       //!
       Sampler(const MCMCSettings& s, const DBSettings& d, uint stateDim, volatile bool& interrupted)
-          : db_(d),
-            chains_(s.stacks, s.chains, s.initialTempFactor, s.proposalInitialSigma, s.initialSigmaFactor, db_, s.cacheLength, d.recover),
+          : recover_(d.recover),
+            chains_(s.stacks, s.chains, s.initialTempFactor, s.proposalInitialSigma, s.initialSigmaFactor, d, s.cacheLength),
             lengths_(s.stacks * s.chains, 0),
             propStates_(s.stacks * s.chains, stateDim),
             locked_(s.stacks * s.chains, false),
@@ -59,7 +59,6 @@ namespace stateline
             swapRates_(s.stacks * s.chains),
             lowestEnergies_(s.stacks * s.chains),
             s_(s),
-            recover_(d.recover),
             numOutstandingJobs_(0),
             interrupted_(interrupted),
             context_(1)
@@ -96,15 +95,11 @@ namespace stateline
       {
         using namespace std::chrono;
 
-        // Used for publishing statistics to visualisation server.
-        zmq::socket_t publisher(context_, ZMQ_PUB);
-        publisher.bind("tcp://*:5556");
-
         // Record the starting time of the MCMC
         steady_clock::time_point startTime = steady_clock::now();
 
         // Initialise the chains if we're not recovering
-        if (!recover_)
+        if (recover_)
         {
           initialise(policy, initialStates);
         }
@@ -207,6 +202,7 @@ namespace stateline
           // Update the temperature which might have changed while waiting
           chains_.setBeta(id, nextChainBeta_[id]);
           betas_[id] = nextChainBeta_[id];
+
           // Check for adapting the temperatures of all the chains but the 1st
           if (lengths_[id] % s_.betaAdaptInterval == 0 && !isColdestChainInStack)
           {
@@ -230,28 +226,6 @@ namespace stateline
                   << std::setw(10) << acceptRates_[i] << " " << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
                   << std::setw(10) << betas_[i] << " " << std::setw(10) << swapRates_[i] << " " << std::setw(10)
                   << nSwapsGlobal_[i] / (double) nSwapAttemptsGlobal_[i] << " \n";
-            }
-
-            // Quick and dirty way to get the data to the visualisation server
-            comms::sendString(publisher, s.str());
-
-            if (duration_cast<milliseconds>(steady_clock::now() - lastPrintTime).count() > 500)
-            {
-              lastPrintTime = steady_clock::now();
-
-              LOG(INFO)<< s.str() << "\n";
-
-              if (chains_.numStacks() > 1 && chains_.numChains() > 1)
-              {
-                if (cc.hasConverged())
-                {
-                  LOG(INFO)<< "converged: true ("<< cc.rHat().transpose() << " < 1.1)";
-                }
-                else
-                {
-                  LOG(INFO) << "converged: false ("<< cc.rHat().transpose() << " > 1.1)";
-                }
-              }
             }
           }
         }
@@ -278,7 +252,7 @@ namespace stateline
         // Manually flush any chain states that are in memory to disk
         for (uint i = 0; i < chains_.numTotalChains(); i++)
         {
-          chains_.flushCache(i);
+          chains_.flushToDisk(i);
         }
 
         if (cc.hasConverged())
@@ -495,8 +469,8 @@ namespace stateline
       nSwapAttemptsGlobal_[id] += 1;
     }
 
-    // The MCMC chain database
-    db::Database db_;
+    // Recover?
+    bool recover_;
 
     // The MCMC chain wrapper
     ChainArray chains_;
@@ -531,9 +505,6 @@ namespace stateline
 
     // The MCMC settings
     MCMCSettings s_;
-
-    // Recovering?
-    bool recover_;
 
     // How many jobs haven't been retrieved?
     uint numOutstandingJobs_;

@@ -16,6 +16,8 @@
 #include "infer/metropolis.hpp"
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 namespace boost
 {
@@ -85,9 +87,20 @@ namespace stateline
       void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
           T value)
       {
+        std::cout << "BATCH: " << id << " " << index << " " << value << std::endl;
         // Write the given value to the batch buffer
         batch.Put(toDbKeyString<EntryType>(id, index),
-            leveldb::Slice((char *)&value, sizeof(T) / sizeof(char)));
+            leveldb::Slice((char *)&value, sizeof(T)));
+      }
+
+      template <std::int32_t EntryType>
+      void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
+          std::string value)
+      {
+        std::cout << "STRING BATCH: " << id << " " << index << " " << value << std::endl;
+        // Write the given value to the batch buffer
+        batch.Put(toDbKeyString<EntryType>(id, index),
+            leveldb::Slice(value.c_str(), sizeof(char) * value.length()));
       }
 
       template <std::int32_t EntryType, class T>
@@ -95,53 +108,66 @@ namespace stateline
       {
         // Read the given value to the database
         std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        std::cout << "result len: " << result.size() << std::endl;
 
         // Convert it to the data type that we want.
         return *((T *) &result[0]);
       }
 
+      template <std::int32_t EntryType>
+      std::string getFromDb(db::Database &db, std::uint32_t id, std::uint32_t index)
+      {
+        // Read the given value to the database
+        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        std::cout << "string result len: " << result.size() << std::endl;
+        return result;
+      }
+
       std::string serialiseState(const State &state)
       {
         std::stringstream ss;
-        boost::archive::binary_oarchive oa(ss);
+        boost::archive::text_oarchive oa(ss);
         oa << state;
+        std::cout << "serialised as " << ss.str() << std::endl;
         return ss.str();
       }
 
       State unserialiseState(const std::string &str)
       {
+        std::cout << "unserialising " << str << std::endl;
         std::stringstream ss;
         ss << str;
 
         State state;
-        boost::archive::binary_iarchive ia(ss);
+        boost::archive::text_iarchive ia(ss);
         ia >> state;
 
+        std::cout << "unserialised " << state.energy << std::endl;
         return state;
       }
     } // namespace detail
 
-    ChainArray::ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma, double sigmaFactor, db::Database& db,
-                           uint cacheLength, bool recover)
+    ChainArray::ChainArray(uint nStacks, uint nChains, double tempFactor,
+        double initialSigma, double sigmaFactor, const DBSettings& d, uint cacheLength)
         : nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(cacheLength),
           beta_(nStacks * nChains),
           sigma_(nStacks * nChains),
           cache_(nStacks * nChains),
-          db_(db)
+          db_(d)
     {
       // Reserve the cache
       for (auto& c : cache_)
         c.reserve(cacheLength);
 
       // Set ourselves up in the last state
-      if (recover)
+      if (d.recover)
       {
         LOG(INFO)<< "Recovering chains...";
         for(uint id = 0; id < nChains * nStacks; id++)
         {
-          recoverFromCache(id);
+          recoverFromDisk(id);
         }
       }
       else
@@ -164,6 +190,7 @@ namespace stateline
             detail::putToBatch<detail::BETA>(batch, id, 0, beta);
           }
         }
+
         db_.batch(batch);
       }
     }
@@ -206,7 +233,7 @@ namespace stateline
 
       cache_[id].back().accepted = accepted;
       if (cache_[id].size() == cacheLength_)
-        flushCache(id);
+        flushToDisk(id);
 
       return accepted;
     }
@@ -216,15 +243,16 @@ namespace stateline
       cache_[id].push_back(s);
       cache_[id].back().accepted = true;
       if (cache_[id].size() == cacheLength_)
-        flushCache(id);
+        flushToDisk(id);
     }
 
-    void ChainArray::recoverFromCache(uint id)
+    void ChainArray::recoverFromDisk(uint id)
     {
       uint stack = id / numChains();
       uint chain = id % numChains();
 
-      VLOG(1) << "Recovering stack " << stack << " chain " << chain << " from cache:";
+      // Recover beta and sigma
+      VLOG(1) << "Recovering stack " << stack << " chain " << chain << " from disk:";
       beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id, 0);
       sigma_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id, 0);
 
@@ -233,30 +261,32 @@ namespace stateline
       VLOG(1) << "Current cache length: " << cache_[id].size();
       if (len > 0)
       {
+        // Recover only the newest state
         cache_[id].push_back(stateFromDisk(id, len - 1));
       }
     }
 
-    void ChainArray::flushCache(uint id)
+    void ChainArray::flushToDisk(uint id)
     {
       leveldb::WriteBatch batch;
       uint diskLength = lengthOnDisk(id);
       uint cacheLength = cache_[id].size();
       State lastState = cache_[id].back();
 
-      // Don't put the front state in
+      // Don't put the newest state in
       if (id % numChains() == 0)
       {
-        for (uint i = 1; i < cacheLength; i++)
+        std::cout << "Flushing size " << cacheLength << " with " << diskLength << " already on disk" << std::endl;
+        for (uint i = 0; i < cacheLength - 1; i++)
         {
-          uint index = diskLength + i - 1;
+          uint index = diskLength + i;
           detail::putToBatch<detail::STATE>(batch, id, index,
               detail::serialiseState(cache_[id][i]));
         }
 
-        uint newLength = diskLength + cacheLength - 1; // no front state
+        uint newLength = diskLength + cacheLength - 1; // don't count newest state
         VLOG(3) << "Flushing cache of chain " << id << ". new length: " << newLength;
-        detail::putToBatch<detail::STATE, std::uint32_t>(batch, id, 0, newLength);
+        detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, newLength);
       }
       else
       {
@@ -289,7 +319,7 @@ namespace stateline
       CHECK(idx < dlen) << "Can't access state " << idx << " in chain " << id << " from disk when " << dlen << " states stored on disk";
 
       // Read the serialised state from disk
-      std::string state = detail::getFromDb<detail::STATE, std::string>(db_, id, idx);
+      std::string state = detail::getFromDb<detail::STATE>(db_, id, idx);
 
       return detail::unserialiseState(state);
     }
