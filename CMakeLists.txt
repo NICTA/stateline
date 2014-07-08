@@ -97,7 +97,8 @@ FIND_PACKAGE(Boost REQUIRED COMPONENTS date_time
                                        program_options
                                        system
                                        filesystem
-                                       timer)
+                                       timer
+                                       serialization)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -146,7 +147,13 @@ MACRO(REGISTER_UNIT_TESTS projectName)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Running ${projectName}")
   ADD_DEPENDENCIES( run-test-all run-${projectName})
-ENDMACRO(REGISTER_UNIT_TESTS projectName)
+ENDMACRO()
+
+MACRO(ADD_TEST testName)
+  ADD_EXECUTABLE(${testName} ${testName}.cpp)
+  TARGET_LINK_LIBRARIES(${testName} ${StatelineBaseLibraries})
+  REGISTER_UNIT_TESTS(${testName})
+ENDMACRO()
 
 ##############################################################################
 # DOCUMENTATION
@@ -172,7 +179,6 @@ ENDIF(DOXYGEN_FOUND)
 ##############################################################################
 SET(StatelineBaseLibraries settings
                            console
-                           ${ZMQ_LIBRARY}
                            ${GLOG_LIBRARY}
                            ${LEVELDB_LIBRARY}
                            ${Boost_FILESYSTEM_LIBRARY}
@@ -211,3 +217,19 @@ ADD_SUBPROJECT(src/db)
 ADD_SUBPROJECT(src/infer)
 ADD_SUBPROJECT(src/bin)
 ADD_SUBPROJECT(src/likelihood)
+
+##############################################################################
+# Build final libraries for server and client
+##############################################################################
+SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY})
+SET(STATELINE_SERVER delegator requester serverheartbeat chainarray db
+                     ${ZMQ_LIBRARY} ${GLOG_LIBRARY} ${LEVELDB_LIBRARY})
+SET(STATELINE_CLIENT worker minion clientheartbeat)
+
+ADD_LIBRARY(statelineserver src/app/async.hpp)
+TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
+SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
+
+ADD_LIBRARY(statelineclient src/app/worker.hpp)
+TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
+SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)

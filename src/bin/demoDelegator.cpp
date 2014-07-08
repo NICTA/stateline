@@ -16,7 +16,7 @@
 #include <chrono>
 #include <thread>
 
-#include "app/console.hpp"
+#include "app/logging.hpp"
 #include "app/async.hpp"
 #include "infer/mcmc.hpp"
 #include "infer/metropolis.hpp"
@@ -24,6 +24,7 @@
 
 namespace sl = stateline;
 namespace ph = std::placeholders;
+namespace po = boost::program_options;
 
 std::vector<sl::comms::JobData> splitJob(const Eigen::VectorXd &state)
 {

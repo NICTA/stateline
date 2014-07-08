@@ -7,6 +7,8 @@
 
 ADD_LIBRARY(chainarray chainarray.cpp
                        metropolis.cpp)
+
+TARGET_LINK_LIBRARIES(chainarray ${Boost_SERIALIZATION_LIBRARY})
                      
 #ADD_EXECUTABLE(test-chainarray testchainarray.cpp)
 #TARGET_LINK_LIBRARIES(test-chainarray chainarray db serial ${obsidianBaseLibraries})
