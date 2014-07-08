@@ -42,26 +42,5 @@ namespace stateline
       std::string data;
     };
 
-    //! Convert list of uints in string form to vector of uint.
-    inline std::vector<uint> stringToIDs(const std::string& s)
-    {
-      std::istringstream lineStream(s);
-      std::vector<uint> ids;
-      uint num;
-      while (lineStream >> num)
-        ids.push_back(num);
-      return ids;
-    }
-
-    //! Convert vector of uints to list of uints in string form seperated by space.
-    inline std::string idsToString(const std::vector<uint>& ids)
-    {
-      std::stringstream result;
-      std::copy(ids.begin(), ids.end(), std::ostream_iterator<uint>(result, " "));
-      std::string s = result.str();
-      s.erase(s.end() - 1);
-      return s;
-    }
-
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
