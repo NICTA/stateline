@@ -77,7 +77,7 @@ namespace stateline
     //! The rate at which the receive sockets are polled.
     int msPollRate;
 
-    //! The IP address of the worker.
+    //! The address of the delegator to connect to.
     std::string address;
 
     //! Settings for the heartbeat monitoring.
