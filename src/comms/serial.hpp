@@ -20,7 +20,7 @@ namespace stateline
       std::string serialise(const U &value)
       {
         T v = static_cast<T>(value);
-        return std::string((char *)&v, sizeof(T) / sizeof(char));
+        return std::string((char *)&v, sizeof(T));
       }
 
       template <typename T, typename U>

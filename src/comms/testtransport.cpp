@@ -11,7 +11,7 @@
 
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
-#include "serial/serial.hpp"
+#include "comms/serial.hpp"
 
 #include <Eigen/Core>
 

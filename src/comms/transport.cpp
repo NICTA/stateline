@@ -10,9 +10,9 @@
 //!
 
 #include "comms/transport.hpp"
-#include <iomanip>
-#include <boost/lexical_cast.hpp>
+#include "comms/serial.hpp"
 
+#include <iomanip>
 #include <random>
 
 namespace stateline
@@ -48,20 +48,20 @@ namespace stateline
     Message receive(zmq::socket_t& socket)
     {
       std::vector<std::string> address;
-      std::string frame = stateline::comms::receiveString(socket);
+      std::string frame = receiveString(socket);
       // Do we have an address?
       while (frame.compare("") != 0)
       {
         address.push_back(frame);
-        frame = stateline::comms::receiveString(socket);
+        frame = receiveString(socket);
       }
       // address is a stack, so reverse it to get the right way around
       std::reverse(address.begin(), address.end());
 
       // We've just read the delimiter, so now get subject
-      auto subjectString = stateline::comms::receiveString(socket);
+      auto subjectString = receiveString(socket);
       //the underlying representation is (explicitly) an int so fairly safe
-      Subject subject = (Subject) boost::lexical_cast<uint>(subjectString);
+      Subject subject = (Subject)detail::unserialise<std::uint32_t>(subjectString);
       std::vector<std::string> data;
       while (true)
       {
@@ -70,39 +70,44 @@ namespace stateline
         socket.getsockopt(ZMQ_RCVMORE, &isMore, &moreSize);
         if (!isMore)
           break;
-        data.push_back(stateline::comms::receiveString(socket));
+        data.push_back(receiveString(socket));
       }
       return Message(address, subject, data);
     }
 
     void send(zmq::socket_t& socket, const Message& message)
     {
-      // remember we're using the vector as a stack
-      for (auto a : boost::adaptors::reverse(message.address))
+      // Remember we're using the vector as a stack, so iterate through the
+      // address in reverse.
+      for (auto it = message.address.rbegin(); it != message.address.rend(); ++it)
       {
-        stateline::comms::sendStringPart(socket, a);
+        sendStringPart(socket, *it);
       }
+
       // Send delimiter
-      stateline::comms::sendStringPart(socket, "");
+      sendStringPart(socket, "");
 
       // Send subject, then data if there is any
-      auto subjectString = boost::lexical_cast<std::string>(message.subject);
+      auto subjectString = detail::serialise<std::uint32_t>(message.subject);
       uint dataSize = message.data.size();
       if (dataSize > 0)
       {
         // The subject
-        stateline::comms::sendStringPart(socket, subjectString);
+        sendStringPart(socket, subjectString);
+
         // The data -- multipart
-        for (auto it = message.data.begin(); it != std::prev(message.data.end()); it++)
+        for (auto it = message.data.begin(); it != std::prev(message.data.end()); ++it)
         {
-          stateline::comms::sendStringPart(socket, *it);
+          sendStringPart(socket, *it);
         }
+
         // final or only part
-        stateline::comms::sendString(socket, message.data[dataSize - 1]);
-      } else
+        sendString(socket, message.data.back());
+      }
+      else
       {
         // The subject
-        stateline::comms::sendString(socket, subjectString);
+        sendString(socket, subjectString);
       }
     }
 

@@ -22,11 +22,6 @@ ADD_LIBRARY(minion minion.cpp)
 ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
 TARGET_LINK_LIBRARIES(clientheartbeat messages)
 
-#ADD_EXECUTABLE(test-comms testcomms.cpp)
-#
-#TARGET_LINK_LIBRARIES(test-comms ${obsidianClientLibraries}
-#                                 ${obsidianServerLibraries}
-#                                 ${obsidianCommsLibraries}
-#                                 ${obsidianBaseLibraries})
-#
-#REGISTER_UNIT_TESTS(test-comms)
+ADD_TEST(test-delegator testdelegator.cpp statelineserver statelineclient)
+ADD_TEST(test-router testrouter.cpp statelineserver statelineclient)
+ADD_TEST(test-transport testtransport.cpp statelineserver statelineclient)
