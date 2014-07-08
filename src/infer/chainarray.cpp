@@ -28,7 +28,16 @@ namespace boost
         Eigen::Matrix<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols> &t, 
         const unsigned int version) 
     {
-      // Adapted from http://stackoverflow.com/questions/12851126/serializing-eigens-matrix-using-boost-serialization
+      // Adapted from http://stackoverflow.com/questions/12580579/how-to-use-boostserialization-to-save-eigenmatrix/12618789#12618789
+      std::size_t rows = t.rows(), cols = t.cols();
+      ar & rows & cols;
+
+      if (rows * cols != t.size())
+      {
+        // Allocate memory if necessary
+        t.resize(rows, cols);
+      }
+
       for(std::size_t i = 0; i < t.size(); i++)
       {
         ar & t.data()[i];
@@ -87,7 +96,6 @@ namespace stateline
       void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
           T value)
       {
-        std::cout << "BATCH: " << id << " " << index << " " << value << std::endl;
         // Write the given value to the batch buffer
         batch.Put(toDbKeyString<EntryType>(id, index),
             leveldb::Slice((char *)&value, sizeof(T)));
@@ -97,7 +105,6 @@ namespace stateline
       void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
           std::string value)
       {
-        std::cout << "STRING BATCH: " << id << " " << index << " " << value << std::endl;
         // Write the given value to the batch buffer
         batch.Put(toDbKeyString<EntryType>(id, index),
             leveldb::Slice(value.c_str(), sizeof(char) * value.length()));
@@ -108,7 +115,6 @@ namespace stateline
       {
         // Read the given value to the database
         std::string result = db.get(toDbKeyString<EntryType>(id, index));
-        std::cout << "result len: " << result.size() << std::endl;
 
         // Convert it to the data type that we want.
         return *((T *) &result[0]);
@@ -119,7 +125,6 @@ namespace stateline
       {
         // Read the given value to the database
         std::string result = db.get(toDbKeyString<EntryType>(id, index));
-        std::cout << "string result len: " << result.size() << std::endl;
         return result;
       }
 
@@ -128,13 +133,11 @@ namespace stateline
         std::stringstream ss;
         boost::archive::text_oarchive oa(ss);
         oa << state;
-        std::cout << "serialised as " << ss.str() << std::endl;
         return ss.str();
       }
 
       State unserialiseState(const std::string &str)
       {
-        std::cout << "unserialising " << str << std::endl;
         std::stringstream ss;
         ss << str;
 
@@ -142,7 +145,6 @@ namespace stateline
         boost::archive::text_iarchive ia(ss);
         ia >> state;
 
-        std::cout << "unserialised " << state.energy << std::endl;
         return state;
       }
     } // namespace detail
@@ -276,7 +278,6 @@ namespace stateline
       // Don't put the newest state in
       if (id % numChains() == 0)
       {
-        std::cout << "Flushing size " << cacheLength << " with " << diskLength << " already on disk" << std::endl;
         for (uint i = 0; i < cacheLength - 1; i++)
         {
           uint index = diskLength + i;
