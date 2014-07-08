@@ -47,6 +47,9 @@ namespace stateline
       //! \param settings The configuration object.
       //!
       Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings);
+ 
+      // Workers can't be copied.
+      Worker(const Worker &other) = delete;
 
       //! Destructor. Safely stops all polling threads and cleans up.
       //!
