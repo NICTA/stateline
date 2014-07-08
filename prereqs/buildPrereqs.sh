@@ -1,16 +1,14 @@
 #!/bin/bash
 
-#BUILD ALL GDF PREREQUISITES
-#MUST HAVE TAR and UNZIP installed.
+# Script to build stateline prerequisites
+# MUST HAVE TAR and UNZIP installed.
 
-# checkout from repo
 mkdir src
 mkdir include
 mkdir lib
 mkdir bin
 export PREREQ_DIR=$(pwd)
 cd src
-
 
 # Boost 1.55
 wget -c http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz
@@ -55,15 +53,6 @@ cd ..
 wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O cppzmq-master.zip
 [ -d cppzmq-master ] || unzip -o cppzmq-master.zip
 cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
-
-# Protocol-buffers (protobuf) 2.5.0
-wget -c http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
-[ -d protobuf-2.5.0 ] || tar -xvf protobuf-2.5.0.tar.gz
-cd protobuf-2.5.0
-./configure --prefix=$PREREQ_DIR
-make -j$(nproc)
-make install
-cd ..
 
 # leveldb
 wget -c https://leveldb.googlecode.com/files/leveldb-1.15.0.tar.gz
