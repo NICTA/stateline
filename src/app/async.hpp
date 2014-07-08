@@ -8,6 +8,8 @@
 //! \copyright (c) 2014, NICTA
 //!
 
+#pragma once
+
 #include <Eigen/Dense>
 
 #include "comms/delegator.hpp"
