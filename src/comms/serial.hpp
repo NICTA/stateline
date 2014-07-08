@@ -48,8 +48,10 @@ namespace stateline
       void unserialise(const std::string &s, std::vector<U> &values)
       {
         std::size_t numElements = s.length() / sizeof(T);
-        T *raw = (T *)&s[0];
+        values.reserve(numElements);
 
+        // Add each element to the vector
+        T *raw = (T *)&s[0];
         for (std::size_t i = 0; i < numElements; i++)
         {
           values.push_back(static_cast<U>(raw[i]));
