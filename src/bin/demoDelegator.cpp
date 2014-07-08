@@ -17,7 +17,6 @@
 #include <thread>
 
 #include "app/console.hpp"
-#include "app/settings.hpp"
 #include "app/async.hpp"
 #include "infer/mcmc.hpp"
 #include "infer/metropolis.hpp"
