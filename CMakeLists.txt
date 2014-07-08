@@ -174,34 +174,6 @@ ENDIF(DOXYGEN_FOUND)
 #     working_directory ${cmake_source_dir})
 
 ##############################################################################
-# LINK LIBRARIES
-##############################################################################
-SET(StatelineBaseLibraries settings
-                           console
-                           ${GLOG_LIBRARY}
-                           ${LEVELDB_LIBRARY}
-                           ${Boost_FILESYSTEM_LIBRARY}
-                           ${Boost_SYSTEM_LIBRARY}
-                           ${Boost_PROGRAM_OPTIONS_LIBRARY})
-
-SET(StatelineCommsLibraries messages
-                            serial
-                            transport
-                            router)
-
-SET(StatelineServerLibraries serverheartbeat
-                             delegator
-                             requester
-                             input
-                             ${StatelineCommsLibraries})
-
-SET(StatelineClientLibraries clientheartbeat
-                             worker
-                             minion
-                             input
-                             ${StatelineCommsLibraries})
-
-##############################################################################
 # SUB-PROJECTS
 ##############################################################################
 MACRO(ADD_SUBPROJECT directory)
