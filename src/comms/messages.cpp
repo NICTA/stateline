@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/algorithm/string/join.hpp>
 #include <glog/logging.h>
 #include <zmq.hpp>
 
@@ -68,7 +66,15 @@ namespace stateline
 
     std::string addressAsString(const std::vector<std::string>& addr)
     {
-      return boost::algorithm::join(boost::adaptors::reverse(addr), ":");
+      // Concatenate the vector of addresses together with ':' as a delimiter
+      std::string buffer;
+      uint i = addr.size();
+      while (i--)
+      {
+        buffer.append(addr[i]);
+        if (i > 0) buffer.append(":");
+      }
+      return buffer;
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& m)
