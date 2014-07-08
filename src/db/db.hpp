@@ -60,17 +60,17 @@ namespace stateline
       //!
       void put(const leveldb::Slice& key, const leveldb::Slice& value);
 
+      //! Write to the database batched.
+      //!
+      //! \param batch The batched keys and values to write.
+      //!
+      void put(leveldb::WriteBatch& batch);
+
       //! Remove the entry for a particular key.
       //!
       //! \param key The key for the entry.
       //!
       void remove(const leveldb::Slice& key);
-
-      //! Write to the database batched.
-      //!
-      //! \param batch The batched keys and values to write.
-      //!
-      void batch(leveldb::WriteBatch& batch);
 
       //! Swap the values for a set of keys with another.
       //!

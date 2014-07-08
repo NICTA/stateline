@@ -78,7 +78,7 @@ namespace stateline
       CHECK(status.ok());
     }
 
-    void Database::batch(leveldb::WriteBatch& batch)
+    void Database::put(leveldb::WriteBatch& batch)
     {
       db_->Write(writeOptions_, &batch);
     }
@@ -96,6 +96,7 @@ namespace stateline
       leveldb::WriteBatch batch;
       std::vector<std::string> values1(size);
       std::vector<std::string> values2(size);
+
       for (uint i = 0; i < keys1.size(); i++)
       {
         std::string value1;
@@ -108,6 +109,7 @@ namespace stateline
         batch.Put(keys1[i], values1[i]);
         batch.Put(keys2[i], values2[i]);
       }
+
       db_->Write(writeOptions_, &batch);
     }
 

@@ -193,7 +193,7 @@ namespace stateline
           }
         }
 
-        db_.batch(batch);
+        db_.put(batch);
       }
     }
 
@@ -302,7 +302,7 @@ namespace stateline
       detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
 
       // Write the batch
-      db_.batch(batch);
+      db_.put(batch);
 
       // Re-initialise the cache
       cache_[id].clear();
