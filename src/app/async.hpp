@@ -8,18 +8,30 @@
 //! \copyright (c) 2014, NICTA
 //!
 
+#include <Eigen/Dense>
+
 #include "comms/delegator.hpp"
 #include "comms/requester.hpp"
 
 namespace stateline
 {
-  template <class SplitFunc, class CombineFunc>
+  using SplitFuncType =
+    std::function<std::vector<comms::JobData>(const Eigen::VectorXd &)>;
+
+  using CombineFuncType = 
+    std::function<double(const std::vector<comms::ResultData>)>;
+
+  template <class SplitFunc = SplitFuncType, class CombineFunc = CombineFuncType>
   class DelegatorAsyncPolicy
   {
     public:
-      DelegatorAsyncPolicy(comms::Delegator delegator,
-          const SplitFunc &splitFunc = SplitFunc(),
-          const CombineFunc &combineFunc = CombineFunc())
+      DelegatorAsyncPolicy(comms::Delegator &delegator)
+        : req_(delegator)
+      {
+      }
+
+      DelegatorAsyncPolicy(comms::Delegator &delegator,
+          const SplitFunc &splitFunc, const CombineFunc &combineFunc)
         : req_(delegator), splitFunc_(splitFunc), combineFunc_(combineFunc)
       {
       }
@@ -39,5 +51,5 @@ namespace stateline
       comms::Requester req_;
       SplitFunc splitFunc_;
       CombineFunc combineFunc_;
-  }
+  };
 }

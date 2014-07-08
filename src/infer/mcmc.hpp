@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include "db/db.hpp"
-#include "app/settings.hpp"
+#include "infer/settings.hpp"
 #include "infer/chainarray.hpp"
 #include "infer/diagnostics.hpp"
 #include "comms/transport.hpp"

@@ -7,17 +7,14 @@
 //!
 
 #include "comms/messages.hpp"
-// Standard Library
+
 #include <string>
 #include <vector>
 #include <map>
-//Prerequisites
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <glog/logging.h>
 #include <zmq.hpp>
-// Project
-#include "datatype/datatypes.hpp"
 
 namespace stateline
 {

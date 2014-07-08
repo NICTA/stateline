@@ -11,8 +11,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
-#include "app/settings.hpp"
+#include "db/settings.hpp"
 #include "leveldb/db.h"
 #include "leveldb/write_batch.h"
 

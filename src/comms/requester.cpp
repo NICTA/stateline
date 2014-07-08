@@ -78,8 +78,8 @@ namespace stateline
 
       ResultData r
       {
-        detail::unserialise<std::uint32_t>(m.data[0]);
-        m.data[1];
+        detail::unserialise<std::uint32_t>(m.data[0]),
+        m.data[1]
       };
 
       return std::make_pair(indices, r);
@@ -147,10 +147,10 @@ namespace stateline
         stateline::comms::Message r = stateline::comms::receive(socket_);
         uint batchNum = std::stoul(r.address[0]);
         uint idx = std::stoul(r.address[1]);
-        ResultData res
+        ResultData res =
         {
-          detail::unserialise(r.data[0]);
-          r.data[1];
+          detail::unserialise<std::uint32_t>(r.data[0]),
+          r.data[1]
         };
 
         batches_[batchNum][idx] = res;

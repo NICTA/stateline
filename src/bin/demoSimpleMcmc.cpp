@@ -26,12 +26,14 @@
 namespace sl = stateline;
 namespace ph = std::placeholders;
 
-std::vector<JobData> splitJob(Eigen::VectorXd &state)
+std::vector<sl::comms::JobData> splitJob(const Eigen::VectorXd &state)
 {
+  return std::vector<sl::comms::JobData>();
 }
 
-double combineResults(const std::vector<JobResult> &results)
+double combineResults(const std::vector<sl::comms::ResultData> &results)
 {
+  return 0.0;
 }
 
 po::options_description commandLineOptions()
@@ -46,16 +48,17 @@ po::options_description commandLineOptions()
 
 int main(int ac, char *av[])
 {
-  sl::MCMCSettings mcmcSettings = sl::MCMCSettings::NoAdaption();
+  sl::MCMCSettings mcmcSettings = sl::MCMCSettings::Empty();
   
   // Use default db settings
   sl::DBSettings dbSettings = sl::DBSettings::Default();
   
   // Create a delegator to communicate with workers
-  sl::comms::Delegator delegator;
+  sl::DelegatorSettings delSettings = sl::DelegatorSettings::Default(5555);
+  sl::comms::Delegator delegator("", { 0 }, { "" }, { "" }, delSettings);
 
   // Create a policy
-  sl::DelegatorAsyncPolicy<splitJob, combineResults> policy(delegator, splitJob, combineResults); 
+  sl::DelegatorAsyncPolicy<> policy(delegator, splitJob, combineResults); 
 
   // Generate initial states
   std::vector<Eigen::VectorXd> initialStates;

@@ -1,5 +1,5 @@
 //!
-//! Settings constructs for program configuration
+//! Settings for various components of Stateline
 //!
 //! \file app/settings.hpp
 //! \author Lachlan McCalman
@@ -10,18 +10,8 @@
 
 #pragma once
 
-// Project
 #include "comms/settings.hpp"
 
-// Standard Library / Prerequisites
-#include <boost/program_options.hpp>
-
-namespace po = boost::program_options;
-
-namespace obsidian
+namespace stateline
 {
-  void readConfigFile(const std::string& configFilename, po::variables_map& vm);
-  stateline::DelegatorSettings parseDelegatorSettings(const po::variables_map& vm);
-  stateline::WorkerSettings parseWorkerSettings(const po::variables_map& vm);
-  stateline::DBSettings parseDBSettings(const po::variables_map& vm);
 }

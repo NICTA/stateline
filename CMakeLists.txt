@@ -10,7 +10,6 @@
 ##############################################################################
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-
 PROJECT(STATELINE)
 
 # Use folders
@@ -121,13 +120,13 @@ SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
 # INCLUDE DIRECTORIES
 ##############################################################################
 
-INCLUDE_DIRECTORIES ("${STATELINE_SOURCE_DIR}/src"
-                      ${ZMQ_INCLUDE_DIR}
-                      ${GLOG_INCLUDE_DIR}
-                      ${Boost_INCLUDE_DIR}
-                      ${EIGEN3_INCLUDE_DIR}
-                      ${GTEST_DIR}
-                      ${GTEST_INCLUDE_DIR} )
+INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
+                     ${ZMQ_INCLUDE_DIR}
+                     ${GLOG_INCLUDE_DIR}
+                     ${Boost_INCLUDE_DIR}
+                     ${EIGEN3_INCLUDE_DIR}
+                     ${GTEST_DIR}
+                     ${GTEST_INCLUDE_DIR})
 
 
 ##############################################################################
@@ -195,7 +194,7 @@ SET(StatelineClientLibraries clientheartbeat
                              worker
                              minion
                              input
-                             ${STATELINECommsLibraries})
+                             ${StatelineCommsLibraries})
 
 ##############################################################################
 # SUB-PROJECTS

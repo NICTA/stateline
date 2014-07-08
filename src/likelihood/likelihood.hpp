@@ -12,8 +12,6 @@
 
 #include <Eigen/Dense>
 
-#include "datatype/datatypes.hpp"
-
 namespace obsidian
 {
   namespace lh
