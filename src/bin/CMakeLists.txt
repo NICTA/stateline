@@ -19,4 +19,5 @@ FUNCTION(ADD_DEMO demoName)
     ${Boost_PROGRAM_OPTIONS_LIBRARY})
 ENDFUNCTION()
 
-ADD_DEMO(demoSimpleMcmc)
+ADD_DEMO(demoDelegator)
+ADD_DEMO(demoWorker)
