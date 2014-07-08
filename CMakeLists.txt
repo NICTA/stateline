@@ -116,6 +116,7 @@ FIND_PACKAGE(Leveldb)
 MESSAGE(STATUS "GTEST directory: ${GTEST_SRC_DIR}")
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
+ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${GTEST_DIR}/src/gtest_main.cc)
 
 ##############################################################################
 # INCLUDE DIRECTORIES
@@ -129,7 +130,6 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                      ${GTEST_DIR}
                      ${GTEST_INCLUDE_DIR})
 
-
 ##############################################################################
 # TESTING
 ##############################################################################
@@ -140,18 +140,17 @@ ADD_CUSTOM_TARGET(run-test-all COMMENT "Unit Tests")
 MACRO(REGISTER_UNIT_TESTS projectName)
   SET_TARGET_PROPERTIES(${projectName} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
-  TARGET_LINK_LIBRARIES (${projectName} gtest test-common)
   ADD_CUSTOM_TARGET(run-${projectName}
     COMMAND ${projectName} --gtest_output=xml:${STATELINE_BINARY_DIR}/gtest-${projectName}-results.xml
     DEPENDS ${projectName}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Running ${projectName}")
-  ADD_DEPENDENCIES( run-test-all run-${projectName})
+  ADD_DEPENDENCIES(run-test-all run-${projectName})
 ENDMACRO()
 
-MACRO(ADD_TEST testName)
-  ADD_EXECUTABLE(${testName} ${testName}.cpp)
-  TARGET_LINK_LIBRARIES(${testName} ${StatelineBaseLibraries})
+MACRO(ADD_TEST testName testSource)
+  ADD_EXECUTABLE(${testName} ${testSource})
+  TARGET_LINK_LIBRARIES(${testName} ${ARGN} gtest)
   REGISTER_UNIT_TESTS(${testName})
 ENDMACRO()
 
