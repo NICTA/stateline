@@ -8,6 +8,8 @@
 //! \copyright (c) 2014, NICTA
 //!
 
+#pragma once
+
 #include <cassert>
 #include <cmath>
 #include <Eigen/Dense>
