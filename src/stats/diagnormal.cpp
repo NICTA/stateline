@@ -15,12 +15,13 @@ namespace stateline
 {
   namespace stats
   {
+    constexpr double log2PI = std::log(2.0 * M_PI);
+
     DiagNormal::DiagNormal(const Eigen::VectorXd &mean, const Eigen::VectorXd &cov)
-      : Multivariate(mean.size()), mean_(mean), diag_(cov)
+      : Multivariate(mean.size(), -0.5 * mean.size() * log2PI * diag_.prod()),
+        mean_(mean), diag_(cov)
     {
       assert(mean.size() == cov.size());
-
-      norm_ = -std::log(std::pow(2.0 * M_PI, mean.size() * 0.5) * diag_.prod());
     }
 
     template <>
@@ -32,7 +33,7 @@ namespace stateline
     template <>
     double logpdf(const DiagNormal &d, const Eigen::VectorXd &x)
     {
-      return d.norm_ - 0.5 * (x - mean(d)).cwiseQuotient(d.diag()).squaredNorm();
+      return d.norm() - 0.5 * (x - mean(d)).cwiseQuotient(d.diag()).squaredNorm();
     }
   }
 }

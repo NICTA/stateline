@@ -29,9 +29,6 @@ namespace stateline
         Eigen::VectorXd mean_;
         Eigen::VectorXd diag_;
 
-        // Normalisation factor
-        double norm_;
-
         friend double logpdf<>(const DiagNormal &d, const Eigen::VectorXd &x);
     };
 
