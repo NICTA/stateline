@@ -53,30 +53,31 @@ namespace stateline
     }
 
     template <class Distribution>
-    Eigen::VectorXd pdf(const Distribution &d, const Eigen::VectorXd &x)
+    double pdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      // Use to logpdf to calculate the pdf if no specialisation is provided.
-      return std::exp(logpdf(d, x));
+      return updf(d, x) * d.norm();
     }
 
     //! Evaluate an unnormalised PDF of a distribution.
     template <class Distribution>
     double updf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      // Just use the normalised PDF by default.
-      return pdf(d, x);
+      // Use to logpdf to calculate the pdf if no specialisation is provided.
+      return std::exp(ulogpdf(d, x));
     }
 
     //! Evaluate the log PDF of a distribution.
     template <class Distribution>
-    double logpdf(const Distribution &d, const Eigen::VectorXd &x);
+    double logpdf(const Distribution &d, const Eigen::VectorXd &x)
+    {
+      return ulogpdf(d, x) + d.norm();
+    }
 
     //! Evaluate an unnormalised log PDF of a distribution.
     template <class Distribution>
     double ulogpdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      // Just use the normalised log PDF by default.
-      return logpdf(d, x);
+      return logpdf(d, x) - d.norm();
     }
 
     //! Draw a random sample from a distribution
