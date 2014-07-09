@@ -15,7 +15,7 @@ namespace stateline
 {
   namespace stats
   {
-    constexpr double log2PI = 1.837877066409345;
+    constexpr double log2PI = std::log(2.0 * M_PI);
 
     NormalDetail::NormalDetail(const Eigen::MatrixXd &cov)
     {
