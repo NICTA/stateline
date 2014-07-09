@@ -38,13 +38,10 @@ class Delegation: public testing::Test
       std::string globalSpec = "globalSpec";
       std::string perJobSpec1 = "jobSpec1";
       std::string perJobSpec2 = "jobSpec2";
-      std::string perJobResults1 = "jobResult1";
-      std::string perJobResults2 = "jobResult2";
 
       std::vector<uint> jobIds = { 2, 5 };
       std::vector<std::string> jobMsgs = { perJobSpec1, perJobSpec2 };
-      std::vector<std::string> jobResMsgs = { perJobResults1, perJobResults2 };
-      pDelegator.reset(new Delegator(globalSpec, jobIds, jobMsgs, jobResMsgs, settings));
+      pDelegator.reset(new Delegator(globalSpec, jobIds, jobMsgs, settings));
       pDelegator->start();
     }
 
@@ -68,9 +65,9 @@ TEST_F(Delegation, canSendAndReceiveSingleProblemSpec)
   std::vector<uint> jobList = { 2 };
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   auto rep = receive(worker);
-  //send(worker, Message(HEARTBEAT));
+  send(worker, Message(HEARTBEAT));
   delegator.stop();
-  //send(worker, Message(HEARTBEAT));
+  send(worker, Message(HEARTBEAT));
 
   Message expected(PROBLEMSPEC, { "globalSpec", "2", "jobSpec1", "jobResult1" });
   EXPECT_EQ(expected, rep);

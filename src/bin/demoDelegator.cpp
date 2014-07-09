@@ -55,7 +55,7 @@ int main(int ac, char *av[])
   
   // Create a delegator to communicate with workers
   sl::DelegatorSettings delSettings = sl::DelegatorSettings::Default(5555);
-  sl::comms::Delegator delegator("", { 0 }, { "" }, { "" }, delSettings);
+  sl::comms::Delegator delegator("", { 0 }, { "" }, delSettings);
 
   // Create a policy
   sl::DelegatorAsyncPolicy<> policy(delegator, splitJob, combineResults); 

@@ -43,12 +43,10 @@ namespace stateline
         //! \param commonSpecData The serialised common problem specification.
         //! \param jobId The available job IDs.
         //! \param jobSpecData The serialised problem specifications for each job.
-        //! \param jobResultsData The serialised problem results for each job.
         //! \param settings The configuration object.
         //!
         Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId,
             const std::vector<std::string>& jobSpecData,
-            const std::vector<std::string>& jobResultsData,
             const DelegatorSettings& settings);
 
         // Delegators can't be copied.
@@ -147,7 +145,6 @@ namespace stateline
         std::string commonSpecData_;
         std::vector<uint> jobId_;
         std::vector<std::string> jobSpecData_;
-        std::vector<std::string> jobResultsData_;
         // Fault tolerance support
         std::map<std::string, std::vector<Message>> workerToJobMap_;
         // The queues for jobs

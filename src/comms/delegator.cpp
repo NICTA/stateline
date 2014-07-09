@@ -17,14 +17,13 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId, const std::vector<std::string>& jobSpecData,
-                         const std::vector<std::string>& jobResultsData, const DelegatorSettings& settings)
+    Delegator::Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId,
+        const std::vector<std::string>& jobSpecData, const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
           context_(1),
           commonSpecData_(commonSpecData),
           jobId_(jobId),
           jobSpecData_(jobSpecData),
-          jobResultsData_(jobResultsData),
           jobQueues_(jobId.size()),
           requestQueues_(jobId.size()),
           heartbeat_(context_, settings.heartbeat)
@@ -113,7 +112,6 @@ namespace stateline
             VLOG(1) << "\t and we have a spec for it! " << i;
             repData.push_back(std::to_string(jobId_[j]));
             repData.push_back(jobSpecData_[j]);
-            repData.push_back(jobResultsData_[j]);
             break;
           }
         }
