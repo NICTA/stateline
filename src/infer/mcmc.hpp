@@ -50,14 +50,10 @@ namespace stateline
             propStates_(s.stacks * s.chains, stateDim),
             locked_(s.stacks * s.chains, false),
             nextChainBeta_(s.stacks * s.chains),
-            nAcceptsGlobal_(s.stacks * s.chains, 0),
-            nSwapsGlobal_(s.stacks * (s.chains), 0),
-            nSwapAttemptsGlobal_(s.stacks * s.chains, 0),
             sigmas_(s.stacks * s.chains),
             betas_(s.stacks * s.chains),
             acceptRates_(s.stacks * s.chains),
             swapRates_(s.stacks * s.chains),
-            lowestEnergies_(s.stacks * s.chains),
             s_(s),
             numOutstandingJobs_(0),
             interrupted_(interrupted),
@@ -72,13 +68,9 @@ namespace stateline
           nextChainBeta_[i] = chains_.beta(i);
           acceptRates_[i] = 1;
           swapRates_[i] = 0;
-          lowestEnergies_[i] = std::numeric_limits<double>::infinity();
           acceptBuffers_.push_back(boost::circular_buffer<bool>(s.adaptionLength));
           swapBuffers_.push_back(boost::circular_buffer<bool>(s.adaptionLength / s.swapInterval + 1));
-          nAcceptsGlobal_[i] = 1;
           acceptBuffers_[i].push_back(true); // first state always accepts
-          nSwapsGlobal_[i] = 0;
-          nSwapAttemptsGlobal_[i] = 1;
           swapBuffers_[i].push_back(false); // gets rid of a nan, not really needed
         }
       }
@@ -117,8 +109,6 @@ namespace stateline
 
         // Listen for replies. As soon as a new state comes back,
         // add it to the corresponding chain, and submit a new proposed state
-        auto lastLogTime = steady_clock::now();
-        auto lastPrintTime = steady_clock::now();
         while (duration_cast<seconds>(steady_clock::now() - startTime).count() < numSeconds && !interrupted_)
         {
           std::pair<uint, double> result;
@@ -190,9 +180,6 @@ namespace stateline
           if (interrupted_)
             break;
 
-          // Log the best energy state so far
-          lowestEnergies_[id] = std::min(lowestEnergies_[id], chains_.lastState(id).energy);
-
           // Check if we need to adapt the step size for this chain
           if (lengths_[id] % s_.proposalAdaptInterval == 0)
           {
@@ -207,26 +194,6 @@ namespace stateline
           if (lengths_[id] % s_.betaAdaptInterval == 0 && !isColdestChainInStack)
           {
             adaptBeta(id);
-          }
-
-          // Update the accept and swap rates
-          if (duration_cast<milliseconds>(steady_clock::now() - lastLogTime).count() > 50)
-          {
-            lastLogTime = steady_clock::now();
-
-            std::stringstream s;
-            s << "\n\nChainID  Length  MinEngy  CurrEngy    Sigma      AcptRt    GlbAcptRt    Beta     SwapRt   GlbSwapRt\n";
-            s << "-----------------------------------------------------------------------------------------------------\n";
-            for (uint i = 0; i < chains_.numTotalChains(); i++)
-            {
-              if (i % chains_.numChains() == 0 && i != 0)
-                s << '\n';
-              s << std::setprecision(6) << std::showpoint << i << " " << std::setw(9) << lengths_[i] << " " << std::setw(10)
-                  << lowestEnergies_[i] << " " << std::setw(10) << chains_.lastState(i).energy << " " << std::setw(10) << sigmas_[i] << " "
-                  << std::setw(10) << acceptRates_[i] << " " << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
-                  << std::setw(10) << betas_[i] << " " << std::setw(10) << swapRates_[i] << " " << std::setw(10)
-                  << nSwapsGlobal_[i] / (double) nSwapAttemptsGlobal_[i] << " \n";
-            }
           }
         }
 
@@ -434,20 +401,6 @@ namespace stateline
       double delta = ((int)acc - (int)(lastAcc&&isFull))/(double)newSize;
       double scale = oldSize/(double)newSize;
       acceptRates_[id] = std::max(oldRate*scale + delta, 0.0);
-      nAcceptsGlobal_[id] += acc;
-      if (acceptRates_[id] > 1.0)
-      {
-        std::cout << "oldSize: " << oldSize << "\n"
-        << "isFull:" << isFull << "\n"
-        << "newSize:" << newSize << "\n"
-        << "lastAcc:" << lastAcc << "\n"
-        << "delta:" << delta << "\n"
-        << "scale:" << scale << "\n"
-        << "oldRate:" << oldRate << "\n"
-        << "rate:" << acceptRates_[id] << "\n"
-        << std::endl;
-        exit(EXIT_FAILURE);
-      }
     }
 
     void updateSwaps(uint id, bool sw)
@@ -465,8 +418,6 @@ namespace stateline
       double delta = ((int)sw - (int)(lastSw&&isFull))/(double)newSize;
       double scale = oldSize/(double)newSize;
       swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
-      nSwapsGlobal_[id] += sw;// for global rate
-      nSwapAttemptsGlobal_[id] += 1;
     }
 
     // Recover?
@@ -489,19 +440,14 @@ namespace stateline
     std::vector<double> nextChainBeta_;
 
     // Keep track of the swaps and accepts for adaption
-    std::vector<unsigned long long> nAcceptsGlobal_;
-    std::vector<unsigned long long> nSwapsGlobal_;
-    std::vector<unsigned long long> nSwapAttemptsGlobal_;
-
     std::vector<boost::circular_buffer<bool>> acceptBuffers_;
     std::vector<boost::circular_buffer<bool>> swapBuffers_;
 
-    // For logging purposes
+    // For adaption
     std::vector<double> sigmas_;
     std::vector<double> betas_;
     std::vector<double> acceptRates_;
     std::vector<double> swapRates_;
-    std::vector<double> lowestEnergies_;
 
     // The MCMC settings
     MCMCSettings s_;
