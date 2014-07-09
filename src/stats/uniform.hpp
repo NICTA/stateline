@@ -16,7 +16,7 @@ namespace stateline
 {
   namespace stats
   {
-    class Uniform : Multivariate
+    class Uniform : public Multivariate
     {
       public:
         //! Create a uniform distribution.
@@ -44,9 +44,6 @@ namespace stateline
 
     template <>
     bool insupport(const Uniform &d, const Eigen::VectorXd &x);
-
-    template <>
-    double logpdf(const Uniform &d, const Eigen::VectorXd &x);
 
     template <>
     double ulogpdf(const Uniform &d, const Eigen::VectorXd &x);

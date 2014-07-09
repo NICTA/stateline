@@ -15,7 +15,8 @@ namespace stateline
   namespace stats
   {
     Uniform::Uniform(const Eigen::VectorXd &min, const Eigen::VectorXd &max)
-      : Multivariate(min.size()), min_(min), max_(max)
+      : Multivariate(min.size(), -(max - min).array().log().sum()),
+        min_(min), max_(max)
     {
       assert(min.size() == max.size());
     }
@@ -47,19 +48,6 @@ namespace stateline
     {
       // Check that all dimensions are within the bounds of the distribution.
       return ((d.min().array() < x.array()) && (x.array() < d.max().array())).all();
-    }
-
-    template <>
-    double logpdf(const Uniform &d, const Eigen::VectorXd &x)
-    {
-      if (insupport(d, x))
-      {
-        return -(d.max() - d.min()).array().log().sum();
-      }
-      else
-      {
-        return -std::numeric_limits<double>::infinity();
-      }
     }
 
     template <>

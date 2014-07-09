@@ -52,3 +52,14 @@ TEST(UniformDistribution, canDetectOutOfSupport)
   EXPECT_FALSE(insupport(d, Eigen::Vector2d(-2.5, 1.0)));
   EXPECT_FALSE(insupport(d, Eigen::Vector2d(-2.5, 5.0)));
 }
+
+TEST(UniformDistribution, pdfForTwoDimensionalIsCorrect)
+{
+  Eigen::Vector2d min(-3.0, 1.0);
+  Eigen::Vector2d max(2.0, 3.0);
+
+  stats::Uniform d(min, max);
+
+  EXPECT_DOUBLE_EQ(0.1, stats::pdf(d, Eigen::Vector2d(0.0, 2.0)));
+  EXPECT_DOUBLE_EQ(0.0, stats::pdf(d, Eigen::Vector2d(-4.0, 2.0)));
+}
