@@ -70,14 +70,14 @@ namespace stateline
     template <class Distribution>
     double logpdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      return ulogpdf(d, x) + d.norm();
+      return ulogpdf(d, x) + d.lognorm();
     }
 
     //! Evaluate an unnormalised log PDF of a distribution.
     template <class Distribution>
     double ulogpdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      return logpdf(d, x) - d.norm();
+      return logpdf(d, x) - d.lognorm();
     }
 
     //! Draw a random sample from a distribution
