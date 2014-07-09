@@ -5,7 +5,7 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-ADD_LIBRARY(stats multivariate.cpp uniform.cpp normal.cpp diagnormal.cpp)
+ADD_LIBRARY(stats multivariate.cpp uniform.cpp normal.cpp diagnormal.cpp truncnormal.cpp)
 
 ADD_TEST(test-stats-uniform testuniform.cpp stats)
 ADD_TEST(test-stats-normal testnormal.cpp stats)
