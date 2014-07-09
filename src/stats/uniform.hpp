@@ -46,9 +46,9 @@ namespace stateline
     bool insupport(const Uniform &d, const Eigen::VectorXd &x);
 
     template <>
-    double ulogpdf(const Uniform &d, const Eigen::VectorXd &x);
+    double logpdf(const Uniform &d, const Eigen::VectorXd &x);
 
     template <class RNG>
-    Eigen::VectorXd sample(const Uniform &d, const RNG &rng);
+    Eigen::VectorXd sample(const Uniform &d, RNG &rng);
   }
 }

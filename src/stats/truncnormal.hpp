@@ -30,19 +30,19 @@ namespace stateline
         Eigen::VectorXd min_;
         Eigen::VectorXd max_;
 
-        // TODO: urgh
-        friend double ulogpdf<>(const TruncNormal &d, const Eigen::VectorXd &x);
+        friend double logpdf<>(const TruncNormal &d, const Eigen::VectorXd &x);
     };
+
+    template <>
+    Eigen::VectorXd mean(const TruncNormal &d);
+
+    template <>
+    Eigen::MatrixXd cov(const TruncNormal &d);
 
     template <>
     bool insupport(const TruncNormal &d, const Eigen::VectorXd &x);
 
-    // TODO: currently logpdf is deprecated because the normalisation factor
-    // is hard to calculate.
     template <>
     double logpdf(const TruncNormal &d, const Eigen::VectorXd &x);
-
-    template <>
-    double ulogpdf(const TruncNormal &d, const Eigen::VectorXd &x);
   }
 }

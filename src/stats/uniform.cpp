@@ -15,7 +15,7 @@ namespace stateline
   namespace stats
   {
     Uniform::Uniform(const Eigen::VectorXd &min, const Eigen::VectorXd &max)
-      : Multivariate(min.size(), -(max - min).array().log().sum()),
+      : Multivariate(min.size()),
         min_(min), max_(max)
     {
       assert(min.size() == max.size());
@@ -51,7 +51,7 @@ namespace stateline
     }
 
     template <>
-    double ulogpdf(const Uniform &d, const Eigen::VectorXd &x)
+    double logpdf(const Uniform &d, const Eigen::VectorXd &x)
     {
       // Check if x is in the support of the distribution
       if (insupport(d, x))
@@ -65,7 +65,7 @@ namespace stateline
     }
 
     template <class RNG>
-    Eigen::VectorXd sample(const Uniform &d, const RNG &rng)
+    Eigen::VectorXd sample(const Uniform &d, RNG &rng)
     {
       std::uniform_real_distribution<double> dist(0, 1);
 

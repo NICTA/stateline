@@ -14,24 +14,14 @@ namespace stateline
 {
   namespace stats
   {
-    Multivariate::Multivariate(std::size_t length, double lognorm)
-      : length_(length), norm_(std::exp(lognorm)), lognorm_(lognorm)
+    Multivariate::Multivariate(std::size_t length)
+      : length_(length)
     {
     }
 
     std::size_t Multivariate::length() const
     {
       return length_;
-    }
-
-    double Multivariate::norm() const
-    {
-      return norm_;
-    }
-
-    double Multivariate::lognorm() const
-    {
-      return lognorm_;
     }
   }
 }

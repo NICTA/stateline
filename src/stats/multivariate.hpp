@@ -19,16 +19,12 @@ namespace stateline
     class Multivariate
     {
       public:
-        Multivariate(std::size_t length, double lognorm = 0.0);
+        Multivariate(std::size_t length);
 
         std::size_t length() const;
-        double norm() const;
-        double lognorm() const;
 
       private:
         std::size_t length_;
-        double norm_;
-        double lognorm_;
     };
   }
 }

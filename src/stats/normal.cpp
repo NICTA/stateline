@@ -15,8 +15,6 @@ namespace stateline
 {
   namespace stats
   {
-    constexpr double log2PI = std::log(2.0 * M_PI);
-
     NormalDetail::NormalDetail(const Eigen::MatrixXd &cov)
     {
       assert(cov.rows() == cov.cols());
@@ -24,12 +22,11 @@ namespace stateline
       // TODO: check whether the decomposition was successful
       covL = cov.llt().matrixL();
       covLInv = covL.lu().inverse();
-      logDet = covLInv.diagonal().array().log().sum();
     }
 
     Normal::Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov)
       : NormalDetail(cov),
-        Multivariate(mean.size(), -0.5 * mean.size() * log2PI + this->logDet),
+        Multivariate(mean.size()),
         mean_(mean), cov_(cov)
     {
       assert(mean.size() == cov.rows());
@@ -46,7 +43,19 @@ namespace stateline
     }
 
     template <>
-    double ulogpdf(const Normal &d, const Eigen::VectorXd &x)
+    Eigen::VectorXd mean(const Normal &d)
+    {
+      return d.mean();
+    }
+
+    template <>
+    Eigen::MatrixXd cov(const Normal &d)
+    {
+      return d.cov();
+    }
+
+    template <>
+    double logpdf(const Normal &d, const Eigen::VectorXd &x)
     {
       return -0.5 * (d.covLInv * (x - mean(d))).squaredNorm();
     }

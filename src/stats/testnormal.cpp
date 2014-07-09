@@ -14,10 +14,13 @@
 
 using namespace stateline;
 
-TEST(NormalDistribution, hasCorrectPDF)
+TEST(NormalDistribution, unnormalisedPdfHasSameConstantFactor)
 {
-  Eigen::VectorXd x(5);
-  x << 1, 2, 3, 4, 5;
+  Eigen::MatrixXd x(4, 5);
+  x << 1, 2, 3, 4, 5,
+       3, 0, 3, 0, -3,
+       0, -10, 1, 3, 4,
+       0, 0, 0, 0, 0;
 
   Eigen::VectorXd mean(5);
   mean << 3, 4, 3, 2, 3;
@@ -33,16 +36,12 @@ TEST(NormalDistribution, hasCorrectPDF)
          14, 12, 8, 9, 19;
 
   stats::Normal d(mean, cov);
-  EXPECT_NEAR(-20.7959, stats::logpdf(d, x), 0.001);
+  
+  double pdfAtMean = stats::logpdf(d, stats::mean(d));
+  double lognorm = -7.99589004769 - pdfAtMean;
 
- // maxs = Eigen::VectorXd::Ones(5) * 4.9;
- // answer = distrib::logPDF(X, gauss, mins, maxs);
- // EXPECT_TRUE(is_neg_infinity(answer));
- // maxs = Eigen::VectorXd::Ones(5) * 6;
- // mins = Eigen::VectorXd::Ones(5) * 1.1;
- // answer = distrib::logPDF(X, gauss, mins, maxs);
- // EXPECT_TRUE(is_neg_infinity(answer));
- // mins = Eigen::VectorXd::Ones(5) * 1;
- // answer = distrib::logPDF(X, gauss, mins, maxs);
- // EXPECT_NEAR(answer, -20.7959, 0.1);
+  EXPECT_NEAR(-20.7958900477, stats::logpdf(d, x.row(0)) + lognorm, 1e-6);
+  EXPECT_NEAR(-12.3958900477, stats::logpdf(d, x.row(1)) + lognorm, 1e-6);
+  EXPECT_NEAR(-106.595890048, stats::logpdf(d, x.row(2)) + lognorm, 1e-6);
+  EXPECT_NEAR(-9.69589004769, stats::logpdf(d, x.row(3)) + lognorm, 1e-6);
 }

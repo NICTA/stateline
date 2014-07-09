@@ -25,9 +25,6 @@ namespace stateline
 
       // LU decomposition for inverting the covariance matrix
       Eigen::MatrixXd covLInv;
-
-      // Log of the determinant of the covariance matrix
-      double logDet;
     };
 
     class Normal : private NormalDetail, public Multivariate
@@ -42,11 +39,19 @@ namespace stateline
         Eigen::VectorXd mean_;
         Eigen::MatrixXd cov_;
 
-        // TODO: urgh
-        friend double ulogpdf<>(const Normal &d, const Eigen::VectorXd &x);
+        friend double logpdf<>(const Normal &d, const Eigen::VectorXd &x);
     };
 
     template <>
-    double ulogpdf(const Normal &d, const Eigen::VectorXd &x);
+    Eigen::VectorXd mean(const Normal &d);
+
+    template <>
+    Eigen::MatrixXd cov(const Normal &d);
+
+    template <>
+    double logpdf(const Normal &d, const Eigen::VectorXd &x);
+
+    template <class RNG>
+    Eigen::VectorXd sample(const Normal &d, RNG &rng);
   }
 }

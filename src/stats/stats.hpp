@@ -27,10 +27,7 @@ namespace stateline
 
     //! Return the mean vector of a distribution.
     template <class Distribution>
-    Eigen::VectorXd mean(const Distribution &d)
-    {
-      return d.mean();
-    }
+    Eigen::VectorXd mean(const Distribution &d);
 
     //! Return the variance of a distribution.
     template <class Distribution>
@@ -55,36 +52,22 @@ namespace stateline
       return true;
     }
 
+    //! Evaluate an unormalised PDF of a distribution. 
     template <class Distribution>
     double pdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      return updf(d, x) * d.norm();
-    }
-
-    //! Evaluate an unnormalised PDF of a distribution.
-    template <class Distribution>
-    double updf(const Distribution &d, const Eigen::VectorXd &x)
-    {
-      // Use to logpdf to calculate the pdf if no specialisation is provided.
-      return std::exp(ulogpdf(d, x));
-    }
-
-    //! Evaluate the log PDF of a distribution.
-    template <class Distribution>
-    double logpdf(const Distribution &d, const Eigen::VectorXd &x)
-    {
-      return ulogpdf(d, x) + d.lognorm();
+      return std::exp(logpdf(d, x));
     }
 
     //! Evaluate an unnormalised log PDF of a distribution.
     template <class Distribution>
-    double ulogpdf(const Distribution &d, const Eigen::VectorXd &x)
+    double logpdf(const Distribution &d, const Eigen::VectorXd &x)
     {
-      return logpdf(d, x) - d.lognorm();
+      return std::log(pdf(d, x));
     }
 
     //! Draw a random sample from a distribution
     template <class Distribution, class RNG>
-    Eigen::VectorXd sample(const Distribution &d, const RNG &rng);
+    Eigen::VectorXd sample(const Distribution &d, RNG &rng);
   }
 }

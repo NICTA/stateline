@@ -23,6 +23,18 @@ namespace stateline
     }
 
     template <>
+    Eigen::VectorXd mean(const TruncNormal &d)
+    {
+      return d.mean();
+    }
+
+    template <>
+    Eigen::MatrixXd cov(const TruncNormal &d)
+    {
+      return d.cov();
+    }
+
+    template <>
     bool insupport(const TruncNormal &d, const Eigen::VectorXd &x)
     {
       // Check that all dimensions are within the bounds of the distribution.
@@ -30,11 +42,11 @@ namespace stateline
     }
 
     template <>
-    double ulogpdf(const TruncNormal &d, const Eigen::VectorXd &x)
+    double logpdf(const TruncNormal &d, const Eigen::VectorXd &x)
     {
       if (insupport(d, x))
       {
-        return ulogpdf(*static_cast<const Normal *>(&d), x);
+        return logpdf(*static_cast<const Normal *>(&d), x);
       }
       else
       {
