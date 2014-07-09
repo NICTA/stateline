@@ -17,20 +17,22 @@ namespace stateline
   {
     constexpr double log2PI = 1.837877066409345;
 
-    Normal::Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov)
-      : Multivariate(mean.size()), mean_(mean), cov_(cov)
+    NormalDetail::NormalDetail(const Eigen::MatrixXd &cov)
     {
-      assert(mean.size() == cov.rows());
       assert(cov.rows() == cov.cols());
 
-      covL_ = cov.llt().matrixL();
       // TODO: check whether the decomposition was successful
+      covL = cov.llt().matrixL();
+      covLInv = covL.lu().inverse();
+      logDet = covLInv.diagonal().array().log().sum();
+    }
 
-      Eigen::FullPivLU<Eigen::MatrixXd> lu(covL_);
-      covLInv_ = lu.inverse();
-  
-      logDet_ = covLInv_.diagonal().array().log().sum();
-      norm_ = -0.5 * mean.size() * log2PI;
+    Normal::Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov)
+      : NormalDetail(cov),
+        Multivariate(mean.size(), -0.5 * mean.size() * log2PI + this->logDet),
+        mean_(mean), cov_(cov)
+    {
+      assert(mean.size() == cov.rows());
     }
 
     Eigen::VectorXd Normal::mean() const
@@ -50,9 +52,9 @@ namespace stateline
     }
 
     template <>
-    double logpdf(const Normal &d, const Eigen::VectorXd &x)
+    double ulogpdf(const Normal &d, const Eigen::VectorXd &x)
     {
-      return d.norm_ + d.logDet_ - 0.5 * (d.covLInv_ * (x - mean(d))).squaredNorm();
+      return -0.5 * (d.covLInv * (x - mean(d))).squaredNorm();
     }
   }
 }

@@ -16,7 +16,21 @@ namespace stateline
 {
   namespace stats
   {
-    class Normal : Multivariate
+    struct NormalDetail
+    {
+      NormalDetail(const Eigen::MatrixXd &cov);
+
+      // LLT decomposition for drawing samples
+      Eigen::MatrixXd covL;
+
+      // LU decomposition for inverting the covariance matrix
+      Eigen::MatrixXd covLInv;
+
+      // Log of the determinant of the covariance matrix
+      double logDet;
+    };
+
+    class Normal : private NormalDetail, public Multivariate
     {
       public:
         Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov);
@@ -28,24 +42,14 @@ namespace stateline
         Eigen::VectorXd mean_;
         Eigen::MatrixXd cov_;
 
-        // LLT decomposition for drawing samples
-        Eigen::MatrixXd covL_;
-
-        // LU decomposition for inverting the covariance matrix
-        Eigen::MatrixXd covLInv_;
-
-        // Cached values used in PDF calculation 
-        double logDet_;
-        double norm_;
-
         // TODO: urgh
-        friend double logpdf<>(const Normal &d, const Eigen::VectorXd &x);
+        friend double ulogpdf<>(const Normal &d, const Eigen::VectorXd &x);
     };
 
     template <>
     Eigen::VectorXd var(const Normal &d);
 
     template <>
-    double logpdf(const Normal &d, const Eigen::VectorXd &x);
+    double ulogpdf(const Normal &d, const Eigen::VectorXd &x);
   }
 }
