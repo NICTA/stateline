@@ -46,12 +46,6 @@ namespace stateline
     }
 
     template <>
-    Eigen::VectorXd var(const Normal &d)
-    {
-      return cov(d).diagonal();
-    }
-
-    template <>
     double ulogpdf(const Normal &d, const Eigen::VectorXd &x)
     {
       return -0.5 * (d.covLInv * (x - mean(d))).squaredNorm();

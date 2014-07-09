@@ -34,7 +34,8 @@ namespace stateline
     template <class Distribution>
     Eigen::VectorXd var(const Distribution &d)
     {
-      return d.var();
+      // By default, use the diagonal of the covariance matrix
+      return cov(d).diagonal();
     }
 
     //! Return the covariance of a distribution.

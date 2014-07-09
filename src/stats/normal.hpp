@@ -47,9 +47,6 @@ namespace stateline
     };
 
     template <>
-    Eigen::VectorXd var(const Normal &d);
-
-    template <>
     double ulogpdf(const Normal &d, const Eigen::VectorXd &x);
   }
 }
