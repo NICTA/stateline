@@ -91,7 +91,7 @@ namespace stateline
         steady_clock::time_point startTime = steady_clock::now();
 
         // Initialise the chains if we're not recovering
-        if (recover_)
+        if (!recover_)
         {
           initialise(policy, initialStates);
         }
