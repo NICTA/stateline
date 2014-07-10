@@ -25,9 +25,6 @@ TEST(NormalDistribution, unnormalisedPdfHasSameConstantFactor)
   Eigen::VectorXd mean(5);
   mean << 3, 4, 3, 2, 3;
 
-  Eigen::VectorXd min = Eigen::VectorXd::Zero(5);
-  Eigen::VectorXd max = Eigen::VectorXd::Ones(5) * 5;
-
   Eigen::MatrixXd cov(5, 5);
   cov << 15, 9, 11, 7, 14,
          9, 10, 5, 8, 12,

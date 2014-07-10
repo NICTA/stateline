@@ -40,6 +40,9 @@ namespace stateline
         Eigen::MatrixXd cov_;
 
         friend double logpdf<>(const Normal &d, const Eigen::VectorXd &x);
+
+        template <class RNG>
+        friend Eigen::VectorXd sample(const Normal &d, RNG &rng);
     };
 
     template <>
@@ -52,6 +55,19 @@ namespace stateline
     double logpdf(const Normal &d, const Eigen::VectorXd &x);
 
     template <class RNG>
-    Eigen::VectorXd sample(const Normal &d, RNG &rng);
+    Eigen::VectorXd sample(const Normal &d, RNG &rng)
+    {
+      std::normal_distribution<double> dist(0, 1);
+
+      // Sample each dimension independently
+      Eigen::VectorXd randn(length(d));
+      for (Eigen::VectorXd::Index i = 0; i < randn.rows(); i++)
+      {
+        randn(i) = dist(rng);
+      }
+
+      // Transform into a sample from the actual distribution
+      return mean(d) + d.covL * randn;
+    }
   }
 }
