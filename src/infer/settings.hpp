@@ -86,5 +86,29 @@ namespace stateline
       MCMCSettings settings = {};
       return settings;
     }
+
+    static MCMCSettings NoAdaption(uint chains, uint stacks, uint wallTime)
+    {
+      MCMCSettings settings = MCMCSettings::Empty();
+      settings.chains = chains;
+      settings.stacks = stacks;
+      settings.wallTime = wallTime;
+      settings.swapInterval = 25;
+      settings.adaptionLength = 1;
+      settings.cacheLength = 100;
+      settings.initialSigmaFactor = 1.1;
+      settings.proposalInitialSigma = 1.0;
+      settings.proposalMinFactor = 1.0;
+      settings.proposalMaxFactor = 1.0;
+      settings.proposalOptimalAccept = 0.4;
+      settings.proposalAdaptInterval = 100000000;
+      settings.betaOptimalSwapRate = 0.5;
+      settings.betaAdaptRate = 1.0;
+      settings.betaMinFactor = 1.0;
+      settings.betaMaxFactor = 1.0;
+      settings.betaAdaptInterval = 1000000000;
+      settings.initialTempFactor = 1.2;
+      return settings;
+    }
   };
 }
