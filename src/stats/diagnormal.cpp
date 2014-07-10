@@ -22,6 +22,16 @@ namespace stateline
       assert(mean.size() == cov.size());
     }
 
+    Eigen::VectorXd DiagNormal::mean() const
+    {
+      return mean_;
+    }
+
+    Eigen::VectorXd DiagNormal::diag() const
+    {
+      return diag_;
+    }
+
     template <>
     Eigen::VectorXd mean(const DiagNormal &d)
     {

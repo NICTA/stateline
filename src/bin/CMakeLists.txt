@@ -14,6 +14,7 @@ FUNCTION(ADD_DEMO demoName library)
 
   TARGET_LINK_LIBRARIES(${demoName}
     ${library}
+    stats
     ${GLOG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY})
