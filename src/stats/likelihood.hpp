@@ -1,7 +1,7 @@
 //!
-//! Contains the implementation of functions for computing the likelihood.
+//! Contains the interface for common likelihood functions.
 //!
-//! \file likelihood/likelihood.hpp
+//! \file stats/likelihood.hpp
 //! \author Darren Shen
 //! \date 2014
 //! \license General Public License version 3 or later
@@ -12,9 +12,9 @@
 
 #include <Eigen/Dense>
 
-namespace obsidian
+namespace stateline
 {
-  namespace lh
+  namespace stats
   {
     //! Calculate the Gaussian log likelihood.
     //! 
@@ -26,10 +26,10 @@ namespace obsidian
 
     //! Calculate the normal inverse Gamma marginal log likelihood.
     //! 
-    //! \param real Vector containing the real sensor data.
-    //! \param candidate Vector containing the simulated sensor data.
+    //! \param x The data. 
+    //! \param mu Mean of likelihood.
     //! \param A, B Alpha and beta parameters.
     //!
-    double normalInverseGamma(const Eigen::VectorXd &real, const Eigen::VectorXd &candidate, double A, double B);
+    double normalInverseGamma(const Eigen::VectorXd &x, const Eigen::VectorXd &mu, double A, double B);
   }
 }

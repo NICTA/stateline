@@ -1,5 +1,7 @@
 //!
-//! \file likelihood/likelihood.cpp
+//! Contains the implementation for common likelihood functions.
+//!
+//! \file stats/likelihood.cpp
 //! \author Darren Shen
 //! \date May 2014
 //! \license General Public License version 3 or later
@@ -8,12 +10,11 @@
 
 #include "likelihood.hpp"
 
-#include <glog/logging.h>
 #include <cmath>
 
-namespace obsidian
+namespace stateline
 {
-  namespace lh
+  namespace stats
   {
     double stdDev(const Eigen::VectorXd& x)
     {

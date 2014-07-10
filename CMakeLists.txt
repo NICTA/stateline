@@ -185,7 +185,6 @@ ADD_SUBPROJECT(src/comms)
 ADD_SUBPROJECT(src/db)
 ADD_SUBPROJECT(src/infer)
 ADD_SUBPROJECT(src/bin)
-ADD_SUBPROJECT(src/likelihood)
 
 ##############################################################################
 # Build final libraries for server and client
