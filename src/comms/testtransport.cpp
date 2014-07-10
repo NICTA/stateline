@@ -115,8 +115,9 @@ namespace stateline
 
   TEST_F(Transport, setSocketID)
   {
-    size_t size=255;
-    char r[size];
+    std::size_t size = 255;
+    char r[255];
+
     std::string id = randomSocketID();
     setSocketID(id, requestSocket_);
     requestSocket_.getsockopt(ZMQ_IDENTITY, (void*)r, &size);

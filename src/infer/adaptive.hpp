@@ -87,7 +87,6 @@ namespace stateline
         proposal(i) = state(i) + rand(generator) * sigma;
 
       return bouncyBounds(proposal, min, max);
-    };
-    
+    }
   }
 }
