@@ -21,7 +21,7 @@
 namespace sl = stateline;
 namespace ph = std::placeholders;
 
-std::string workerFunc(uint type, std::string &globalData, std::string &jobData)
+std::string workerFunc(uint type, const std::string &globalData, const std::string &jobData)
 {
   return "hello!";
 }
@@ -35,7 +35,13 @@ int main(int ac, char *av[])
   sl::comms::Worker worker(jobList, settings);
 
   // Launch a minion to do work
-  sl::runMinion(worker, 1, workerFunc);
+  std::vector<std::future<void>> threads;
+  for (int i = 0; i < 10; i++)
+  {
+    threads.push_back(std::move(sl::runMinionThreaded(worker, 0, workerFunc)));
+  }
+
+  // Wait for all the threads to finish
 
   return 0;
 }
