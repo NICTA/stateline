@@ -1,5 +1,5 @@
 //!
-//! Contains the interface for common likelihood functions.
+//! Contains the interface for common likelihood models.
 //!
 //! \file stats/likelihood.hpp
 //! \author Darren Shen
@@ -14,22 +14,22 @@
 
 namespace stateline
 {
-  namespace stats
+  namespace lh
   {
-    //! Calculate the Gaussian log likelihood.
+    //! Calculate the normal log likelihood.
     //! 
-    //! \param real Vector containing the real sensor data.
-    //! \param candidate Vector containing the simulated sensor data.
-    //! \param sensorSd The standard deviation of sensor noise.
+    //! \param x The sample vector.
+    //! \param mean The mean vector of the distribution.
+    //! \param std The standard deviation of the distribution.
     //!
-    double gaussian(const Eigen::VectorXd &real, const Eigen::VectorXd &candidate, double sensorSd);
+    double normal(const Eigen::VectorXd &x, const Eigen::VectorXd &candidate, double std);
 
     //! Calculate the normal inverse Gamma marginal log likelihood.
     //! 
-    //! \param x The data. 
-    //! \param mu Mean of likelihood.
+    //! \param x The sample vector.
+    //! \param mean The mean vector of the distribution.
     //! \param A, B Alpha and beta parameters.
     //!
-    double normalInverseGamma(const Eigen::VectorXd &x, const Eigen::VectorXd &mu, double A, double B);
+    double normalInverseGamma(const Eigen::VectorXd &x, const Eigen::VectorXd &mean, double A, double B);
   }
 }
