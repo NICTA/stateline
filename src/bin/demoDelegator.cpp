@@ -10,7 +10,6 @@
 
 #include <iostream>
 #include <functional>
-#include <queue>
 #include <boost/program_options.hpp>
 
 #include <chrono>
@@ -26,14 +25,32 @@ namespace sl = stateline;
 namespace ph = std::placeholders;
 namespace po = boost::program_options;
 
+std::string vectorToString(const Eigen::VectorXd &state)
+{
+  std::string buffer = std::to_string(state.size());
+  for (Eigen::VectorXd::Index i = 0; i < state.size(); i++)
+  {
+    buffer += " " + std::to_string(state(i));
+  }
+  std::cout << "buffer: " << buffer << std::endl;
+  return buffer;
+}
+
 std::vector<sl::comms::JobData> splitJob(const Eigen::VectorXd &state)
 {
-  return std::vector<sl::comms::JobData>();
+  // Send the state vector as a single job
+  sl::comms::JobData job;
+  job.type = 0;
+  job.globalData = "";
+  job.jobData = vectorToString(state);
+
+  return { job };
 }
 
 double combineResults(const std::vector<sl::comms::ResultData> &results)
 {
-  return 0.0;
+  // We only expect one result
+  return std::stod(results.front().data);
 }
 
 po::options_description commandLineOptions()
@@ -48,14 +65,24 @@ po::options_description commandLineOptions()
 
 int main(int ac, char *av[])
 {
-  sl::MCMCSettings mcmcSettings = sl::MCMCSettings::Empty();
+  // Initialise logging
+  sl::initLogging("server", -3, true, "");
+
+  // Initialise MCMC settings
+  sl::MCMCSettings mcmcSettings = sl::MCMCSettings::NoAdaption(1, 1, 5);
   
   // Use default db settings
   sl::DBSettings dbSettings = sl::DBSettings::Default();
+
+  // Initialise the parameters of the distribution we are sampling from
+  uint dims = 3;
+  Eigen::VectorXd var(dims);
+  var << 1, 1, 1;
   
   // Create a delegator to communicate with workers
   sl::DelegatorSettings delSettings = sl::DelegatorSettings::Default(5555);
-  sl::comms::Delegator delegator("", { 0 }, { "" }, delSettings);
+  sl::comms::Delegator delegator(vectorToString(var), { 0 }, {""}, delSettings);
+  delegator.start();
 
   // Create a policy
   sl::DelegatorAsyncPolicy<> policy(delegator, splitJob, combineResults); 
@@ -63,69 +90,17 @@ int main(int ac, char *av[])
   // Generate initial states
   std::vector<Eigen::VectorXd> initialStates;
   for (uint i = 0; i < mcmcSettings.chains * mcmcSettings.stacks; i++)
-    initialStates.push_back(Eigen::VectorXd::Random(1));
+    initialStates.push_back(Eigen::VectorXd::Random(dims));
 
   // Run the MCMC sampler
   bool interrupted = false;
-  auto proposal = std::bind(&sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
-      Eigen::VectorXd::Zero(1), Eigen::VectorXd::Zero(1)); 
+  auto proposal = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
+      Eigen::VectorXd::Zero(var.size()), Eigen::VectorXd::Zero(var.size())); 
 
-  sl::mcmc::Sampler sampler(mcmcSettings, dbSettings, 1, interrupted);
+  sl::mcmc::Sampler sampler(mcmcSettings, dbSettings, dims, interrupted);
   LOG(INFO) << "Starting MCMC run";
   sampler.run(policy, initialStates, proposal, mcmcSettings.wallTime);
 
   // Get the result chains
   sl::mcmc::ChainArray chains = sampler.chains();
-
-  // Output the final post processed chain
-  /*
-  io::NpzWriter postProcWriter("outputDemoSimpleMcmcPostproc.npz");
-  uint nthin = vm["nthin"].as<uint>();
-  uint burnin = vm["burnin"].as<uint>();
-  
-  // Concatenate the coldest chains
-  std::vector<mcmc::State> samples;
-  for (uint id = 0; id < chains.numStacks(); id += chains.numChains())
-  {
-    // Examine the samples, taking into account the burn-in and thinning
-    for (uint i = burnin; i < chains.length(id); i += nthin)
-    {
-      samples.push_back(chains.state(id, i));
-    }
-  }
-
-  // Perform rejection sampling on the hotter chains
-  auto trueDist = [&] (const mcmc::State &state) { return state.energy; };
-  auto propDist = [&] (const mcmc::State &state) { return state.energy * state.beta; };
-  for (uint id = 0; id < chains.numTotalChains(); id++)
-  {
-    // Don't take samples from the coldest chains
-    if (id % chains.numChains() != 0)
-    {
-      std::vector<mcmc::State> hotterSamples;
-
-      for (uint i = burnin; i < chains.length(id); i += nthin)
-      {
-        hotterSamples.push_back(chains.state(id, i));
-      }
-
-      // Accept samples from the hotter chains
-      std::vector<mcmc::State> acceptedSamples = mcmc::rejectionSample(trueDist, propDist, hotterSamples);
-      LOG(INFO) << "Accepted samples from hotter chain with beta = " << chains.beta(id) <<
-        ": " << acceptedSamples.size() << "/" << hotterSamples.size() <<
-        " (" << acceptedSamples.size() / (double)hotterSamples.size() * 100 << "%)";
-      samples.insert(samples.end(), acceptedSamples.begin(), acceptedSamples.end());
-    }
-  }
-
-  // Convert the final samples into an Eigen vector
-  Eigen::VectorXd finalChain(samples.size());
-
-  for (uint i = 0; i < samples.size(); i++)
-  {
-    finalChain.row(i) = samples[i].sample;
-  }
-
-  LOG(INFO) << "Final chain size: " << finalChain.rows();
-  postProcWriter.write<double>("chain0", finalChain);*/
 }
