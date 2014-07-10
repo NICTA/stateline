@@ -22,6 +22,16 @@ namespace stateline
     {
     }
 
+    Eigen::VectorXd TruncNormal::min() const
+    {
+      return min_;
+    }
+
+    Eigen::VectorXd TruncNormal::max() const
+    {
+      return max_;
+    }
+
     template <>
     Eigen::VectorXd mean(const TruncNormal &d)
     {
