@@ -51,6 +51,8 @@ namespace stateline
       //!
       void submit(uint id, const JobData& j);
 
+      void submit(uint id, JobData&& j);
+
       //! Retrieves a job that has previously been submitted for computation.
       //! A pair is returned, with the id of the job (from the submit call),
       //! and the result. Note that jobs may not be retrieved in the order
@@ -77,6 +79,8 @@ namespace stateline
       //! \return The results of the job computations
       //!
       void batchSubmit(uint id, const std::vector<JobData>& jobs);
+
+      void batchSubmit(uint id, std::vector<JobData>&& jobs);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),

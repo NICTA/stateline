@@ -61,6 +61,14 @@ namespace stateline
     //!
     void send(zmq::socket_t& socket, const Message& message);
 
+    //! Send a (possibly multi-part) message conforming to GDFP-SW comms
+    //! protocol.
+    //!
+    //! \param socket The socket the message is coming into.
+    //! \param message The stateline::comms::Message to send.
+    //!
+    void send(zmq::socket_t& socket, Message&& message);
+
     //! Computes a random socket ID conforming to zeromq requirements for the
     //! string (not starting with a zero etc, see zeromq doco).
     //!

@@ -30,8 +30,22 @@ namespace stateline
         idStrings.push_back(std::to_string(i));
       }
 
-      Message m(idStrings, stateline::comms::JOB, { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
-      send(socket, m);
+      Message m(idStrings, stateline::comms::JOB,
+        { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
+      send(socket, std::move(m));
+    }
+
+    void sendJob(zmq::socket_t& socket, const std::vector<uint>& ids, JobData&& job)
+    {
+      std::vector<std::string> idStrings;
+      for (auto i : ids)
+      {
+        idStrings.push_back(std::to_string(i));
+      }
+
+      Message m(idStrings, stateline::comms::JOB,
+        { detail::serialise<std::uint32_t>(job.type), std::move(job.globalData), std::move(job.jobData) });
+      send(socket, std::move(m));
     }
 
     //! Read a job result from a socket.
@@ -45,7 +59,7 @@ namespace stateline
 
       ResultData r {
         detail::unserialise<std::uint32_t>(m.data[0]),
-        m.data[1]
+        std::move(m.data[1])
       };
 
       return r;
@@ -68,10 +82,10 @@ namespace stateline
       ResultData r
       {
         detail::unserialise<std::uint32_t>(m.data[0]),
-        m.data[1]
+        std::move(m.data[1])
       };
 
-      return std::make_pair(indices, r);
+      return std::make_pair(indices, std::move(r));
     }
 
     Requester::Requester(Delegator& d)
@@ -84,13 +98,18 @@ namespace stateline
 
     void Requester::submit(uint id, const JobData& j)
     {
-      sendJob(socket_, { id }, j);
+      batchSubmit(id, { j });
+    }
+
+    void Requester::submit(uint id, JobData&& j)
+    {
+      batchSubmit(id, { std::move(j) });
     }
 
     std::pair<uint, ResultData> Requester::retrieve()
     {
-      auto r = receiveResultAndIDs(socket_);
-      return { r.first[0], r.second};
+      auto r = batchRetrieve();
+      return { r.first, std::move(r.second.front()) };
     }
 
     void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
@@ -105,6 +124,18 @@ namespace stateline
       }
     }
 
+    void Requester::batchSubmit(uint id, std::vector<JobData>&& jobs)
+    {
+      uint nJobs = jobs.size();
+      batches_[id] = std::vector<ResultData>(nJobs);
+      batchLeft_[id] = nJobs;
+
+      for (uint i = 0; i < nJobs; i++)
+      {
+        sendJob(socket_, { id, i }, std::move(jobs[i]));
+      }
+    }
+
     std::pair<uint, std::vector<ResultData>> Requester::batchRetrieve()
     {
       while (true)
@@ -114,16 +145,15 @@ namespace stateline
         uint batchNum = std::stoul(r.address[0]);
         uint idx = std::stoul(r.address[1]);
 
-        ResultData res =
+        batches_[batchNum][idx] =
         {
           detail::unserialise<std::uint32_t>(r.data[0]),
-          r.data[1]
+          std::move(r.data[1])
         };
 
-        batches_[batchNum][idx] = res;
         if (--batchLeft_[batchNum] == 0) {
           // This batch has finished
-          return std::make_pair(batchNum, batches_[batchNum]);
+          return std::make_pair(batchNum, std::move(batches_[batchNum]));
         }
       }
     }

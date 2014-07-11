@@ -10,10 +10,7 @@
 
 #pragma once
 
-#include <iterator>
 #include <string>
-#include <sstream>
-#include <cctype>
 
 namespace stateline
 {
@@ -30,6 +27,20 @@ namespace stateline
 
       //! Data specific to this job
       std::string jobData;
+
+      JobData() { }
+
+      JobData(const JobData &job) = default;
+
+      JobData(uint type, std::string&& globalData, std::string&& jobData)
+        : type(type), globalData(globalData), jobData(jobData)
+      {
+      }
+
+      JobData(JobData&& other)
+        : type(other.type), globalData(std::move(other.globalData)), jobData(std::move(other.jobData))
+      {
+      }
     };
 
     //! Abstraction of job results.
@@ -40,6 +51,24 @@ namespace stateline
 
       //! Results data
       std::string data;
+
+      ResultData() { }
+
+      ResultData(uint type, std::string&& data)
+        : type(type), data(data)
+      {
+      }
+
+      ResultData(ResultData&& other)
+        : type(other.type), data(std::move(other.data))
+      {
+      }
+
+      ResultData &operator= (ResultData&& other)
+      {
+        data = std::move(other.data);
+        return *this;
+      }
     };
 
   } // namespace comms

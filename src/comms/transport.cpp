@@ -13,6 +13,7 @@
 #include "comms/serial.hpp"
 
 #include <iomanip>
+#include <sstream>
 #include <random>
 
 namespace stateline
@@ -32,8 +33,8 @@ namespace stateline
       // Taken from zhelpers.hpp
       zmq::message_t message(string.size());
       memcpy(message.data(), string.data(), string.size());
-      bool rc = socket.send(message);
-      return (rc);
+
+      return socket.send(message);
     }
 
     bool sendStringPart(zmq::socket_t & socket, const std::string & string)
@@ -41,8 +42,8 @@ namespace stateline
       // Taken from zhelpers.hpp
       zmq::message_t message(string.size());
       memcpy(message.data(), string.data(), string.size());
-      bool rc = socket.send(message, ZMQ_SNDMORE);
-      return (rc);
+
+      return socket.send(message, ZMQ_SNDMORE);
     }
 
     Message receive(zmq::socket_t& socket)
@@ -108,6 +109,42 @@ namespace stateline
       {
         // The subject
         sendString(socket, subjectString);
+      }
+    }
+
+    void send(zmq::socket_t& socket, Message&& message)
+    {
+      // Remember we're using the vector as a stack, so iterate through the
+      // address in reverse.
+      for (auto it = message.address.rbegin(); it != message.address.rend(); ++it)
+      {
+        sendStringPart(socket, std::move(*it));
+      }
+
+      // Send delimiter
+      sendStringPart(socket, "");
+
+      // Send subject, then data if there is any
+      auto subjectString = detail::serialise<std::uint32_t>(message.subject);
+      uint dataSize = message.data.size();
+      if (dataSize > 0)
+      {
+        // The subject
+        sendStringPart(socket, std::move(subjectString));
+
+        // The data -- multipart
+        for (auto it = message.data.begin(); it != std::prev(message.data.end()); ++it)
+        {
+          sendStringPart(socket, std::move(*it));
+        }
+
+        // final or only part
+        sendString(socket, std::move(message.data.back()));
+      }
+      else
+      {
+        // The subject
+        sendString(socket, std::move(subjectString));
       }
     }
 

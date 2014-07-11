@@ -103,15 +103,7 @@ namespace stateline
     Message SocketRouter::receive(const SocketID& id)
     {
       uint index = indexMap_.left.at(id);
-      Message m(HELLO);
-      try
-      {
-        m = stateline::comms::receive(*(sockets_[index]));
-      } catch (zmq::error_t const& e)
-      {
-        LOG(ERROR)<< "COULD NOT RECEIVE A MESSAGE\n";
-      }
-      return m;
+      return comms::receive(*(sockets_[index]));
     }
 
     // this is an int because -1 indicates no timeout
