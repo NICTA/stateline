@@ -41,7 +41,7 @@ namespace stateline
     class Worker
     {
     public:
-      //! Build a new worker.
+      //! Build a new worker that can handle multiple types of jobs.
       //!
       //! \param jobIDs A list of job IDs that the worker can do.
       //! \param settings The configuration object.

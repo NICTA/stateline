@@ -11,26 +11,71 @@
 
 #pragma once
 
-#include <string>
+#include <Eigen/Dense>
 
+#include "app/serial.hpp"
 #include "comms/worker.hpp"
 #include "comms/minion.hpp"
 
 namespace stateline
 {
-  template <class WorkerFunc>
-  void runMinion(comms::Worker &worker, uint jobType, const WorkerFunc &func)
+  namespace detail
   {
-    comms::Minion minion(worker, jobType);
-    while (true) {
-      comms::JobData job = minion.nextJob();
-      minion.submitResult({ job.type, func(job.type, job.globalData, job.jobData) });
+    template <class F>
+    struct IsLikelihoodFunction
+    {
+      static constexpr auto check(int) ->
+        typename
+          std::is_same<
+            decltype(std::declval<F>()(std::declval<const Eigen::VectorXd &>())),
+            double
+          >::type;
+
+      static constexpr std::false_type check(...);
+
+      using type = decltype(check(0));
+    };
+
+    template <class WorkerFunc>
+    void runMinion(std::false_type, comms::Worker &worker, const WorkerFunc &func, uint jobType)
+    {
+      comms::Minion minion(worker, jobType);
+      while (true)
+      {
+        comms::JobData job = minion.nextJob();
+        minion.submitResult({ job.type, func(job.type, job.globalData, job.jobData) });
+      }
+    }
+
+    template <class Model>
+    void runMinion(std::true_type, comms::Worker &worker, const Model &model, uint jobType)
+    {
+      comms::Minion minion(worker, jobType);
+      while (true)
+      {
+        comms::JobData job = minion.nextJob();
+
+        // Unserialise the vector from the job data
+        auto x = unserialise<Eigen::VectorXd>(job.jobData);
+
+        // Evaluate the vector, serialise it into a byte string and submit.
+        double result = model(x);
+        minion.submitResult({ jobType, std::string((char *)&result, sizeof(double)) });
+      }
     }
   }
 
-  template <class WorkerFunc>
-  std::future<void> runMinionThreaded(comms::Worker &worker, uint jobType, const WorkerFunc &func)
+  template <class WorkerFunc, class JobType>
+  void runMinion(comms::Worker &worker, const WorkerFunc &func, JobType jobType)
   {
-    return std::async(std::launch::async, runMinion<WorkerFunc>, std::ref(worker), jobType, std::cref(func));
+    return detail::runMinion(typename detail::IsLikelihoodFunction<WorkerFunc>::type(),
+        worker, func, static_cast<uint>(jobType));
+  }
+
+  template <class WorkerFunc, class JobType = unsigned int>
+  std::future<void> runMinionThreaded(comms::Worker &worker, const WorkerFunc &func, JobType jobType = 0)
+  {
+    return std::async(std::launch::async,
+        runMinion<WorkerFunc, JobType>, std::ref(worker), std::cref(func), std::cref(jobType));
   }
 }
