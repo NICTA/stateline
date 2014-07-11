@@ -69,7 +69,7 @@ TEST_F(Delegation, canSendAndReceiveSingleProblemSpec)
   delegator.stop();
   send(worker, Message(HEARTBEAT));
 
-  Message expected(PROBLEMSPEC, { "globalSpec", "2", "jobSpec1", "jobResult1" });
+  Message expected(PROBLEMSPEC, { "globalSpec", "2", "jobSpec1" });
   EXPECT_EQ(expected, rep);
 }
 
@@ -92,7 +92,7 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   send(worker, Message(HEARTBEAT));
 
   Message realRep(PROBLEMSPEC,
-      { "globalSpec", "2", "jobSpec1", "jobResult1", "5", "jobSpec2", "jobResult2" });
+      { "globalSpec", "2", "jobSpec1", "5", "jobSpec2" });
   EXPECT_EQ(rep, realRep);
 }
 

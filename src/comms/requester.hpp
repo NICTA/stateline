@@ -38,17 +38,6 @@ namespace stateline
       //!
       Requester(Delegator& d);
 
-      //! Computes a job and returns a result.
-      //!
-      //! \warning Do not interleave different types of job call pairs and blocking
-      //!          calls. This will break horribly. For example, don't call submit
-      //!          in between batchsubmit and batch retrieve.
-      //!
-      //! \param j The job to compute.
-      //! \return The result of the job computation.
-      //!
-      ResultData operator()(const JobData& j);
-
       //! Submits a job for computation and immediately returns. An id is
       //! included to allow the job to be identified later, because when jobs
       //! are retrieved they may not arrive in the order they were submitted.
@@ -74,18 +63,6 @@ namespace stateline
       //! \returns A pair of the job id and the result
       //!
       std::pair<uint, ResultData> retrieve();
-
-      //! Computes a batch of jobs and returns a result. The function returns
-      //! when all results have been returned.
-      //!
-      //! \warning Do not interleave different types of job call pairs and blocking
-      //!          calls. This will break horribly. For example, don't call submit
-      //!          in between batchsubmit and batch retrieve.
-      //!
-      //! \param jobs The vector of jobs to compute
-      //! \return The results of the job computations
-      //!
-      std::vector<ResultData> batch(const std::vector<JobData>& jobs);
 
       //! Submits a batch of jobs for computation and immediately returns. An id is
       //! included to allow the batch to be identified later, because when batches
@@ -120,8 +97,7 @@ namespace stateline
 
       // Used to keep track of the batch submissions
       std::map<uint, std::vector<ResultData>> batches_;
-      std::map<uint, uint> batchSizes_;
-      std::map<uint, uint> batchNComplete_;
+      std::map<uint, uint> batchLeft_;
     };
   } // namespace comms
 } // namespace obsidian

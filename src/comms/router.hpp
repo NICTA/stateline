@@ -1,7 +1,7 @@
 //!
 //! A router that implements polling on multiple zeromq sockets,
 //! and a signal-based callback system depending on the socket and the subject
-//! of the message. Implementing GDFP-SW (GDF Server-apper Protocol)
+//! of the message. Implementing STATELINEP-SW (STATELINE Server-Wrapper Protocol)
 //!
 //! \file comms/router.hpp
 //! \author Lachlan McCalman
