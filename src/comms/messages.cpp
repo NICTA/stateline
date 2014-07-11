@@ -54,7 +54,7 @@ namespace stateline
     {
     }
 
-    Message::Message(const std::vector<std::string>& addr, const Subject& subj)
+    Message::Message(const Address& addr, const Subject& subj)
         : address(addr), subject(subj)
     {
     }
@@ -86,11 +86,6 @@ namespace stateline
     {
       os << "|" << addressAsString(m.address) << "|" << subjectString(m.subject) << "|<" << m.data.size() << " data frames>|";
       return os;
-    }
-
-    void print(const Message& m)
-    {
-      VLOG(3) << "Received:" << m;
     }
 
   } // namespace comms
