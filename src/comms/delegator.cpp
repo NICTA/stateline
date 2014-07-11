@@ -159,13 +159,13 @@ namespace stateline
         }
         router_.send(SocketID::NETWORK, r);
         workerToJobMap_[worker].push_back(queue.front());
-        queue.erase(queue.begin());
-      } else
+        queue.pop_front();
+      }
+      else
       {
         // Add the minion to the request queue
         requestQueues_[jobIdMap_[id]].push_back(msgRequestFromMinion.address);
       }
-
     }
 
     void Delegator::newJob(const Message& msgJobFromRequester)
@@ -189,8 +189,9 @@ namespace stateline
         std::string worker = r.address.back();
         workerToJobMap_[worker].push_back(msgJobFromRequester);
         // Remove the minion from the request queue 
-        queue.erase(queue.begin());
-      } else
+        queue.pop_front();
+      }
+      else
       {
         jobQueues_[jobIdMap_[id]].push_back(msgJobFromRequester);
       }
