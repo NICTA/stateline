@@ -20,12 +20,18 @@ namespace stateline
   {
     std::ostream& operator<<(std::ostream& os, const SocketID& id)
     {
-      static std::map<SocketID, std::string> m( { { SocketID::REQUESTER, "REQUESTER" }, { SocketID::MINION, "MINION" }, { SocketID::WORKER,
-                                                                                                                          "WORKER" },
-                                                  { SocketID::NETWORK, "NETWORK" }, { SocketID::HEARTBEAT, "HEARTBEAT" }, { SocketID::ALPHA,
-                                                                                                                            "ALPHA" },
-                                                  { SocketID::BETA, "BETA" } });
-      os << m[id];
+      switch(id)
+      {
+        case SocketID::REQUESTER: os << "REQUESTER"; break;
+        case SocketID::MINION: os << "MINION"; break;
+        case SocketID::WORKER: os << "WORKER"; break;
+        case SocketID::NETWORK: os << "NETWORK"; break;
+        case SocketID::HEARTBEAT: os << "HEARTBEAT"; break;
+        case SocketID::ALPHA: os << "ALPHA"; break;
+        case SocketID::BETA: os << "BETA"; break;
+        default: os << "UNKNOWN";
+      }
+
       return os;
     }
 

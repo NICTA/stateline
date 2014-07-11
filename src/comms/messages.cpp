@@ -25,22 +25,27 @@ namespace stateline
     //!
     std::string subjectString(Subject s)
     {
-      static std::map<Subject, std::string> names
+      switch (s)
       {
-        { HELLO, "HELLO" },
-        { HEARTBEAT, "HEARTBEAT" },
-        { PROBLEMSPEC, "PROBLEMSPEC" },
-        { JOBREQUEST, "JOBREQUEST" },
-        { JOB, "JOB" },
-        { JOBSWAP, "JOBSWAP" },
-        { ALLDONE, "ALLDONE" },
-        { GOODBYE, "GOODBYE" }
-      };
-      return names[s];
+        case HELLO: return "HELLO";
+        case HEARTBEAT: return "HEARTBEAT";
+        case PROBLEMSPEC: return "PROBLEMSPEC";
+        case JOBREQUEST: return "JOBREQUEST"; 
+        case JOB: return "JOB";
+        case JOBSWAP: return "JOBSWAP";
+        case ALLDONE: return "ALLDONE";
+        case GOODBYE: return "GOODBYE";
+        default: return "UNKNOWN";
+      }
     }
 
-    Message::Message(const std::vector<std::string>& addr, const Subject& subj, const std::vector<std::string>& d)
-        : address(addr), subject(subj), data(d)
+    Message::Message(Message&& msg)
+      : address(std::move(msg.address)), subject(msg.subject), data(std::move(msg.data))
+    {
+    }
+
+    Message::Message(const Address& addr, const Subject& subj, const std::vector<std::string>& d)
+      : address(addr), subject(subj), data(d)
     {
     }
 
