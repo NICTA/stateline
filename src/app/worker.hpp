@@ -24,16 +24,18 @@ namespace stateline
     template <class F>
     struct IsLikelihoodFunction
     {
+      template <class T>
       static constexpr auto check(int) ->
         typename
           std::is_same<
-            decltype(std::declval<F>()(std::declval<const Eigen::VectorXd &>())),
+            decltype(std::declval<T>()(std::declval<const Eigen::VectorXd &>())),
             double
           >::type;
 
+      template <class T>
       static constexpr std::false_type check(...);
 
-      using type = decltype(check(0));
+      using type = decltype(check<F>(0));
     };
 
     template <class WorkerFunc>
