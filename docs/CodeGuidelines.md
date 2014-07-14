@@ -1,5 +1,5 @@
-Coding Style Guidelines for Obsidian
-====================================
+Coding Style Guidelines for Stateline
+=====================================
 This document contains some guidelines to contributing code to GDF. They are
 mostly inspired by the [Google C++ Style Guide](http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml),
 but with some changes. Where this document is different from the style guide, use this document.
@@ -16,7 +16,7 @@ Language
 * Use initialisation lists in constructors.
 * Use explicit in constructors taking in one argument.
 * Move semantics where possible / appropriate.
-* Use namespaces (all Obsidian files goes under obsidian).
+* Use namespaces
 * Use `#pragma once` for header guards.
 
 Whitespace
