@@ -7,6 +7,6 @@
 
 ADD_LIBRARY(stats multivariate.cpp uniform.cpp normal.cpp diagnormal.cpp truncnormal.cpp)
 
-ADD_TEST(test-stats-uniform testuniform.cpp stats)
-ADD_TEST(test-stats-normal testnormal.cpp stats)
-ADD_TEST(test-stats-truncnormal testtruncnormal.cpp stats)
+ADD_TEST(test-stats-uniform tests/uniform.cpp stats)
+ADD_TEST(test-stats-normal tests/normal.cpp stats)
+ADD_TEST(test-stats-truncnormal tests/truncnormal.cpp stats)

@@ -1,12 +1,12 @@
 //!
 //! \file stats/testtruncnormal.cpp
 //! \author Darren Shen
-//! \date 2014-05-27
+//! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include "truncnormal.hpp"
+#include "stats/truncnormal.hpp"
 
 #include <gtest/gtest.h>
 #include <random>

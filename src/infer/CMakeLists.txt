@@ -8,7 +8,7 @@
 ADD_LIBRARY(chainarray chainarray.cpp metropolis.cpp)
 TARGET_LINK_LIBRARIES(chainarray db ${Boost_SERIALIZATION_LIBRARY})
 
-ADD_TEST(test-chainarray testchainarray.cpp chainarray
+ADD_TEST(test-chainarray tests/chainarray.cpp chainarray
                          ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
-ADD_TEST(test-diagnostics testdiagnostics.cpp ${Boost_SYSTEM_LIBRARY})
+ADD_TEST(test-diagnostics tests/diagnostics.cpp ${Boost_SYSTEM_LIBRARY})

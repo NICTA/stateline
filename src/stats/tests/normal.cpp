@@ -2,12 +2,12 @@
 //! \file stats/testnormal.cpp
 //! \author Alistair Reid
 //! \author Darren Shen
-//! \date 2014-05-27
+//! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include "normal.hpp"
+#include "stats/normal.hpp"
 
 #include <gtest/gtest.h>
 #include <limits>
