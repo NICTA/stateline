@@ -1,5 +1,5 @@
 //!
-//! \file comms/testdelegator.cpp
+//! \file comms/test/delegator.cpp
 //! \author Lachlan McCalman
 //! \date 2014
 //! \license Affero General Public License version 3 or later
@@ -26,7 +26,7 @@ class Delegation: public testing::Test
   protected:
     std::unique_ptr<Delegator> pDelegator;
 
-    Delegation()
+    virtual void SetUp()
     {
       DelegatorSettings settings;
       settings.port = 5555;
@@ -47,6 +47,11 @@ class Delegation: public testing::Test
 
       pDelegator.reset(new Delegator(globalSpec, jobMsgs, settings));
       pDelegator->start();
+    }
+
+    virtual void TearDown()
+    {
+      pDelegator->stop();
     }
 
     ~Delegation()
