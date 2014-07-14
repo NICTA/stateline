@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <chrono>
 
 namespace stateline
 {
@@ -18,6 +19,9 @@ namespace stateline
   {
     //! Numeric Job ID associated with each job type.
     typedef uint JobID;
+
+    //! High resolution clock used for heartbeating
+    typedef std::chrono::high_resolution_clock hrc;
 
     //! Abstraction of job specification.
     struct JobData

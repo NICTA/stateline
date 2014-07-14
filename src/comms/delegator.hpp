@@ -11,27 +11,26 @@
 
 #pragma once
 
-// Standard Library
 #include <set>
 #include <string>
 #include <deque>
-// Prerequisites
+
 #include <glog/logging.h>
 #include <zmq.hpp>
-// Project
+
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/serverheartbeat.hpp"
 
-//! Address that the requesters connect their sockets to.
-const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
-
 namespace stateline
 {
   namespace comms
   {
+    //! Address that the requesters connect their sockets to.
+    const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
+
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.
     //!

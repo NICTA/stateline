@@ -10,23 +10,17 @@
 
 #pragma once
 
-// Standard Library
-#include <chrono>
-//Prerequisites
-// Project
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/settings.hpp"
 
-//! Heartbeat sockets talk on these addresses.
-const std::string SERVER_HB_SOCKET_ADDR = "inproc://serverhb";
-
 namespace stateline
 {
   namespace comms
   {
-    typedef std::chrono::high_resolution_clock hrc;
+    //! Heartbeat sockets talk on these addresses.
+    const std::string SERVER_HB_SOCKET_ADDR = "inproc://serverhb";
 
     //! A set of clients being monitored for heartbeating.
     typedef std::set<std::string> HBClients;
