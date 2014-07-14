@@ -22,12 +22,12 @@
 //! Heartbeat sockets talk on these addresses.
 const std::string SERVER_HB_SOCKET_ADDR = "inproc://serverhb";
 
-typedef std::chrono::high_resolution_clock hrc;
-
 namespace stateline
 {
   namespace comms
   {
+    typedef std::chrono::high_resolution_clock hrc;
+
     //! A set of clients being monitored for heartbeating.
     typedef std::set<std::string> HBClients;
 
