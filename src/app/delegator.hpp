@@ -87,7 +87,7 @@ namespace stateline
     decltype(func(std::declval<AsyncPolicy &>()))
   {
     // Start a delegator with no global specification and single job type
-    comms::Delegator delegator("", { 0 }, { "" }, settings);
+    comms::Delegator delegator("", {{ 0, "" }}, settings);
     delegator.start();
 
     // Initialise the policy and run the user-specified function
@@ -100,7 +100,7 @@ namespace stateline
     decltype(func(std::declval<AsyncPolicy &>(), spec))
   {
     // Start a delegator with no global specification and single job type
-    comms::Delegator delegator(spec, { 0 }, { "" }, settings);
+    comms::Delegator delegator(spec, {{ 0, "" }}, settings);
     delegator.start();
 
     // Initialise the policy and run the user-specified function

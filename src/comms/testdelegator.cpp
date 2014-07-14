@@ -39,9 +39,13 @@ class Delegation: public testing::Test
       std::string perJobSpec1 = "jobSpec1";
       std::string perJobSpec2 = "jobSpec2";
 
-      std::vector<uint> jobIds = { 2, 5 };
-      std::vector<std::string> jobMsgs = { perJobSpec1, perJobSpec2 };
-      pDelegator.reset(new Delegator(globalSpec, jobIds, jobMsgs, settings));
+      std::map<JobID, std::string> jobMsgs =
+      {
+        { 2, perJobSpec1 }, 
+        { 5, perJobSpec2 }
+      };
+
+      pDelegator.reset(new Delegator(globalSpec, jobMsgs, settings));
       pDelegator->start();
     }
 
@@ -83,7 +87,7 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   setSocketID(workerID, worker);
   worker.connect("tcp://localhost:5555");
 
-  // Send multiple jobs in one list
+  // Send multiple jobs in one list (only the specs for 2 and 5 are valid)
   std::vector<uint> jobList = { 0, 1, 2, 3, 4, 5 };
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   auto rep = receive(worker);
@@ -91,9 +95,9 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   delegator.stop();
   send(worker, Message(HEARTBEAT));
 
-  Message realRep(PROBLEMSPEC,
+  Message expected(PROBLEMSPEC,
       { "globalSpec", "2", "jobSpec1", "5", "jobSpec2" });
-  EXPECT_EQ(rep, realRep);
+  EXPECT_EQ(expected, rep);
 }
 
 TEST_F(Delegation, canSendAndReceiveJobRequest)
@@ -113,20 +117,20 @@ TEST_F(Delegation, canSendAndReceiveJobRequest)
   worker.connect("tcp://localhost:5555");
   
   // Send job data to worker
-  send(requester, Message(JOB, { serialise<std::uint32_t>(0), "JOBDATA" }));
+  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
 
   // Send job list to requester
-  std::vector<uint> jobList = { 0 };
+  std::vector<uint> jobList = { 2 };
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   receive(worker); // problemSpec
 
   // Send job request to requester
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(0) }));
+  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
   auto rep = receive(worker); // job
   delegator.stop();
 
-  Message realRep({ requesterID}, JOB, { serialise<std::uint32_t>(0), "JOBDATA" });
-  EXPECT_EQ(rep, realRep);
+  Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA" });
+  EXPECT_EQ(expected, rep);
 }
 
 TEST_F(Delegation, canSendAndReceiveJobRequestWithMultipleJobTypes)
@@ -146,18 +150,18 @@ TEST_F(Delegation, canSendAndReceiveJobRequestWithMultipleJobTypes)
   worker.connect("tcp://localhost:5555");
 
   // Send job list to requester
-  std::vector<uint> jobList = { 0, 1 };
-  send(requester, Message(JOB, { serialise<std::uint32_t>(1), "JOBDATA" }));
+  std::vector<uint> jobList = { 2, 5 };
+  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   receive(worker); // problemSpec
 
   // Send job request to requester
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(1) }));
+  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
   auto rep = receive(worker); // job
   delegator.stop();
 
-  Message realRep({ requesterID}, JOB, { serialise<std::uint32_t>(1), "JOBDATA"});
-  EXPECT_EQ(rep, realRep);
+  Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA"});
+  EXPECT_EQ(expected, rep);
 }
 
 TEST_F(Delegation, canSendResultsToRequester)
@@ -177,26 +181,26 @@ TEST_F(Delegation, canSendResultsToRequester)
   worker.connect("tcp://localhost:5555");
 
   // Send job list to worker
-  std::vector<uint> jobList = { 0 };
-  send(requester, Message(JOB, { serialise<std::uint32_t>(0), "JOBDATA" }));
+  std::vector<uint> jobList = { 2 };
+  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   receive(worker); // problemSpec
 
   // Send a job request
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(0)}));
+  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2)}));
 
   // Receive a job and return a result
   receive(worker); // job
   send(worker, Message(
         { requesterID, "minionAddress"}, JOBSWAP,
-        { serialise<std::uint32_t>(0), "Result", serialise<std::uint32_t>(0) }));
+        { serialise<std::uint32_t>(2), "Result", serialise<std::uint32_t>(2) }));
 
   // Retrieve the result
   auto rep = receive(requester);
   delegator.stop();
 
-  Message realRep(JOBSWAP, { serialise<std::uint32_t>(0), "Result" });
-  EXPECT_EQ(rep, realRep);
+  Message expected(JOBSWAP, { serialise<std::uint32_t>(2), "Result" });
+  EXPECT_EQ(expected, rep);
 }
 
 TEST_F(Delegation, canRequestJobAfterJob)
@@ -216,22 +220,22 @@ TEST_F(Delegation, canRequestJobAfterJob)
   worker.connect("tcp://localhost:5555");
 
   // Dialog
-  send(requester, Message(JOB, { serialise<std::uint32_t>(0), "JOBDATA" })); 
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(0) }));
+  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" })); 
+  send(worker, Message(HELLO, { serialise<std::uint32_t>(2) }));
   receive(worker); // problemSpec
 
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(0) }));
+  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
   receive(worker); // job
   send(worker, Message(
         { requesterID, "minionAddress"}, JOBSWAP,
-        { serialise<std::uint32_t>(0), "Result", serialise<std::uint32_t>(0) }));
+        { serialise<std::uint32_t>(2), "Result", serialise<std::uint32_t>(2) }));
   receive(requester);
-  send(requester, Message(JOB, { serialise<std::uint32_t>(0), "JOBDATA2" }));
+  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA2" }));
   auto rep = receive(worker); // job
 
   delegator.stop();
-  Message realRep(
+  Message expected(
       { requesterID, "minionAddress"}, JOB,
-      { serialise<std::uint32_t>(0), "JOBDATA2" });
-  EXPECT_EQ(rep, realRep);
+      { serialise<std::uint32_t>(2), "JOBDATA2" });
+  EXPECT_EQ(expected, rep);
 }

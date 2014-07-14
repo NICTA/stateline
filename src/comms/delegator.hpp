@@ -41,12 +41,11 @@ namespace stateline
         //! Create a new delegator.
         //!
         //! \param commonSpecData The serialised common problem specification.
-        //! \param jobId The available job IDs.
         //! \param jobSpecData The serialised problem specifications for each job.
         //! \param settings The configuration object.
         //!
-        Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId,
-            const std::vector<std::string>& jobSpecData,
+        Delegator(const std::string& commonSpecData,
+            const std::map<JobID, std::string>& jobSpecData,
             const DelegatorSettings& settings);
 
         // Delegators can't be copied.
@@ -143,14 +142,13 @@ namespace stateline
         SocketRouter router_;
         // Cached for fast sending to each client
         std::string commonSpecData_;
-        std::vector<uint> jobId_;
         std::vector<std::string> jobSpecData_;
         // Fault tolerance support
         std::map<std::string, std::vector<Message>> workerToJobMap_;
         // The queues for jobs
         std::vector<std::deque<Message>> jobQueues_;
         std::vector<std::deque<Address>> requestQueues_;
-        std::map<uint, uint> jobIdMap_;
+        std::map<JobID, JobID> jobIdMap_;
         // Heartbeating System
         ServerHeartbeat heartbeat_;
     };

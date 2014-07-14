@@ -17,15 +17,14 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId,
-        const std::vector<std::string>& jobSpecData, const DelegatorSettings& settings)
+    Delegator::Delegator(const std::string& commonSpecData, 
+        const std::map<JobID, std::string>& jobSpecData,
+        const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
           context_(1),
           commonSpecData_(commonSpecData),
-          jobId_(jobId),
-          jobSpecData_(jobSpecData),
-          jobQueues_(jobId.size()),
-          requestQueues_(jobId.size()),
+          jobQueues_(jobSpecData.size()),
+          requestQueues_(jobSpecData.size()),
           heartbeat_(context_, settings.heartbeat)
     {
       namespace ph = std::placeholders;
@@ -49,10 +48,15 @@ namespace stateline
       router_.add_socket(SocketID::NETWORK, network);
 
       // Map external job IDs to internal consecutive IDs
-      uint internalJobId = 0;
-      for (uint id : jobId)
+      JobID internalJobId = 0;
+      for (auto &jobSpec : jobSpecData)
       {
-        jobIdMap_[id] = internalJobId++;
+        // Map the JobID given in the spec to an internal ID
+        jobIdMap_[jobSpec.first] = internalJobId++;
+
+        // Copy the corresponding spec into our internal spec vector which uses
+        // contiguous ID values.
+        jobSpecData_.push_back(jobSpec.second);
       }
 
       VLOG(3) << "Attaching functionality to router";
@@ -95,25 +99,23 @@ namespace stateline
       // problemspec first...
       //most recently appended address
       LOG(INFO)<< "Initialising worker " << msgHelloFromWorker.address.back();
-      // what jobs will this worker do?
-      std::vector<uint> jobs;
+
+      // Get the job IDs that this worker offers to do
+      std::vector<JobID> jobs;
       detail::unserialise<std::uint32_t>(msgHelloFromWorker.data[0], jobs);
 
       std::vector<std::string> repData;
       repData.push_back(commonSpecData_);
 
-      for (auto i : jobs)
+      for (auto job : jobs)
       {
-        VLOG(1) << "Worker offered to solve job with ID " << i;
-        for (uint j = 0; j < jobId_.size(); j++)
+        VLOG(1) << "Worker offered to solve job with ID " << job;
+
+        if (jobIdMap_.count(job))
         {
-          if (jobId_[j] == i)
-          {
-            VLOG(1) << "\t and we have a spec for it! " << i;
-            repData.push_back(std::to_string(jobId_[j]));
-            repData.push_back(jobSpecData_[j]);
-            break;
-          }
+          VLOG(1) << "\t and we have a spec for it! " << job;
+          repData.push_back(std::to_string(job));
+          repData.push_back(jobSpecData_[jobIdMap_[job]]);
         }
       }
 

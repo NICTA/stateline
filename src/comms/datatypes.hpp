@@ -16,6 +16,9 @@ namespace stateline
 {
   namespace comms
   {
+    //! Numeric Job ID associated with each job type.
+    typedef uint JobID;
+
     //! Abstraction of job specification.
     struct JobData
     {
