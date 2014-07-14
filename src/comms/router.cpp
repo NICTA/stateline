@@ -107,7 +107,7 @@ namespace stateline
     }
 
     // this is an int because -1 indicates no timeout
-    bool SocketRouter::poll(int msWait)
+    void SocketRouter::poll(int msWait)
     {
       while (running_)
       {
@@ -125,7 +125,6 @@ namespace stateline
           handlers_[i]->onPoll();
         }
       }
-      return true;
     }
 
     void SocketRouter::receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx)
