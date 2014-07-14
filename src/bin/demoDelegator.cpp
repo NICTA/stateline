@@ -60,7 +60,7 @@ void runMCMCNormal(const Eigen::VectorXd &var, sl::SingleTaskAsyncPolicy &policy
   sampler.run(policy, initialStates, proposal, mcmcSettings.wallTime);
 
   // Get the result chains
-  sl::mcmc::ChainArray chains = sampler.chains();
+  const sl::mcmc::ChainArray &chains = sampler.chains();
 }
 
 int main(int ac, char *av[])

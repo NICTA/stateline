@@ -236,15 +236,6 @@ namespace stateline
 
     //! Get the MCMC chain array.
     //!
-    //! \return A copy of the chain array.
-    //!
-    ChainArray chains()
-    {
-      return chains_;
-    }
-
-    //! Get the MCMC chain array.
-    //!
     //! \return A const reference to the chain array.
     //!
     const ChainArray &chains() const

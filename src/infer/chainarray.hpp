@@ -51,6 +51,9 @@ namespace stateline
         ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma,
             double sigmaFactor, const DBSettings &d, uint cacheLength);
 
+        // Cannot be copied due to database
+        ChainArray(const ChainArray &other) = delete;
+
         //! Get the length of a chain.
         //!
         //! \param id The id of the chain (see \ref id).
