@@ -149,7 +149,7 @@ namespace stateline
         std::map<std::string, std::vector<Message>> workerToJobMap_;
         // The queues for jobs
         std::vector<std::deque<Message>> jobQueues_;
-        std::vector<std::deque<std::vector<std::string>>> requestQueues_;
+        std::vector<std::deque<Address>> requestQueues_;
         std::map<uint, uint> jobIdMap_;
         // Heartbeating System
         ServerHeartbeat heartbeat_;
