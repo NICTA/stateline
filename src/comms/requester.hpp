@@ -49,9 +49,9 @@ namespace stateline
       //! \param id The job ID.
       //! \param j The job to compute.
       //!
-      void submit(uint id, const JobData& j);
+      void submit(JobID id, const JobData& j);
 
-      void submit(uint id, JobData&& j);
+      void submit(JobID id, JobData&& j);
 
       //! Retrieves a job that has previously been submitted for computation.
       //! A pair is returned, with the id of the job (from the submit call),
@@ -78,9 +78,9 @@ namespace stateline
       //! \param jobs The vector of jobs to compute
       //! \return The results of the job computations
       //!
-      void batchSubmit(uint id, const std::vector<JobData>& jobs);
+      void batchSubmit(JobID id, const std::vector<JobData>& jobs);
 
-      void batchSubmit(uint id, std::vector<JobData>&& jobs);
+      void batchSubmit(JobID id, std::vector<JobData>&& jobs);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),
