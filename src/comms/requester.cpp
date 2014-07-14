@@ -22,20 +22,13 @@ namespace stateline
     //! \param socket The socket to send the job over.
     //! \param job The job to send.
     //!
-    void sendJob(zmq::socket_t& socket, const std::vector<uint>& ids, const JobData& job)
+    void sendJob(zmq::socket_t& socket, const std::vector<JobID>& ids, const JobData& job)
     {
-      std::vector<std::string> idStrings;
-      for (auto i : ids)
-      {
-        idStrings.push_back(std::to_string(i));
-      }
-
-      Message m(idStrings, stateline::comms::JOB,
-        { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
-      send(socket, std::move(m));
+      // Delegate call to the move version.
+      return sendJob(socket, ids, job);
     }
 
-    void sendJob(zmq::socket_t& socket, const std::vector<uint>& ids, JobData&& job)
+    void sendJob(zmq::socket_t& socket, const std::vector<JobID>& ids, JobData&& job)
     {
       std::vector<std::string> idStrings;
       for (auto i : ids)
@@ -65,29 +58,6 @@ namespace stateline
       return r;
     }
 
-    //! Read a job result from a socket.
-    //!
-    //! \param socket The socket to read from.
-    //! \return The job result that was read from the socket.
-    //!
-    std::pair<std::vector<uint>, ResultData> receiveResultAndIDs(zmq::socket_t& socket)
-    {
-      std::vector<uint> indices;
-      Message m = receive(socket);
-      for (auto& a : m.address)
-      {
-        indices.push_back((uint) std::stoi(a));
-      }
-
-      ResultData r
-      {
-        detail::unserialise<std::uint32_t>(m.data[0]),
-        std::move(m.data[1])
-      };
-
-      return std::make_pair(indices, std::move(r));
-    }
-
     Requester::Requester(Delegator& d)
         : socket_(d.zmqContext(), ZMQ_DEALER)
     {
@@ -114,14 +84,8 @@ namespace stateline
 
     void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
     {
-      uint nJobs = jobs.size();
-      batches_[id] = std::vector<ResultData>(nJobs);
-      batchLeft_[id] = nJobs;
-
-      for (uint i = 0; i < nJobs; i++)
-      {
-        sendJob(socket_, { id, i }, jobs[i]);
-      }
+      // Delegate call to the move version.
+      return batchSubmit(id, jobs);
     }
 
     void Requester::batchSubmit(uint id, std::vector<JobData>&& jobs)
