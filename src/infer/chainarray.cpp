@@ -197,12 +197,19 @@ namespace stateline
       }
     }
 
-    uint ChainArray::lengthOnDisk(uint id)
+    ChainArray::ChainArray(ChainArray&& other)
+      : nstacks_(other.nstacks_), nchains_(other.nchains_), cacheLength_(other.cacheLength_),
+        beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
+        cache_(std::move(other.cache_)), db_(std::move(db_))
+    {
+    }
+
+    uint ChainArray::lengthOnDisk(uint id) const
     {
       return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id, 0);
     }
 
-    uint ChainArray::length(uint id)
+    uint ChainArray::length(uint id) const
     {
       uint lengthOnDisk0 = lengthOnDisk(id);
       uint length;
@@ -309,12 +316,12 @@ namespace stateline
       cache_[id].push_back(lastState);
     }
 
-    State ChainArray::lastState(uint id)
+    State ChainArray::lastState(uint id) const
     {
       return cache_[id].back();
     }
 
-    State ChainArray::stateFromDisk(uint id, uint idx)
+    State ChainArray::stateFromDisk(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
       CHECK(idx < dlen) << "Can't access state " << idx << " in chain " << id << " from disk when " << dlen << " states stored on disk";
@@ -325,7 +332,7 @@ namespace stateline
       return detail::unserialiseState(state);
     }
 
-    State ChainArray::stateFromCache(uint id, uint idx)
+    State ChainArray::stateFromCache(uint id, uint idx) const
     {
       CHECK(cache_[id].size() > 0) << "Can't access state " << idx << " in chain " << id << " from cache when cache empty!";
 
@@ -337,7 +344,7 @@ namespace stateline
       return cache_[id][cacheIdx];
     }
 
-    State ChainArray::state(uint id, uint idx)
+    State ChainArray::state(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
       uint cacheSize = cache_[id].size();
@@ -347,7 +354,7 @@ namespace stateline
         return stateFromCache(id, idx);
     }
 
-    std::vector<State> ChainArray::states(uint id)
+    std::vector<State> ChainArray::states(uint id) const
     {
       uint len = length(id);
       std::vector<State> v(len);
