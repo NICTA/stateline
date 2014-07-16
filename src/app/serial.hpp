@@ -20,6 +20,15 @@ namespace stateline
     return std::string((char *)vector.data(), vector.size() * sizeof(double));
   }
 
+  std::string serialise(const Eigen::MatrixXd &matrix)
+  {
+    std::uint32_t rows = matrix.rows();
+
+    // Header contains the number of rows in the matrix
+    std::string buffer = std::string((const char *)&rows, sizeof(std::uint32_t));
+    return buffer + std::string((char *)matrix.data(), matrix.size() * sizeof(double));
+  }
+
   template <class T>
   T unserialise(const std::string &str);
 
@@ -29,5 +38,19 @@ namespace stateline
     Eigen::VectorXd vector(str.length() / sizeof(double));
     memcpy(vector.data(), str.c_str(), str.length());
     return vector;
+  }
+
+  template <>
+  Eigen::MatrixXd unserialise(const std::string &str)
+  {
+    // Read the header containing the number of rows.
+    std::size_t rows = *((std::uint32_t *)str.data());
+
+    // Extract the actual matrix data
+    std::string data = str.substr(sizeof(std::uint32_t));
+
+    Eigen::MatrixXd matrix(rows, data.length() / rows / sizeof(double));
+    memcpy(matrix.data(), data.c_str(), data.length());
+    return matrix;
   }
 }
