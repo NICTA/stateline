@@ -133,6 +133,10 @@ namespace stateline
         //!
         void newJob(const Message& m);
 
+        //! Get the job IDs that this delegator wants done.
+        //!
+        std::vector<JobID> jobs() const;
+
       private:
         // Polling times
         int msNetworkPoll_;

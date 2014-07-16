@@ -273,5 +273,13 @@ namespace stateline
       sendJob(Message( { minion, worker }, JOBSWAP, { id }));
     }
 
+    std::vector<JobID> Delegator::jobs() const
+    {
+      std::vector<JobID> jobs;
+      for (auto job : jobIdMap_)
+        jobs.push_back(job.first);
+      return jobs;
+    }
+
   } // namespace obsidian
 } // namespace comms
