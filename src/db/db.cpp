@@ -9,9 +9,10 @@
 //! \copyright (c) 2014, NICTA
 //!
 
+#include "db/db.hpp"
+
 #include <glog/logging.h>
 
-#include "db/db.hpp"
 #include "leveldb/write_batch.h"
 #include "leveldb/cache.h"
 #include "leveldb/options.h"
@@ -22,7 +23,7 @@ namespace stateline
   namespace db
   {
     Database::Database(const DBSettings& s)
-        : cacheNumBytes_(s.cacheSizeMB * 1048576)
+        : cacheNumBytes_(s.cacheSizeMB * 1024 * 1024)
     {
       options_.block_cache = leveldb::NewLRUCache(cacheNumBytes_); // Cache in MB
       options_.filter_policy = leveldb::NewBloomFilterPolicy(10); // smart filtering -- bits per key?
@@ -53,12 +54,27 @@ namespace stateline
       writeOptions_.sync = false;
     }
 
-    uint Database::cacheSize()
+    Database::Database(Database&& other)
+      : settings_(other.settings_), cacheNumBytes_(other.cacheNumBytes_),
+        db_(other.db_), options_(other.options_),
+        writeOptions_(other.writeOptions_),
+        readOptions_(other.readOptions_)
+    {
+      // Set the other's DB pointer to null to steal ownership
+      other.db_ = NULL;
+    }
+
+    DBSettings Database::settings() const
+    {
+      return settings_;
+    }
+
+    uint Database::cacheSize() const
     {
       return cacheNumBytes_;
     }
 
-    std::string Database::get(const leveldb::Slice& key)
+    std::string Database::get(const leveldb::Slice& key) const
     {
       std::string s;
       leveldb::Status status = db_->Get(readOptions_, key, &s);
@@ -72,7 +88,7 @@ namespace stateline
       CHECK(status.ok());
     }
 
-    void Database::batch(leveldb::WriteBatch& batch)
+    void Database::put(leveldb::WriteBatch& batch)
     {
       db_->Write(writeOptions_, &batch);
     }
@@ -90,6 +106,7 @@ namespace stateline
       leveldb::WriteBatch batch;
       std::vector<std::string> values1(size);
       std::vector<std::string> values2(size);
+
       for (uint i = 0; i < keys1.size(); i++)
       {
         std::string value1;
@@ -102,13 +119,17 @@ namespace stateline
         batch.Put(keys1[i], values1[i]);
         batch.Put(keys2[i], values2[i]);
       }
+
       db_->Write(writeOptions_, &batch);
     }
 
     Database::~Database()
     {
-      delete db_;
-      delete options_.block_cache;
+      if (db_ != NULL)
+      {
+        delete db_;
+        delete options_.block_cache;
+      }
     }
 
   } // namespace db

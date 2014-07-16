@@ -1,5 +1,0 @@
-# SimulationCtrlPoints: gives true control point values used to simulate sensor
-# observations. The top left of this file is the northern-most, western-most
-# control point.  All numbers are metres, and positive numbers indicate
-# increasing depth. These values are still considered pertubations from the
-# offset surface associated with this boundary.

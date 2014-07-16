@@ -5,4 +5,4 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-ADD_LIBRARY(lh likelihood.cpp)
+ADD_LIBRARY(lh likelihood.hpp likelihood.cpp)

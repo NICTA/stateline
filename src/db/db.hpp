@@ -11,8 +11,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
-#include "app/settings.hpp"
+#include "db/settings.hpp"
 #include "leveldb/db.h"
 #include "leveldb/write_batch.h"
 
@@ -29,22 +30,31 @@ namespace stateline
       //!
       Database(const DBSettings& s);
 
+      // Move constructor only
+      Database(Database&& other);
+
       //! Clean up and free resources used by the database connection.
       //!
       ~Database();
+
+      //! Get the settings for this database.
+      //!
+      //! \return The settings passed to the database when it was created.
+      //!
+      DBSettings settings() const;
 
       //! Get the cache size.
       //!
       //! \return The cache size in bytes.
       //!
-      uint cacheSize();
+      uint cacheSize() const;
 
       //! Get the database entry for a particular key.
       //!
       //! \param key The key for the entry.
       //! \return String containing the value of the entry.
       //!
-      std::string get(const leveldb::Slice& key);
+      std::string get(const leveldb::Slice& key) const;
 
       //! Write an entry to the database.
       //!
@@ -53,17 +63,17 @@ namespace stateline
       //!
       void put(const leveldb::Slice& key, const leveldb::Slice& value);
 
+      //! Write to the database batched.
+      //!
+      //! \param batch The batched keys and values to write.
+      //!
+      void put(leveldb::WriteBatch& batch);
+
       //! Remove the entry for a particular key.
       //!
       //! \param key The key for the entry.
       //!
       void remove(const leveldb::Slice& key);
-
-      //! Write to the database batched.
-      //!
-      //! \param batch The batched keys and values to write.
-      //!
-      void batch(leveldb::WriteBatch& batch);
 
       //! Swap the values for a set of keys with another.
       //!
@@ -74,6 +84,7 @@ namespace stateline
       void swap(const std::vector<std::string>& keys1, const std::vector<std::string>& keys2);
 
     private:
+      DBSettings settings_;
       uint cacheNumBytes_;
       leveldb::DB* db_;
       leveldb::Options options_;

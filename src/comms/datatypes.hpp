@@ -1,4 +1,5 @@
 //!
+//! Contains comms data structures representing jobs and results.
 //!
 //! \file comms/datatypes.hpp
 //! \author Lachlan McCalman
@@ -9,55 +10,73 @@
 
 #pragma once
 
-#include <iterator>
 #include <string>
-#include <sstream>
-#include <cctype>
+#include <chrono>
 
 namespace stateline
 {
   namespace comms
   {
+    //! Numeric Job ID associated with each job type.
+    typedef uint JobID;
+
+    //! High resolution clock used for heartbeating
+    typedef std::chrono::high_resolution_clock hrc;
+
     //! Abstraction of job specification.
     struct JobData
     {
-      //! of job
+      //! Type of job
       uint type;
-      //! common to all jobs
+
+      //! Data common to all jobs
       std::string globalData;
-      //! specific to this job
+
+      //! Data specific to this job
       std::string jobData;
+
+      JobData() { }
+
+      JobData(const JobData &job) = default;
+
+      JobData(uint type, std::string&& globalData, std::string&& jobData)
+        : type(type), globalData(globalData), jobData(jobData)
+      {
+      }
+
+      JobData(JobData&& other)
+        : type(other.type), globalData(std::move(other.globalData)), jobData(std::move(other.jobData))
+      {
+      }
     };
 
     //! Abstraction of job results.
     struct ResultData
     {
-      //! of job
+      //! Type of job
       uint type;
-      //! results data
+
+      //! Results data
       std::string data;
+
+      ResultData() { }
+
+      ResultData(uint type, std::string&& data)
+        : type(type), data(data)
+      {
+      }
+
+      ResultData(ResultData&& other)
+        : type(other.type), data(std::move(other.data))
+      {
+      }
+
+      ResultData &operator= (ResultData&& other)
+      {
+        data = std::move(other.data);
+        return *this;
+      }
     };
 
-    //! Convert list of uints in string form to vector of uint.
-    inline std::vector<uint> stringToIDs(const std::string& s)
-    {
-      std::istringstream lineStream(s);
-      std::vector<uint> ids;
-      uint num;
-      while (lineStream >> num)
-        ids.push_back(num);
-      return ids;
-    }
-
-    //! Convert vector of uints to list of uints in string form seperated by space.
-    inline std::string idsToString(const std::vector<uint>& ids)
-    {
-      std::stringstream result;
-      std::copy(ids.begin(), ids.end(), std::ostream_iterator<uint>(result, " "));
-      std::string s = result.str();
-      s.erase(s.end() - 1);
-      return s;
-    }
-
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline

@@ -1,7 +1,0 @@
-# CtrlMin: gives the minimum value a control point can move away from the given
-# offset. Note this is not the same as the min of the boundary's movement,
-# which is a more complex function of all the control points in the boundary.
-# The top left of this file is the northern-most, western-most control point.
-# All numbers are metres, and positive numbers indicate increasing depth.
-
--800

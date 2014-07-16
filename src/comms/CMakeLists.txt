@@ -5,30 +5,23 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-ADD_LIBRARY(delegator delegator.cpp)
-
-ADD_LIBRARY(minion minion.cpp)
-
-ADD_LIBRARY(requester requester.cpp)
-
-ADD_LIBRARY(worker worker.cpp)
-
-ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
-
-ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
-
+# Common libraries
 ADD_LIBRARY(messages messages.cpp)
-
 ADD_LIBRARY(router router.cpp)
+ADD_LIBRARY(transport transport.cpp)
 
-ADD_LIBRARY(transport 
-  transport.cpp)
+# Server specific libraries
+ADD_LIBRARY(delegator delegator.cpp)
+ADD_LIBRARY(requester requester.cpp)
+ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
+TARGET_LINK_LIBRARIES(serverheartbeat messages)
 
-ADD_EXECUTABLE ( test-comms testcomms.cpp )
+# Client specific libraries
+ADD_LIBRARY(worker worker.cpp)
+ADD_LIBRARY(minion minion.cpp)
+ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
+TARGET_LINK_LIBRARIES(clientheartbeat messages)
 
-TARGET_LINK_LIBRARIES ( test-comms ${obsidianClientLibraries}
-                                   ${obsidianServerLibraries}
-                                   ${obsidianCommsLibraries}
-                                   ${obsidianBaseLibraries})
-
-REGISTER_UNIT_TESTS( test-comms )
+ADD_TEST(test-delegator tests/delegator.cpp statelineserver statelineclient)
+ADD_TEST(test-router tests/router.cpp statelineserver statelineclient)
+ADD_TEST(test-transport tests/transport.cpp statelineserver statelineclient)

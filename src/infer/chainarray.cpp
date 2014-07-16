@@ -14,66 +14,166 @@
 #include <glog/logging.h>
 
 #include "infer/metropolis.hpp"
-#include "serial/mcmc.hpp"
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+
+namespace boost
+{
+  namespace serialization
+  {
+    template<class Archive, typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
+    void serialize(Archive &ar, 
+        Eigen::Matrix<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols> &t, 
+        const unsigned int version) 
+    {
+      // Adapted from http://stackoverflow.com/questions/12580579/how-to-use-boostserialization-to-save-eigenmatrix/12618789#12618789
+      std::size_t rows = t.rows(), cols = t.cols();
+      ar & rows & cols;
+
+      if (rows * cols != t.size())
+      {
+        // Allocate memory if necessary
+        t.resize(rows, cols);
+      }
+
+      for(std::size_t i = 0; i < t.size(); i++)
+      {
+        ar & t.data()[i];
+      }
+    }
+
+    template <class Archive>
+    void serialize(Archive &ar, ::stateline::mcmc::State &s, const unsigned int version) {
+      ar & s.sample & s.energy & s.beta & s.accepted & s.swapType;
+    }
+  }
+}
 
 namespace stateline
 {
   namespace mcmc
   {
-    namespace internal
+    namespace detail
     {
-      std::string toDbString(uint id, uint index, const internal::DbEntryType& t)
+      //! Represents the different types of entries that the database can contain.
+      //!
+      enum DbEntryType : std::int32_t
       {
-        uint idx[3] = { uint(t), id, index };
-        uint size = 3 * sizeof(uint) / sizeof(char);
-        return std::string((char*) &idx[0], size);
+        //! Indicates that the database entry is the state vector of a chain.
+        STATE,
+
+        //! Indicates that the database entry is the length of a chain.
+        LENGTH,
+        
+        //! Indicates that the database entry is the step size of a chain.
+        SIGMA,
+        
+        //! Indicates that the database entry is the inverse temperature of a chain.
+        BETA
+      };
+
+      //! Get the key string representing a database entry of a particular chain.
+      //!
+      //! \tparam t The type of entry.
+      //! \param id The id of the chain.
+      //! \param index A value representing the index of the value. This is useful
+      //!              for time series or array data (such as the chain states).
+      //!              Set this to 0 if only one value of this type exists for
+      //!              each chain.
+      //! \return A string representing the database key that is to store this entry.
+      //!
+      template <std::int32_t EntryType>
+      std::string toDbKeyString(std::uint32_t id, std::uint32_t index)
+      {
+        // Convert (type, id, index) into a string key
+        std::uint32_t idx[3] = { EntryType, id, index };
+        return std::string((char *)&idx[0], sizeof(idx));
       }
 
-      std::string toDbString(uint id, const internal::DbEntryType& t)
+      template <std::int32_t EntryType, class T>
+      void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
+          T value)
       {
-        uint idx[2] = { uint(t), id };
-        uint size = 2 * sizeof(uint) / sizeof(char);
-        return std::string((char*) &idx[0], size);
+        // Write the given value to the batch buffer
+        batch.Put(toDbKeyString<EntryType>(id, index),
+            leveldb::Slice((char *)&value, sizeof(T)));
       }
 
-      double doubleFromDb(const std::string& data)
+      template <std::int32_t EntryType>
+      void putToBatch(leveldb::WriteBatch &batch, std::uint32_t id, std::uint32_t index,
+          std::string value)
       {
-        return *((double*) &(data[0]));
+        // Write the given value to the batch buffer
+        batch.Put(toDbKeyString<EntryType>(id, index),
+            leveldb::Slice(value.c_str(), sizeof(char) * value.length()));
       }
 
-      uint uintFromDb(const std::string& data)
+      template <std::int32_t EntryType, class T>
+      T getFromDb(db::Database &db, std::uint32_t id, std::uint32_t index)
       {
-        return *((uint*) &(data[0]));
+        // Read the given value to the database
+        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+
+        // Convert it to the data type that we want.
+        return *((T *) &result[0]);
       }
 
-    } // namespace internal
+      template <std::int32_t EntryType>
+      std::string getFromDb(db::Database &db, std::uint32_t id, std::uint32_t index)
+      {
+        // Read the given value to the database
+        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        return result;
+      }
 
-    ChainArray::ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma, double sigmaFactor, db::Database& db,
-                           uint cacheLength, bool recover)
+      std::string serialiseState(const State &state)
+      {
+        std::stringstream ss;
+        boost::archive::text_oarchive oa(ss);
+        oa << state;
+        return ss.str();
+      }
+
+      State unserialiseState(const std::string &str)
+      {
+        std::stringstream ss;
+        ss << str;
+
+        State state;
+        boost::archive::text_iarchive ia(ss);
+        ia >> state;
+
+        return state;
+      }
+    } // namespace detail
+
+    ChainArray::ChainArray(uint nStacks, uint nChains, double tempFactor,
+        double initialSigma, double sigmaFactor, const DBSettings& d, uint cacheLength)
         : nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(cacheLength),
           beta_(nStacks * nChains),
           sigma_(nStacks * nChains),
           cache_(nStacks * nChains),
-          db_(db)
+          db_(d)
     {
       // Reserve the cache
       for (auto& c : cache_)
         c.reserve(cacheLength);
 
       // Set ourselves up in the last state
-      if (recover)
+      if (d.recover)
       {
         LOG(INFO)<< "Recovering chains...";
         for(uint id = 0; id < nChains * nStacks; id++)
         {
-          recoverFromCache(id);
+          recoverFromDisk(id);
         }
       }
       else
       {
-        uint uzero = 0;
         leveldb::WriteBatch batch;
         for (uint i = 0; i < nStacks; i++)
         {
@@ -87,41 +187,46 @@ namespace stateline
             sigma_[id] = sigma;
 
             // All chains start off with length 0
-            batch.Put(internal::toDbString(id, internal::DbEntryType::LENGTH),
-                leveldb::Slice((char*)&uzero, sizeof(uint)/sizeof(char)));
-
-            // All chains start off with same initial sigma
-            batch.Put(internal::toDbString(id, internal::DbEntryType::SIGMA),
-                leveldb::Slice((char*)&sigma, sizeof(double)/sizeof(char)));
-
-            // Temperatures start off as given by the factors
-            batch.Put(internal::toDbString(id, internal::DbEntryType::BETA),
-                leveldb::Slice((char*)&beta, sizeof(double)/sizeof(char)));
+            detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
+            detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma);
+            detail::putToBatch<detail::BETA>(batch, id, 0, beta);
           }
         }
-        db_.batch(batch);
+
+        db_.put(batch);
       }
     }
 
-    uint ChainArray::lengthOnDisk(uint id)
+    ChainArray::ChainArray(ChainArray&& other)
+      : nstacks_(other.nstacks_), nchains_(other.nchains_), cacheLength_(other.cacheLength_),
+        beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
+        cache_(std::move(other.cache_)), db_(std::move(db_))
     {
-      return internal::uintFromDb(db_.get(internal::toDbString(id, internal::DbEntryType::LENGTH)));
     }
 
-    uint ChainArray::length(uint id)
+    uint ChainArray::lengthOnDisk(uint id) const
+    {
+      return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id, 0);
+    }
+
+    uint ChainArray::length(uint id) const
     {
       uint lengthOnDisk0 = lengthOnDisk(id);
       uint length;
+
       if (lengthOnDisk0 == 0)
       {
         length = cache_[id].size();
-      } else if (id % numChains() == 0)
+      }
+      else if (id % numChains() == 0)
       {
         length = lengthOnDisk0 + cache_[id].size() - 1;
-      } else
+      }
+      else
       {
         length = lengthOnDisk0;
       }
+
       return length;
     }
 
@@ -137,7 +242,7 @@ namespace stateline
 
       cache_[id].back().accepted = accepted;
       if (cache_[id].size() == cacheLength_)
-        flushCache(id);
+        flushToDisk(id);
 
       return accepted;
     }
@@ -147,91 +252,99 @@ namespace stateline
       cache_[id].push_back(s);
       cache_[id].back().accepted = true;
       if (cache_[id].size() == cacheLength_)
-        flushCache(id);
+        flushToDisk(id);
     }
 
-    void ChainArray::recoverFromCache(uint id)
+    void ChainArray::recoverFromDisk(uint id)
     {
       uint stack = id / numChains();
       uint chain = id % numChains();
-      VLOG(1) << "Recovering stack " << stack << " chain " << chain << " from cache:";
-      beta_[id] = internal::doubleFromDb(db_.get(internal::toDbString(id, internal::DbEntryType::BETA)));
-      sigma_[id] = internal::doubleFromDb(db_.get(internal::toDbString(id, internal::DbEntryType::SIGMA)));
+
+      // Recover beta and sigma
+      VLOG(1) << "Recovering stack " << stack << " chain " << chain << " from disk:";
+      beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id, 0);
+      sigma_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id, 0);
+
       uint len = lengthOnDisk(id);
       VLOG(1) << "Has length " << len;
       VLOG(1) << "Current cache length: " << cache_[id].size();
       if (len > 0)
       {
+        // Recover only the newest state
         cache_[id].push_back(stateFromDisk(id, len - 1));
       }
     }
 
-    void ChainArray::flushCache(uint id)
+    void ChainArray::flushToDisk(uint id)
     {
       leveldb::WriteBatch batch;
       uint diskLength = lengthOnDisk(id);
       uint cacheLength = cache_[id].size();
       State lastState = cache_[id].back();
 
-      // Don't put the front state in
+      // Don't put the newest state in
       if (id % numChains() == 0)
       {
-        for (uint i = 1; i < cacheLength; i++)
+        for (uint i = 0; i < cacheLength - 1; i++)
         {
-          uint index = diskLength + i - 1;
-          batch.Put(internal::toDbString(id, index, internal::DbEntryType::STATE), comms::serialise(cache_[id][i]));
+          uint index = diskLength + i;
+          detail::putToBatch<detail::STATE>(batch, id, index,
+              detail::serialiseState(cache_[id][i]));
         }
-        uint newLength = diskLength + cacheLength - 1; // no front state
-        batch.Put(internal::toDbString(id, internal::DbEntryType::LENGTH), leveldb::Slice((char*) &newLength, sizeof(uint) / sizeof(char)));
+
+        uint newLength = diskLength + cacheLength - 1; // don't count newest state
         VLOG(3) << "Flushing cache of chain " << id << ". new length: " << newLength;
-      } else
+        detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, newLength);
+      }
+      else
       {
-        uint index = 0;
-        batch.Put(internal::toDbString(id, index, internal::DbEntryType::STATE), comms::serialise(cache_[id][cacheLength - 1]));
         VLOG(3) << "Overwriting high temperature state of chain " << id;
-        uint newLength = 1; // no front state
-        batch.Put(toDbString(id, internal::DbEntryType::LENGTH), leveldb::Slice((char*) &newLength, sizeof(uint) / sizeof(char)));
+        detail::putToBatch<detail::STATE>(batch, id, 0,
+          detail::serialiseState(cache_[id][cacheLength - 1]));
+        detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 1);
       }
 
       // Update sigma and beta
-      double sigma = sigma_[id];
-      double beta = beta_[id];
-      batch.Put(internal::toDbString(id, internal::DbEntryType::SIGMA), leveldb::Slice((char*) &sigma, sizeof(double) / sizeof(char)));
-      batch.Put(internal::toDbString(id, internal::DbEntryType::BETA), leveldb::Slice((char*) &beta, sizeof(double) / sizeof(char)));
+      detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
+      detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
 
       // Write the batch
-      db_.batch(batch);
+      db_.put(batch);
 
       // Re-initialise the cache
       cache_[id].clear();
       cache_[id].push_back(lastState);
     }
 
-    State ChainArray::lastState(uint id)
+    State ChainArray::lastState(uint id) const
     {
       return cache_[id].back();
     }
 
-    State ChainArray::stateFromDisk(uint id, uint idx)
+    State ChainArray::stateFromDisk(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
       CHECK(idx < dlen) << "Can't access state " << idx << " in chain " << id << " from disk when " << dlen << " states stored on disk";
-      State s;
-      std::string data = db_.get(toDbString(id, idx, internal::DbEntryType::STATE));
-      comms::unserialise(data, s);
-      return s;
+
+      // Read the serialised state from disk
+      std::string state = detail::getFromDb<detail::STATE>(db_, id, idx);
+
+      return detail::unserialiseState(state);
     }
 
-    State ChainArray::stateFromCache(uint id, uint idx)
+    State ChainArray::stateFromCache(uint id, uint idx) const
     {
       CHECK(cache_[id].size() > 0) << "Can't access state " << idx << " in chain " << id << " from cache when cache empty!";
+
       uint dlen = lengthOnDisk(id);
       uint cacheIdx = idx - dlen;
+
       CHECK(cacheIdx < cache_[id].size()) << "Can't access state " << idx << " in chain " << id << ": index beyond cache boundary";
+
       return cache_[id][cacheIdx];
     }
 
-    State ChainArray::state(uint id, uint idx)
+    State ChainArray::state(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
       uint cacheSize = cache_[id].size();
@@ -241,7 +354,7 @@ namespace stateline
         return stateFromCache(id, idx);
     }
 
-    std::vector<State> ChainArray::states(uint id)
+    std::vector<State> ChainArray::states(uint id) const
     {
       uint len = length(id);
       std::vector<State> v(len);
@@ -256,24 +369,22 @@ namespace stateline
     {
       State& state1 = cache_[id1].back();
       State& state2 = cache_[id2].back();
+
+      // Determine if we accept this swap
       bool swapped = acceptSwap(state1, state2, beta_[id1], beta_[id2]);
-      State tempState;
+
       if (swapped)
       {
-        tempState = state1;
-        state1.sample = state2.sample;
-        state1.energy = state2.energy;
-        state1.accepted = state2.accepted;
+        std::swap(state1, state2);
         state1.swapType = SwapType::Accept;
-        state2.sample = tempState.sample;
-        state2.energy = tempState.energy;
-        state2.accepted = tempState.accepted;
         state2.swapType = SwapType::Accept;
-      } else
+      }
+      else
       {
         state1.swapType = SwapType::Reject;
         state2.swapType = SwapType::Reject;
       }
+
       return swapped;
     }
 

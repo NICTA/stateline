@@ -7,17 +7,12 @@
 //!
 
 #include "comms/messages.hpp"
-// Standard Library
+
 #include <string>
 #include <vector>
 #include <map>
-//Prerequisites
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/algorithm/string/join.hpp>
 #include <glog/logging.h>
 #include <zmq.hpp>
-// Project
-#include "datatype/datatypes.hpp"
 
 namespace stateline
 {
@@ -30,22 +25,27 @@ namespace stateline
     //!
     std::string subjectString(Subject s)
     {
-      static std::map<Subject, std::string> names
+      switch (s)
       {
-        { HELLO, "HELLO" },
-        { HEARTBEAT, "HEARTBEAT" },
-        { PROBLEMSPEC, "PROBLEMSPEC" },
-        { JOBREQUEST, "JOBREQUEST" },
-        { JOB, "JOB" },
-        { JOBSWAP, "JOBSWAP" },
-        { ALLDONE, "ALLDONE" },
-        { GOODBYE, "GOODBYE" }
-      };
-      return names[s];
+        case HELLO: return "HELLO";
+        case HEARTBEAT: return "HEARTBEAT";
+        case PROBLEMSPEC: return "PROBLEMSPEC";
+        case JOBREQUEST: return "JOBREQUEST"; 
+        case JOB: return "JOB";
+        case JOBSWAP: return "JOBSWAP";
+        case ALLDONE: return "ALLDONE";
+        case GOODBYE: return "GOODBYE";
+        default: return "UNKNOWN";
+      }
     }
 
-    Message::Message(const std::vector<std::string>& addr, const Subject& subj, const std::vector<std::string>& d)
-        : address(addr), subject(subj), data(d)
+    Message::Message(Message&& msg)
+      : address(std::move(msg.address)), subject(msg.subject), data(std::move(msg.data))
+    {
+    }
+
+    Message::Message(const Address& addr, const Subject& subj, const std::vector<std::string>& d)
+      : address(addr), subject(subj), data(d)
     {
     }
 
@@ -54,7 +54,7 @@ namespace stateline
     {
     }
 
-    Message::Message(const std::vector<std::string>& addr, const Subject& subj)
+    Message::Message(const Address& addr, const Subject& subj)
         : address(addr), subject(subj)
     {
     }
@@ -71,18 +71,21 @@ namespace stateline
 
     std::string addressAsString(const std::vector<std::string>& addr)
     {
-      return boost::algorithm::join(boost::adaptors::reverse(addr), ":");
+      // Concatenate the vector of addresses together with ':' as a delimiter
+      std::string buffer;
+      uint i = addr.size();
+      while (i--)
+      {
+        buffer.append(addr[i]);
+        if (i > 0) buffer.append(":");
+      }
+      return buffer;
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& m)
     {
       os << "|" << addressAsString(m.address) << "|" << subjectString(m.subject) << "|<" << m.data.size() << " data frames>|";
       return os;
-    }
-
-    void print(const Message& m)
-    {
-      VLOG(3) << "Received:" << m;
     }
 
   } // namespace comms

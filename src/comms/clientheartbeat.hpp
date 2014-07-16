@@ -11,24 +11,18 @@
 
 #pragma once
 
-// Project
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/settings.hpp"
-// Standard Library
-#include <chrono>
-//Prerequisites
-
-//! Heartbeat sockets talk on these addresses.
-const std::string CLIENT_HB_SOCKET_ADDR = "inproc://clienthb";
-
-typedef std::chrono::high_resolution_clock hrc;
 
 namespace stateline
 {
   namespace comms
   {
+    //! Heartbeat sockets talk on these addresses.
+    const std::string CLIENT_HB_SOCKET_ADDR = "inproc://clienthb";
+
     //! Handles heartbeating on the client side. Client heartbeat assumes only
     //! one connection (to the server), so sends and receives to one source only.
     //!

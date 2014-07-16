@@ -12,12 +12,10 @@
 
 #pragma once
 
-// Standard Library
 #include <string>
-// Prerequisites
 #include <glog/logging.h>
 #include <zmq.hpp>
-// Project
+
 #include "comms/datatypes.hpp"
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
@@ -28,11 +26,8 @@ namespace stateline
   namespace comms
   {
     //! Requester object that takes jobs and returns results. Communicates with
-    //! a delegator living in a (possibly) different thread.
+    //! a delegator in a (possibly) different thread.
     //!
-    //! \tparam JobType The type of a job specification.
-    //! \tparam ResultType The type being return as a result.
-    //!/
     class Requester
     {
     public:
@@ -42,17 +37,6 @@ namespace stateline
       //! \param d A reference to the delegator object to communicate with
       //!
       Requester(Delegator& d);
-
-      //! Computes a job and returns a result.
-      //!
-      //! \warning Do not interleave different types of job call pairs and blocking
-      //!          calls. This will break horribly. For example, don't call submit
-      //!          in between batchsubmit and batch retrieve.
-      //!
-      //! \param j The job to compute.
-      //! \return The result of the job computation.
-      //!
-      ResultData operator()(const JobData& j);
 
       //! Submits a job for computation and immediately returns. An id is
       //! included to allow the job to be identified later, because when jobs
@@ -65,7 +49,9 @@ namespace stateline
       //! \param id The job ID.
       //! \param j The job to compute.
       //!
-      void submit(uint id, const JobData& j);
+      void submit(JobID id, const JobData& j);
+
+      void submit(JobID id, JobData&& j);
 
       //! Retrieves a job that has previously been submitted for computation.
       //! A pair is returned, with the id of the job (from the submit call),
@@ -80,18 +66,6 @@ namespace stateline
       //!
       std::pair<uint, ResultData> retrieve();
 
-      //! Computes a batch of jobs and returns a result. The function returns
-      //! when all results have been returned.
-      //!
-      //! \warning Do not interleave different types of job call pairs and blocking
-      //!          calls. This will break horribly. For example, don't call submit
-      //!          in between batchsubmit and batch retrieve.
-      //!
-      //! \param jobs The vector of jobs to compute
-      //! \return The results of the job computations
-      //!
-      std::vector<ResultData> batch(const std::vector<JobData>& jobs);
-
       //! Submits a batch of jobs for computation and immediately returns. An id is
       //! included to allow the batch to be identified later, because when batches
       //! are retrieved they may not arrive in the order they were submitted.
@@ -104,7 +78,9 @@ namespace stateline
       //! \param jobs The vector of jobs to compute
       //! \return The results of the job computations
       //!
-      void batchSubmit(uint id, const std::vector<JobData>& jobs);
+      void batchSubmit(JobID id, const std::vector<JobData>& jobs);
+
+      void batchSubmit(JobID id, std::vector<JobData>&& jobs);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),
@@ -122,12 +98,11 @@ namespace stateline
     private:
       // Communicates with another inproc socket in the delegator
       zmq::socket_t socket_;
+
       // Used to keep track of the batch submissions
       std::map<uint, std::vector<ResultData>> batches_;
-      std::map<uint, uint> batchSizes_;
-      std::map<uint, uint> batchNComplete_;
+      std::map<uint, uint> batchLeft_;
     };
-
   } // namespace comms
 } // namespace obsidian
 

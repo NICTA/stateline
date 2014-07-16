@@ -56,7 +56,7 @@ namespace stateline
 
     private:
       bool firstMessage_ = true;
-      std::vector<std::string> requesterAddress_;
+      Address requesterAddress_;
       std::string jobTypeString_;
       zmq::socket_t socket_;
       std::string jobIDString_;

@@ -1,7 +1,7 @@
 //!
 //! Contains the implementation of Monte Carlo Markov Chain simulations.
 //!
-//! \file infer/mcmc.cpp
+//! \file infer/mcmc.hpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
@@ -21,7 +21,8 @@
 #include <glog/logging.h>
 
 #include "db/db.hpp"
-#include "app/settings.hpp"
+#include "infer/settings.hpp"
+#include "infer/logging.hpp"
 #include "infer/chainarray.hpp"
 #include "infer/diagnostics.hpp"
 #include "comms/transport.hpp"
@@ -40,31 +41,24 @@ namespace stateline
       //!
       //! \param s Settings to tune various parameters of the MCMC.
       //! \param d Settings for configuring the database for storing samples.
-      //! \param stateDim The number of dimensions in each sample.
+      //! \param ndims The number of dimensions in each sample.
       //! \param interrupted A flag used to monitor whether the sampler has been interrupted.
       //!
-      Sampler(const MCMCSettings& s, const DBSettings& d, uint stateDim, volatile bool& interrupted)
-          : db_(d),
-            chains_(s.stacks, s.chains, s.initialTempFactor, s.proposalInitialSigma, s.initialSigmaFactor, db_, s.cacheLength, d.recover),
+      Sampler(const MCMCSettings& s, const DBSettings& d, uint ndims)
+          : recover_(d.recover),
+            chains_(s.stacks, s.chains, s.initialTempFactor, s.proposalInitialSigma, s.initialSigmaFactor, d, s.cacheLength),
             lengths_(s.stacks * s.chains, 0),
-            propStates_(s.stacks * s.chains, stateDim),
+            propStates_(s.stacks * s.chains, ndims),
             locked_(s.stacks * s.chains, false),
             nextChainBeta_(s.stacks * s.chains),
-            nAcceptsGlobal_(s.stacks * s.chains, 0),
-            nSwapsGlobal_(s.stacks * (s.chains), 0),
-            nSwapAttemptsGlobal_(s.stacks * s.chains, 0),
             sigmas_(s.stacks * s.chains),
             betas_(s.stacks * s.chains),
             acceptRates_(s.stacks * s.chains),
             swapRates_(s.stacks * s.chains),
-            lowestEnergies_(s.stacks * s.chains),
             s_(s),
-            recover_(d.recover),
             numOutstandingJobs_(0),
-            interrupted_(interrupted),
             context_(1)
       {
-        // Initialise for logging purposes
         for (uint i = 0; i < s.chains * s.stacks; i++)
         {
           lengths_[i] = chains_.length(i);
@@ -73,13 +67,9 @@ namespace stateline
           nextChainBeta_[i] = chains_.beta(i);
           acceptRates_[i] = 1;
           swapRates_[i] = 0;
-          lowestEnergies_[i] = std::numeric_limits<double>::infinity();
           acceptBuffers_.push_back(boost::circular_buffer<bool>(s.adaptionLength));
           swapBuffers_.push_back(boost::circular_buffer<bool>(s.adaptionLength / s.swapInterval + 1));
-          nAcceptsGlobal_[i] = 1;
           acceptBuffers_[i].push_back(true); // first state always accepts
-          nSwapsGlobal_[i] = 0;
-          nSwapAttemptsGlobal_[i] = 1;
           swapBuffers_[i].push_back(false); // gets rid of a nan, not really needed
         }
       }
@@ -91,14 +81,10 @@ namespace stateline
       //! \param propFn The proposal function.
       //! \param numSeconds The number of seconds to run the MCMC for.
       //!
-      template<class AsyncPolicy, class PropFn>
-      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, uint numSeconds)
+      template<class AsyncPolicy, class PropFn, class Logger = NoLogger>
+      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, std::chrono::seconds::rep numSeconds, Logger &logger)
       {
         using namespace std::chrono;
-
-        // Used for publishing statistics to visualisation server.
-        zmq::socket_t publisher(context_, ZMQ_PUB);
-        publisher.bind("tcp://*:5556");
 
         // Record the starting time of the MCMC
         steady_clock::time_point startTime = steady_clock::now();
@@ -116,15 +102,9 @@ namespace stateline
           propose(policy, c, propFn);
         }
 
-        // Initialise the convergence criteria
-        uint stateDim = initialStates[0].size();
-        EpsrConvergenceCriteria cc(chains_.numStacks(), stateDim);
-
         // Listen for replies. As soon as a new state comes back,
         // add it to the corresponding chain, and submit a new proposed state
-        auto lastLogTime = steady_clock::now();
-        auto lastPrintTime = steady_clock::now();
-        while (duration_cast<seconds>(steady_clock::now() - startTime).count() < numSeconds && !interrupted_)
+        while (duration_cast<seconds>(steady_clock::now() - startTime).count() < numSeconds)
         {
           std::pair<uint, double> result;
 
@@ -138,10 +118,6 @@ namespace stateline
             VLOG(3) << "Comms error -- probably shutting down";
           }
 
-          // If we weree interrupted this state will be garbage
-          if (interrupted_)
-            break;
-
           numOutstandingJobs_--;
           uint id = result.first;
           double energy = result.second;
@@ -151,16 +127,10 @@ namespace stateline
           bool isColdestChainInStack = id % chains_.numChains() == 0;
 
           // Handle the new proposal and add a new state to the chain
-          State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
+          State propState { propStates_.row(id), energy, chains_.sigma(id), chains_.beta(id), false, SwapType::NoAttempt };
           bool propAccepted = chains_.append(id, propState);
           lengths_[id] += 1;
           updateAccepts(id, propAccepted);
-
-          // Update the convergence test if this is the coldest chain in a stack
-          if (isColdestChainInStack && chains_.numChains() > 1 && chains_.numStacks() > 1)
-          {
-            cc.update(id / chains_.numChains(), chains_.lastState(id).sample);
-          }
 
           // Check if this chain was locked. If it was locked, it means that
           // the chain above (hotter) locked it so that it can swap with it
@@ -191,13 +161,6 @@ namespace stateline
             }
           }
 
-          // Check again after a new interaction with comms
-          if (interrupted_)
-            break;
-
-          // Log the best energy state so far
-          lowestEnergies_[id] = std::min(lowestEnergies_[id], chains_.lastState(id).energy);
-
           // Check if we need to adapt the step size for this chain
           if (lengths_[id] % s_.proposalAdaptInterval == 0)
           {
@@ -207,99 +170,36 @@ namespace stateline
           // Update the temperature which might have changed while waiting
           chains_.setBeta(id, nextChainBeta_[id]);
           betas_[id] = nextChainBeta_[id];
+
           // Check for adapting the temperatures of all the chains but the 1st
           if (lengths_[id] % s_.betaAdaptInterval == 0 && !isColdestChainInStack)
           {
             adaptBeta(id);
           }
 
-          // Update the accept and swap rates
-          if (duration_cast<milliseconds>(steady_clock::now() - lastLogTime).count() > 50)
-          {
-            lastLogTime = steady_clock::now();
-
-            std::stringstream s;
-            s << "\n\nChainID  Length  MinEngy  CurrEngy    Sigma      AcptRt    GlbAcptRt    Beta     SwapRt   GlbSwapRt\n";
-            s << "-----------------------------------------------------------------------------------------------------\n";
-            for (uint i = 0; i < chains_.numTotalChains(); i++)
-            {
-              if (i % chains_.numChains() == 0 && i != 0)
-                s << '\n';
-              s << std::setprecision(6) << std::showpoint << i << " " << std::setw(9) << lengths_[i] << " " << std::setw(10)
-                  << lowestEnergies_[i] << " " << std::setw(10) << chains_.lastState(i).energy << " " << std::setw(10) << sigmas_[i] << " "
-                  << std::setw(10) << acceptRates_[i] << " " << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
-                  << std::setw(10) << betas_[i] << " " << std::setw(10) << swapRates_[i] << " " << std::setw(10)
-                  << nSwapsGlobal_[i] / (double) nSwapAttemptsGlobal_[i] << " \n";
-            }
-
-            // Quick and dirty way to get the data to the visualisation server
-            comms::sendString(publisher, s.str());
-
-            if (duration_cast<milliseconds>(steady_clock::now() - lastPrintTime).count() > 500)
-            {
-              lastPrintTime = steady_clock::now();
-
-              LOG(INFO)<< s.str() << "\n";
-
-              if (chains_.numStacks() > 1 && chains_.numChains() > 1)
-              {
-                if (cc.hasConverged())
-                {
-                  LOG(INFO)<< "converged: true ("<< cc.rHat().transpose() << " < 1.1)";
-                }
-                else
-                {
-                  LOG(INFO) << "converged: false ("<< cc.rHat().transpose() << " > 1.1)";
-                }
-              }
-            }
-          }
+          // Update the logger
+          logger.update(id, chains_.lastState(id));
         }
 
         // Time limit reached. We need to now retrieve all outstanding job results.
-        if (!interrupted_)
+        while (numOutstandingJobs_--)
         {
-          while (numOutstandingJobs_--)
-          {
-            auto result = policy.retrieve();
-            uint id = result.first;
-            double energy = result.second;
-            State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
-            bool propAccepted = chains_.append(id, propState);
-            lengths_[id] += 1;
-            updateAccepts(id, propAccepted);
-          }
-        }
-        else
-        {
-          LOG(INFO)<< "Inference interrupted by user: Exiting.";
+          auto result = policy.retrieve();
+          uint id = result.first;
+          double energy = result.second;
+          State propState { propStates_.row(id), energy, chains_.sigma(id), chains_.beta(id), false, SwapType::NoAttempt };
+          bool propAccepted = chains_.append(id, propState);
+          lengths_[id] += 1;
+          updateAccepts(id, propAccepted);
         }
 
         // Manually flush any chain states that are in memory to disk
         for (uint i = 0; i < chains_.numTotalChains(); i++)
         {
-          chains_.flushCache(i);
+          chains_.flushToDisk(i);
         }
 
-        if (cc.hasConverged())
-        {
-          LOG(INFO)<< "MCMC has converged";
-        }
-        else
-        {
-          LOG(INFO) << "WARNING: MCMC has not converged";
-        }
-
-        LOG(INFO)<<"Length of chain 0: " << lengths_[0];
-    }
-
-    //! Get the MCMC chain array.
-    //!
-    //! \return A copy of the chain array.
-    //!
-    ChainArray chains()
-    {
-      return chains_;
+        LOG(INFO) << "Length of chain 0: " << lengths_[0];
     }
 
     //! Get the MCMC chain array.
@@ -309,6 +209,11 @@ namespace stateline
     const ChainArray &chains() const
     {
       return chains_;
+    }
+
+    const MCMCSettings &settings() const
+    {
+      return s_;
     }
 
   private:
@@ -335,7 +240,7 @@ namespace stateline
         uint id = result.first;
         double energy = result.second;
         State s
-        { initialStates[id], energy, chains_.beta(id), true, SwapType::NoAttempt};
+        { initialStates[id], sigmas_[i], energy, chains_.beta(id), true, SwapType::NoAttempt};
         chains_.initialise(id, s);
       }
     }
@@ -460,20 +365,6 @@ namespace stateline
       double delta = ((int)acc - (int)(lastAcc&&isFull))/(double)newSize;
       double scale = oldSize/(double)newSize;
       acceptRates_[id] = std::max(oldRate*scale + delta, 0.0);
-      nAcceptsGlobal_[id] += acc;
-      if (acceptRates_[id] > 1.0)
-      {
-        std::cout << "oldSize: " << oldSize << "\n"
-        << "isFull:" << isFull << "\n"
-        << "newSize:" << newSize << "\n"
-        << "lastAcc:" << lastAcc << "\n"
-        << "delta:" << delta << "\n"
-        << "scale:" << scale << "\n"
-        << "oldRate:" << oldRate << "\n"
-        << "rate:" << acceptRates_[id] << "\n"
-        << std::endl;
-        exit(EXIT_FAILURE);
-      }
     }
 
     void updateSwaps(uint id, bool sw)
@@ -491,12 +382,10 @@ namespace stateline
       double delta = ((int)sw - (int)(lastSw&&isFull))/(double)newSize;
       double scale = oldSize/(double)newSize;
       swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
-      nSwapsGlobal_[id] += sw;// for global rate
-      nSwapAttemptsGlobal_[id] += 1;
     }
 
-    // The MCMC chain database
-    db::Database db_;
+    // Recover?
+    bool recover_;
 
     // The MCMC chain wrapper
     ChainArray chains_;
@@ -515,31 +404,20 @@ namespace stateline
     std::vector<double> nextChainBeta_;
 
     // Keep track of the swaps and accepts for adaption
-    std::vector<unsigned long long> nAcceptsGlobal_;
-    std::vector<unsigned long long> nSwapsGlobal_;
-    std::vector<unsigned long long> nSwapAttemptsGlobal_;
-
     std::vector<boost::circular_buffer<bool>> acceptBuffers_;
     std::vector<boost::circular_buffer<bool>> swapBuffers_;
 
-    // For logging purposes
+    // For adaption
     std::vector<double> sigmas_;
     std::vector<double> betas_;
     std::vector<double> acceptRates_;
     std::vector<double> swapRates_;
-    std::vector<double> lowestEnergies_;
 
     // The MCMC settings
     MCMCSettings s_;
 
-    // Recovering?
-    bool recover_;
-
     // How many jobs haven't been retrieved?
     uint numOutstandingJobs_;
-
-    // Whether an interrupt signal has been sent to the sampler.
-    volatile bool& interrupted_;
 
     zmq::context_t context_;
   };

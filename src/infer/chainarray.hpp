@@ -12,7 +12,7 @@
 #pragma once
 
 #include "db/db.hpp"
-#include "mcmctypes.hpp"
+#include "infer/state.hpp"
 
 namespace stateline
 {
@@ -45,20 +45,21 @@ namespace stateline
         //! \param tempFactor The ratio between the temperatures of consecutive chains in a stack.
         //! \param initialSigma The initial step sizes of the chains.
         //! \param sigmaFactor The ratio between the temperatures of consectuive chains in a stack.
-        //! \param db The database to store chain data.
+        //! \param d The database settings used to store chain data.
         //! \param cacheLength The size of the memory cache used to store the chains.
-        //! \param recover If set to true, chain data will be recovered from the database
-        //                 otherwise, the MCMC will start from the beginning.
         //!
         ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma,
-            double sigmaFactor, db::Database& db, uint cacheLength, bool recover);
+            double sigmaFactor, const DBSettings &d, uint cacheLength);
+
+        // Move constructor only
+        ChainArray(ChainArray&& other);
 
         //! Get the length of a chain.
         //!
         //! \param id The id of the chain (see \ref id).
         //! \return The number of elements in the chain.
         //!
-        uint length(uint id);
+        uint length(uint id) const;
 
         //! Append a state to a chain.
         //! 
@@ -80,7 +81,7 @@ namespace stateline
         //! \param id The id of the chain (see \ref id).
         //! \return The most recent state in the chain.
         //!
-        State lastState(uint id);
+        State lastState(uint id) const;
 
         //! Return a particular state.
         //!
@@ -88,14 +89,14 @@ namespace stateline
         //! \param index The index of the state (0 for first state).
         //! \return The most recent state in the chain.
         //!
-        State state(uint id, uint index);
+        State state(uint id, uint index) const;
 
         //! Return all states from a chain.
         //!
         //! \param id The id of the chain (see \ref id).
         //! \return The most recent state in the chain.
         //!
-        std::vector<State> states(uint id);
+        std::vector<State> states(uint id) const;
 
         //! Attempt to swap the states in two different chains.
         //!
@@ -151,24 +152,24 @@ namespace stateline
         //!
         uint numTotalChains() const;
 
-        //! Forcibly flush the cache for a particular chain.
+        //! Forcibly flush the cache for a particular chain to disk.
         //!
         //! \param id The id of the chain to flush.
         //!
-        void flushCache(uint id);
+        void flushToDisk(uint id);
 
-        //! Recover a particular chain from cached.
+      private:
+        uint lengthOnDisk(uint id) const;
+        void setLengthOnDisk(uint id, uint length);
+
+        State stateFromDisk(uint id, uint index) const;
+        State stateFromCache(uint id, uint index) const;
+
+        //! Recover a particular chain from disk.
         //!
         //! \param id The id of the chain to recover.
         //!
-        void recoverFromCache(uint id);
-
-      private:
-        uint lengthOnDisk(uint id);
-        void setLengthOnDisk(uint id, uint length);
-
-        State stateFromDisk(uint id, uint index);
-        State stateFromCache(uint id, uint index);
+        void recoverFromDisk(uint id);
 
         uint nstacks_;
         uint nchains_;
@@ -176,60 +177,8 @@ namespace stateline
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
-        db::Database& db_;
+        mutable db::Database db_; // Mutable so that chain queries can be const
     };
-
-    namespace internal
-    {
-      //! Represents the different types of entries that the database can contain.
-      //!
-      enum class DbEntryType
-      {
-        //! Indicates that the database entry is the state vector of a chain.
-        STATE,
-
-        //! Indicates that the database entry is the length of a chain.
-        LENGTH,
-        
-        //! Indicates that the database entry is the step size of a chain.
-        SIGMA,
-        
-        //! Indicates that the database entry is the inverse temperature of a chain.
-        BETA
-      };
-
-      //! Get the key string representing a database entry of a particular chain.
-      //!
-      //! \param id The id of the chain.
-      //! \param index A value representing the index of the value. This is useful
-      //!              for time series or array data (such as the chain states).
-      //! \param t The type of entry.
-      //! \return A string representing the database key that is to store this entry.
-      //!
-      std::string toDbString(uint id, uint index, const DbEntryType& t);
-
-      //! Get the key string representing a database entry of a particular chain. 
-      //!
-      //! \param id The id of the chain.
-      //! \param t The type of entry.
-      //! \return A string representing the database key that is to store this entry.
-      //!
-      std::string toDbString(uint id, const DbEntryType& t);
-
-      //! Convert a database string value into a floating point value.
-      //!
-      //! \param data The string data from database.
-      //! \return A floating point value that the string data represents.
-      //!
-      double doubleFromDb(const std::string& data);
-
-      //! Convert a database string value into an unsigned integer value. 
-      //!
-      //! \param data The string data from database.
-      //! \return An unsigned integer value that the string data represents.
-      //!
-      uint uintFromDb(const std::string& data);
-    } // namespace internal
 
   } // namespace mcmc
 } // namespace obsidian

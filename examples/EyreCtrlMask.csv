@@ -1,9 +1,0 @@
-# Mask file: Ones or zeros in the shape of the control points for a particular
-# layer. Ones indicate that control point is allowed to vary, while a zero
-# indicates it is fixed as a constant and ignored by the inference. This file
-# is how the number of control points in each layer are specified. Add more
-# numbers to this mask to increase the number of control points. Control points
-# are always distributed evenly over a grid the size of the world dimensions
-# input in the obsidian file.
-# The top left of this file is the northern-most, western-most control point.
-0

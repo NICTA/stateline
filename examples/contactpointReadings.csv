@@ -1,5 +1,0 @@
-# ContactPointReadings. This file contains the contact point depths for  for every location
-# and layer intersection outlined in the ContactPointSensors file. 
-# The measurements are in metres with positive numbers increasing in depth. All
-# the intersections for a single location are on the same line.
-

@@ -1,7 +1,7 @@
 //!
 //! A router that implements polling on multiple zeromq sockets,
 //! and a signal-based callback system depending on the socket and the subject
-//! of the message. Implementing GDFP-SW (GDF Server-apper Protocol)
+//! of the message. Implementing STATELINEP-SW (STATELINE Server-Wrapper Protocol)
 //!
 //! \file comms/router.hpp
 //! \author Lachlan McCalman
@@ -162,7 +162,7 @@ namespace stateline
         //! \param microsecondsWait The wait on each polling loop,
         //!                         with -1 indicating a blocking poll
         //!
-        bool poll(int microsecondsWait);
+        void poll(int microsecondsWait);
 
         //! Called when the socket receives a message.
         //!
@@ -170,7 +170,7 @@ namespace stateline
 
         // Member variables
         std::atomic_bool running_;
-        std::future<bool> threadReturned_;
+        std::future<void> threadReturned_;
         std::vector<std::unique_ptr<SocketHandler>> handlers_;
         std::vector<std::unique_ptr<zmq::socket_t>> sockets_;
         std::vector<zmq::pollitem_t> pollList_;

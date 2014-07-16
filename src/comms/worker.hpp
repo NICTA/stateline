@@ -12,14 +12,11 @@
 
 #pragma once
 
-// Standard Library
 #include <string>
 
-// Prerequisites
 #include <glog/logging.h>
 #include <zmq.hpp>
 
-// Project
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
 #include "comms/datatypes.hpp"
@@ -27,13 +24,13 @@
 #include "comms/router.hpp"
 #include "comms/clientheartbeat.hpp"
 
-//! Address that the minions connect their sockets to.
-const std::string WORKER_SOCKET_ADDR = "inproc://worker";
-
 namespace stateline
 {
   namespace comms
   {
+    //! Address that the minions connect their sockets to.
+    const std::string WORKER_SOCKET_ADDR = "inproc://worker";
+
     //! Worker object that takes jobs, forwards them to a minion
     //! then receives results from the minion and send them back
     //! to the delegator.
@@ -41,12 +38,15 @@ namespace stateline
     class Worker
     {
     public:
-      //! Build a new worker.
+      //! Build a new worker that can handle multiple types of jobs.
       //!
       //! \param jobIDs A list of job IDs that the worker can do.
       //! \param settings The configuration object.
       //!
       Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings);
+ 
+      // Workers can't be copied.
+      Worker(const Worker &other) = delete;
 
       //! Destructor. Safely stops all polling threads and cleans up.
       //!

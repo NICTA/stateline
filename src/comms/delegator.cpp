@@ -7,30 +7,28 @@
 //!
 
 #include "comms/delegator.hpp"
-#include "comms/datatypes.hpp"
-#include "serial/serial.hpp"
 
 #include <string>
 
-namespace ph = std::placeholders;
+#include "comms/datatypes.hpp"
+#include "comms/serial.hpp"
 
 namespace stateline
 {
   namespace comms
   {
-
-    Delegator::Delegator(const std::string& commonSpecData, const std::vector<uint>& jobId, const std::vector<std::string>& jobSpecData,
-                         const std::vector<std::string>& jobResultsData, const DelegatorSettings& settings)
+    Delegator::Delegator(const std::string& commonSpecData, 
+        const std::map<JobID, std::string>& jobSpecData,
+        const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
           context_(1),
           commonSpecData_(commonSpecData),
-          jobId_(jobId),
-          jobSpecData_(jobSpecData),
-          jobResultsData_(jobResultsData),
-          jobQueues_(jobId.size()),
-          requestQueues_(jobId.size()),
+          jobQueues_(jobSpecData.size()),
+          requestQueues_(jobSpecData.size()),
           heartbeat_(context_, settings.heartbeat)
     {
+      namespace ph = std::placeholders;
+
       std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(context_, ZMQ_ROUTER));
       std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context_, ZMQ_PAIR));
       std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(context_, ZMQ_ROUTER));
@@ -50,10 +48,15 @@ namespace stateline
       router_.add_socket(SocketID::NETWORK, network);
 
       // Map external job IDs to internal consecutive IDs
-      uint internalJobId = 0;
-      for (uint id : jobId)
+      JobID internalJobId = 0;
+      for (auto &jobSpec : jobSpecData)
       {
-        jobIdMap_[id] = internalJobId++;
+        // Map the JobID given in the spec to an internal ID
+        jobIdMap_[jobSpec.first] = internalJobId++;
+
+        // Copy the corresponding spec into our internal spec vector which uses
+        // contiguous ID values.
+        jobSpecData_.push_back(jobSpec.second);
       }
 
       VLOG(3) << "Attaching functionality to router";
@@ -96,26 +99,23 @@ namespace stateline
       // problemspec first...
       //most recently appended address
       LOG(INFO)<< "Initialising worker " << msgHelloFromWorker.address.back();
-      // what jobs will this worker do?
-      std::vector<uint> jobs;
-      unserialise(msgHelloFromWorker.data[0], jobs);
+
+      // Get the job IDs that this worker offers to do
+      std::vector<JobID> jobs;
+      detail::unserialise<std::uint32_t>(msgHelloFromWorker.data[0], jobs);
 
       std::vector<std::string> repData;
       repData.push_back(commonSpecData_);
 
-      for (auto i : jobs)
+      for (auto job : jobs)
       {
-        VLOG(1) << "Worker offered to solve job with ID " << i;
-        for (uint j = 0; j < jobId_.size(); j++)
+        VLOG(1) << "Worker offered to solve job with ID " << job;
+
+        if (jobIdMap_.count(job))
         {
-          if (jobId_[j] == i)
-          {
-            VLOG(1) << "\t and we have a spec for it! " << i;
-            repData.push_back(std::to_string(jobId_[j]));
-            repData.push_back(jobSpecData_[j]);
-            repData.push_back(jobResultsData_[j]);
-            break;
-          }
+          VLOG(1) << "\t and we have a spec for it! " << job;
+          repData.push_back(std::to_string(job));
+          repData.push_back(jobSpecData_[jobIdMap_[job]]);
         }
       }
 
@@ -142,8 +142,7 @@ namespace stateline
 
     void Delegator::sendJob(const Message& msgRequestFromMinion)
     {
-      uint id;
-      unserialise(msgRequestFromMinion.data[0], id);
+      uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
 
       // Ensure that we don't try to do jobs that the delegator does not have specs for
       if (!jobIdMap_.count(id))
@@ -162,19 +161,18 @@ namespace stateline
         }
         router_.send(SocketID::NETWORK, r);
         workerToJobMap_[worker].push_back(queue.front());
-        queue.erase(queue.begin());
-      } else
+        queue.pop_front();
+      }
+      else
       {
         // Add the minion to the request queue
         requestQueues_[jobIdMap_[id]].push_back(msgRequestFromMinion.address);
       }
-
     }
 
     void Delegator::newJob(const Message& msgJobFromRequester)
     {
-      uint id;
-      unserialise(msgJobFromRequester.data[0], id);
+      uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
 
       std::deque<std::vector<std::string>>& queue = requestQueues_[jobIdMap_[id]];
 
@@ -193,8 +191,9 @@ namespace stateline
         std::string worker = r.address.back();
         workerToJobMap_[worker].push_back(msgJobFromRequester);
         // Remove the minion from the request queue 
-        queue.erase(queue.begin());
-      } else
+        queue.pop_front();
+      }
+      else
       {
         jobQueues_[jobIdMap_[id]].push_back(msgJobFromRequester);
       }
@@ -226,8 +225,7 @@ namespace stateline
       //and push them back onto the (appropriate) job queue
       for (auto const& j : workerToJobMap_[worker])
       {
-        uint id;
-        unserialise(j.data[0], id);
+        uint id = detail::unserialise<std::uint32_t>(j.data[0]);
         VLOG(1) << "Requeueing " << j << "onto queue " << id;
         jobQueues_[jobIdMap_[id]].push_front(j);
       }
@@ -273,6 +271,14 @@ namespace stateline
       router_.send(SocketID::REQUESTER, r);
       // give the minion a new job
       sendJob(Message( { minion, worker }, JOBSWAP, { id }));
+    }
+
+    std::vector<JobID> Delegator::jobs() const
+    {
+      std::vector<JobID> jobs;
+      for (auto job : jobIdMap_)
+        jobs.push_back(job.first);
+      return jobs;
     }
 
   } // namespace obsidian

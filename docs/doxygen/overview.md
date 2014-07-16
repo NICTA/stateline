@@ -1,8 +1,6 @@
 Overview                                {#mainpage}
 ========
-Obsidian is a system for computing probabilistic geophysical inversions from a
-variety of sensor types. It is written primarily in C++ and runs on GNU/Linux
-and Unix operating systems.
+Stateline is a framework for distributed Markov Chain Monte Carlo sampling. The core code is written in C++, but it offers higher-level wrappers in Python.  It  Unix operating systems.
 
 The \ref installation "installation guide" has instructions on how to install
 Obsidian and its prerequisites. The \ref quickstart "quick start page" offers a

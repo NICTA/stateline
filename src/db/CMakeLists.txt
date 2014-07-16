@@ -6,9 +6,6 @@
 # Date: 2014 
 
 ADD_LIBRARY(db db.cpp)
+TARGET_LINK_LIBRARIES(db ${GLOG_LIBRARY} ${LEVELDB_LIBRARY})
 
-ADD_EXECUTABLE ( test-db testdb.cpp )
-
-TARGET_LINK_LIBRARIES ( test-db db ${obsidianBaseLibraries})
-
-REGISTER_UNIT_TESTS( test-db )
+ADD_TEST(test-db tests/db.cpp db ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})

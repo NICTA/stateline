@@ -9,6 +9,7 @@
 //!
 
 #pragma once
+
 #include <csignal>
 
 namespace obsidian

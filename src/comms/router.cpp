@@ -20,12 +20,18 @@ namespace stateline
   {
     std::ostream& operator<<(std::ostream& os, const SocketID& id)
     {
-      static std::map<SocketID, std::string> m( { { SocketID::REQUESTER, "REQUESTER" }, { SocketID::MINION, "MINION" }, { SocketID::WORKER,
-                                                                                                                          "WORKER" },
-                                                  { SocketID::NETWORK, "NETWORK" }, { SocketID::HEARTBEAT, "HEARTBEAT" }, { SocketID::ALPHA,
-                                                                                                                            "ALPHA" },
-                                                  { SocketID::BETA, "BETA" } });
-      os << m[id];
+      switch(id)
+      {
+        case SocketID::REQUESTER: os << "REQUESTER"; break;
+        case SocketID::MINION: os << "MINION"; break;
+        case SocketID::WORKER: os << "WORKER"; break;
+        case SocketID::NETWORK: os << "NETWORK"; break;
+        case SocketID::HEARTBEAT: os << "HEARTBEAT"; break;
+        case SocketID::ALPHA: os << "ALPHA"; break;
+        case SocketID::BETA: os << "BETA"; break;
+        default: os << "UNKNOWN";
+      }
+
       return os;
     }
 
@@ -97,19 +103,11 @@ namespace stateline
     Message SocketRouter::receive(const SocketID& id)
     {
       uint index = indexMap_.left.at(id);
-      Message m(HELLO);
-      try
-      {
-        m = stateline::comms::receive(*(sockets_[index]));
-      } catch (zmq::error_t const& e)
-      {
-        LOG(ERROR)<< "COULD NOT RECEIVE A MESSAGE\n";
-      }
-      return m;
+      return comms::receive(*(sockets_[index]));
     }
 
     // this is an int because -1 indicates no timeout
-    bool SocketRouter::poll(int msWait)
+    void SocketRouter::poll(int msWait)
     {
       while (running_)
       {
@@ -127,7 +125,6 @@ namespace stateline
           handlers_[i]->onPoll();
         }
       }
-      return true;
     }
 
     void SocketRouter::receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx)
@@ -142,32 +139,33 @@ namespace stateline
         VLOG(3) << "Received " << msg << " from " << idx;
       else
         VLOG(4) << "Received " << msg << " from " << idx;
+
       switch (msg.subject)
       {
-      case stateline::comms::HELLO:
-        h.onRcvHELLO(msg);
-        break;
-      case stateline::comms::HEARTBEAT:
-        h.onRcvHEARTBEAT(msg);
-        break;
-      case stateline::comms::PROBLEMSPEC:
-        h.onRcvPROBLEMSPEC(msg);
-        break;
-      case stateline::comms::JOBREQUEST:
-        h.onRcvJOBREQUEST(msg);
-        break;
-      case stateline::comms::JOB:
-        h.onRcvJOB(msg);
-        break;
-      case stateline::comms::JOBSWAP:
-        h.onRcvJOBSWAP(msg);
-        break;
-      case stateline::comms::ALLDONE:
-        h.onRcvALLDONE(msg);
-        break;
-      case stateline::comms::GOODBYE:
-        h.onRcvGOODBYE(msg);
-        break;
+        case stateline::comms::HELLO:
+          h.onRcvHELLO(msg);
+          break;
+        case stateline::comms::HEARTBEAT:
+          h.onRcvHEARTBEAT(msg);
+          break;
+        case stateline::comms::PROBLEMSPEC:
+          h.onRcvPROBLEMSPEC(msg);
+          break;
+        case stateline::comms::JOBREQUEST:
+          h.onRcvJOBREQUEST(msg);
+          break;
+        case stateline::comms::JOB:
+          h.onRcvJOB(msg);
+          break;
+        case stateline::comms::JOBSWAP:
+          h.onRcvJOBSWAP(msg);
+          break;
+        case stateline::comms::ALLDONE:
+          h.onRcvALLDONE(msg);
+          break;
+        case stateline::comms::GOODBYE:
+          h.onRcvGOODBYE(msg);
+          break;
       }
     }
 
