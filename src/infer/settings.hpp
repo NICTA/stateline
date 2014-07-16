@@ -22,9 +22,6 @@ namespace stateline
     //! The number of stacks used in the simulation.
     uint stacks;
 
-    //! Maximum time the simulation should run for.
-    uint wallTime;
-
     //! The number of samples between swap attempts.
     uint swapInterval;
 
@@ -87,12 +84,11 @@ namespace stateline
       return settings;
     }
 
-    static MCMCSettings NoAdaption(uint chains, uint stacks, uint wallTime)
+    static MCMCSettings NoAdaption(uint chains, uint stacks)
     {
       MCMCSettings settings = MCMCSettings::Empty();
       settings.chains = chains;
       settings.stacks = stacks;
-      settings.wallTime = wallTime;
       settings.swapInterval = 25;
       settings.adaptionLength = 1;
       settings.cacheLength = 100;
@@ -108,6 +104,30 @@ namespace stateline
       settings.betaMaxFactor = 1.0;
       settings.betaAdaptInterval = 1000000000;
       settings.initialTempFactor = 1.2;
+      return settings;
+    }
+
+    static MCMCSettings Default(uint chains, uint stacks)
+    {
+      MCMCSettings settings = MCMCSettings::Empty();
+      settings.chains = chains;
+      settings.stacks = stacks;
+      settings.swapInterval = 25;
+      settings.adaptionLength = 2900;
+      settings.cacheLength = 100;
+      settings.initialSigmaFactor = 1.1;
+      settings.proposalInitialSigma = 1.0;
+      settings.proposalMinFactor = 0.80;
+      settings.proposalMaxFactor = 1.25;
+      settings.proposalOptimalAccept = 0.18;
+      settings.proposalAdaptRate = 0.20;
+      settings.proposalAdaptInterval = 100;
+      settings.betaOptimalSwapRate = 0.24;
+      settings.betaAdaptRate = 0.04;
+      settings.betaMinFactor = 1.0;
+      settings.betaMaxFactor = 1.0;
+      settings.betaAdaptInterval = 250;
+      settings.initialTempFactor = 1.5;
       return settings;
     }
   };
