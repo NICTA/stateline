@@ -50,18 +50,40 @@ namespace stateline
   using CombineFuncType = 
     std::function<double(const std::vector<comms::ResultData>)>;
 
+  std::vector<comms::JobData> duplicateSplitFunc(const std::vector<comms::JobID> jobs,
+      const Eigen::VectorXd &x)
+  {
+    std::vector<comms::JobData> result;
+    for (auto job : jobs)
+    {
+      result.push_back({ job, "", serialise(x) });
+    }
+    return result;
+  }
+
+  double sumCombineFunc(const std::vector<comms::ResultData> &results)
+  {
+    double logl = 0;
+    for (const comms::ResultData &result : results)
+    {
+      logl += *((double *)result.data.data());
+    }
+    return logl;
+  }
+
   template <class SplitFunc = SplitFuncType, class CombineFunc = CombineFuncType>
   class MultiTaskAsyncPolicy
   {
     public:
       MultiTaskAsyncPolicy(comms::Delegator &delegator)
-        : req_(delegator)
+        : MultiTaskAsyncPolicy(delegator, duplicateSplitFunc, sumCombineFunc)
       {
       }
 
       MultiTaskAsyncPolicy(comms::Delegator &delegator,
           const SplitFunc &splitFunc, const CombineFunc &combineFunc)
-        : req_(delegator), splitFunc_(splitFunc), combineFunc_(combineFunc)
+        : req_(delegator), splitFunc_(splitFunc), combineFunc_(combineFunc),
+          jobs_(delegator.jobs())
       {
       }
 
@@ -80,31 +102,6 @@ namespace stateline
       comms::Requester req_;
       SplitFunc splitFunc_;
       CombineFunc combineFunc_;
+      std::vector<comms::JobID> jobs_;
   };
-
-  template <class AsyncPolicy, class Func>
-  auto runDelegatorWithPolicy(const Func &func, const DelegatorSettings &settings) ->
-    decltype(func(std::declval<AsyncPolicy &>()))
-  {
-    // Start a delegator with no global specification and single job type
-    comms::Delegator delegator("", {{ 0, "" }}, settings);
-    delegator.start();
-
-    // Initialise the policy and run the user-specified function
-    AsyncPolicy policy(delegator);
-    return func(policy);
-  }
-
-  template <class AsyncPolicy, class Func>
-  auto runDelegatorWithPolicy(const Func &func, const std::string &spec, const DelegatorSettings &settings) ->
-    decltype(func(std::declval<AsyncPolicy &>(), spec))
-  {
-    // Start a delegator with no global specification and single job type
-    comms::Delegator delegator(spec, {{ 0, "" }}, settings);
-    delegator.start();
-
-    // Initialise the policy and run the user-specified function
-    AsyncPolicy policy(delegator);
-    return func(policy, spec);
-  }
 }
