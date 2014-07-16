@@ -74,8 +74,7 @@ int main(int ac, char *av[])
   sl::mcmc::Sampler sampler(
       sl::MCMCSettings::Default(nchains, nstacks),
       sl::DBSettings::Default(), ndims);
-  //sl::mcmc::SimpleLogger logger(sampler.settings(), 3);
-  sl::mcmc::NoLogger logger;
+  sl::mcmc::SimpleLogger logger(sampler.settings(), 3);
   sampler.run(policy, initialStates, proposal, numSeconds, logger);
 
   // Output the coldest chains to CSV
