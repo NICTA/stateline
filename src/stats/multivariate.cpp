@@ -17,6 +17,8 @@ namespace stateline
     Multivariate::Multivariate(std::size_t length)
       : length_(length)
     {
+      // Check that the distribution is indeed multivariate
+      assert(length > 1);
     }
 
     std::size_t Multivariate::length() const
