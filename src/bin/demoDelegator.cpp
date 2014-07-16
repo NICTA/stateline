@@ -43,14 +43,14 @@ int main(int ac, char *av[])
 
   const std::size_t ncomponents = 2;
   const std::size_t ndims = 3;
-  const std::size_t nstacks = 1;
   const std::size_t nchains = 5;
+  const std::size_t nstacks = 2;
   const std::size_t numSeconds = 60;
 
   // Initialise the parameters of the distribution we are sampling from
   Eigen::MatrixXd means(ncomponents, ndims);
-  means << -3, -3, -3,
-           3, 3, 3;
+  means << -5, -5, -5,
+            5,  5,  5;
 
   // Generate initial states
   std::vector<Eigen::VectorXd> initialStates;
@@ -72,9 +72,11 @@ int main(int ac, char *av[])
 
   // Create a sampler and run it
   sl::mcmc::Sampler sampler(
-      sl::MCMCSettings::Default(nstacks, nchains),
+      sl::MCMCSettings::Default(nchains, nstacks),
       sl::DBSettings::Default(), ndims);
-  sampler.run(policy, initialStates, proposal, numSeconds);
+  //sl::mcmc::SimpleLogger logger(sampler.settings(), 3);
+  sl::mcmc::NoLogger logger;
+  sampler.run(policy, initialStates, proposal, numSeconds, logger);
 
   // Output the coldest chains to CSV
   std::ofstream out("chain.csv");

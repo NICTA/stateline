@@ -1,7 +1,7 @@
 //!
 //! Contains the implementation of Monte Carlo Markov Chain simulations.
 //!
-//! \file infer/mcmc.cpp
+//! \file infer/mcmc.hpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
@@ -22,6 +22,7 @@
 
 #include "db/db.hpp"
 #include "infer/settings.hpp"
+#include "infer/logging.hpp"
 #include "infer/chainarray.hpp"
 #include "infer/diagnostics.hpp"
 #include "comms/transport.hpp"
@@ -58,7 +59,6 @@ namespace stateline
             numOutstandingJobs_(0),
             context_(1)
       {
-        // Initialise for logging purposes
         for (uint i = 0; i < s.chains * s.stacks; i++)
         {
           lengths_[i] = chains_.length(i);
@@ -81,8 +81,8 @@ namespace stateline
       //! \param propFn The proposal function.
       //! \param numSeconds The number of seconds to run the MCMC for.
       //!
-      template<class AsyncPolicy, class PropFn>
-      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, std::chrono::seconds::rep numSeconds)
+      template<class AsyncPolicy, class PropFn, class Logger = NoLogger>
+      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, std::chrono::seconds::rep numSeconds, Logger &logger)
       {
         using namespace std::chrono;
 
@@ -101,10 +101,6 @@ namespace stateline
           uint c = chains_.numTotalChains() - i - 1;
           propose(policy, c, propFn);
         }
-
-        // Initialise the convergence criteria
-        uint ndims = initialStates[0].size();
-        EpsrConvergenceCriteria cc(chains_.numStacks(), ndims);
 
         // Listen for replies. As soon as a new state comes back,
         // add it to the corresponding chain, and submit a new proposed state
@@ -131,16 +127,10 @@ namespace stateline
           bool isColdestChainInStack = id % chains_.numChains() == 0;
 
           // Handle the new proposal and add a new state to the chain
-          State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
+          State propState { propStates_.row(id), energy, chains_.sigma(id), chains_.beta(id), false, SwapType::NoAttempt };
           bool propAccepted = chains_.append(id, propState);
           lengths_[id] += 1;
           updateAccepts(id, propAccepted);
-
-          // Update the convergence test if this is the coldest chain in a stack
-          if (isColdestChainInStack && chains_.numChains() > 1 && chains_.numStacks() > 1)
-          {
-            cc.update(id / chains_.numChains(), chains_.lastState(id).sample);
-          }
 
           // Check if this chain was locked. If it was locked, it means that
           // the chain above (hotter) locked it so that it can swap with it
@@ -186,6 +176,9 @@ namespace stateline
           {
             adaptBeta(id);
           }
+
+          // Update the logger
+          logger.update(id, chains_.lastState(id));
         }
 
         // Time limit reached. We need to now retrieve all outstanding job results.
@@ -194,7 +187,7 @@ namespace stateline
           auto result = policy.retrieve();
           uint id = result.first;
           double energy = result.second;
-          State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
+          State propState { propStates_.row(id), energy, chains_.sigma(id), chains_.beta(id), false, SwapType::NoAttempt };
           bool propAccepted = chains_.append(id, propState);
           lengths_[id] += 1;
           updateAccepts(id, propAccepted);
@@ -206,16 +199,7 @@ namespace stateline
           chains_.flushToDisk(i);
         }
 
-        if (cc.hasConverged())
-        {
-          LOG(INFO)<< "MCMC has converged";
-        }
-        else
-        {
-          LOG(INFO) << "WARNING: MCMC has not converged";
-        }
-
-        LOG(INFO)<<"Length of chain 0: " << lengths_[0];
+        LOG(INFO) << "Length of chain 0: " << lengths_[0];
     }
 
     //! Get the MCMC chain array.
@@ -225,6 +209,11 @@ namespace stateline
     const ChainArray &chains() const
     {
       return chains_;
+    }
+
+    const MCMCSettings &settings() const
+    {
+      return s_;
     }
 
   private:
@@ -251,7 +240,7 @@ namespace stateline
         uint id = result.first;
         double energy = result.second;
         State s
-        { initialStates[id], energy, chains_.beta(id), true, SwapType::NoAttempt};
+        { initialStates[id], sigmas_[i], energy, chains_.beta(id), true, SwapType::NoAttempt};
         chains_.initialise(id, s);
       }
     }
