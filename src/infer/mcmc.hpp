@@ -40,14 +40,14 @@ namespace stateline
       //!
       //! \param s Settings to tune various parameters of the MCMC.
       //! \param d Settings for configuring the database for storing samples.
-      //! \param stateDim The number of dimensions in each sample.
+      //! \param ndims The number of dimensions in each sample.
       //! \param interrupted A flag used to monitor whether the sampler has been interrupted.
       //!
-      Sampler(const MCMCSettings& s, const DBSettings& d, uint stateDim, volatile bool& interrupted)
+      Sampler(const MCMCSettings& s, const DBSettings& d, uint ndims)
           : recover_(d.recover),
             chains_(s.stacks, s.chains, s.initialTempFactor, s.proposalInitialSigma, s.initialSigmaFactor, d, s.cacheLength),
             lengths_(s.stacks * s.chains, 0),
-            propStates_(s.stacks * s.chains, stateDim),
+            propStates_(s.stacks * s.chains, ndims),
             locked_(s.stacks * s.chains, false),
             nextChainBeta_(s.stacks * s.chains),
             sigmas_(s.stacks * s.chains),
@@ -56,7 +56,6 @@ namespace stateline
             swapRates_(s.stacks * s.chains),
             s_(s),
             numOutstandingJobs_(0),
-            interrupted_(interrupted),
             context_(1)
       {
         // Initialise for logging purposes
@@ -83,7 +82,7 @@ namespace stateline
       //! \param numSeconds The number of seconds to run the MCMC for.
       //!
       template<class AsyncPolicy, class PropFn>
-      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, uint numSeconds)
+      void run(AsyncPolicy &policy, const std::vector<Eigen::VectorXd>& initialStates, PropFn &propFn, std::chrono::seconds::rep numSeconds)
       {
         using namespace std::chrono;
 
@@ -104,12 +103,12 @@ namespace stateline
         }
 
         // Initialise the convergence criteria
-        uint stateDim = initialStates[0].size();
-        EpsrConvergenceCriteria cc(chains_.numStacks(), stateDim);
+        uint ndims = initialStates[0].size();
+        EpsrConvergenceCriteria cc(chains_.numStacks(), ndims);
 
         // Listen for replies. As soon as a new state comes back,
         // add it to the corresponding chain, and submit a new proposed state
-        while (duration_cast<seconds>(steady_clock::now() - startTime).count() < numSeconds && !interrupted_)
+        while (duration_cast<seconds>(steady_clock::now() - startTime).count() < numSeconds)
         {
           std::pair<uint, double> result;
 
@@ -122,10 +121,6 @@ namespace stateline
           {
             VLOG(3) << "Comms error -- probably shutting down";
           }
-
-          // If we weree interrupted this state will be garbage
-          if (interrupted_)
-            break;
 
           numOutstandingJobs_--;
           uint id = result.first;
@@ -176,10 +171,6 @@ namespace stateline
             }
           }
 
-          // Check again after a new interaction with comms
-          if (interrupted_)
-            break;
-
           // Check if we need to adapt the step size for this chain
           if (lengths_[id] % s_.proposalAdaptInterval == 0)
           {
@@ -198,22 +189,15 @@ namespace stateline
         }
 
         // Time limit reached. We need to now retrieve all outstanding job results.
-        if (!interrupted_)
+        while (numOutstandingJobs_--)
         {
-          while (numOutstandingJobs_--)
-          {
-            auto result = policy.retrieve();
-            uint id = result.first;
-            double energy = result.second;
-            State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
-            bool propAccepted = chains_.append(id, propState);
-            lengths_[id] += 1;
-            updateAccepts(id, propAccepted);
-          }
-        }
-        else
-        {
-          LOG(INFO)<< "Inference interrupted by user: Exiting.";
+          auto result = policy.retrieve();
+          uint id = result.first;
+          double energy = result.second;
+          State propState { propStates_.row(id), energy, chains_.beta(id), false, SwapType::NoAttempt };
+          bool propAccepted = chains_.append(id, propState);
+          lengths_[id] += 1;
+          updateAccepts(id, propAccepted);
         }
 
         // Manually flush any chain states that are in memory to disk
@@ -445,9 +429,6 @@ namespace stateline
 
     // How many jobs haven't been retrieved?
     uint numOutstandingJobs_;
-
-    // Whether an interrupt signal has been sent to the sampler.
-    volatile bool& interrupted_;
 
     zmq::context_t context_;
   };
