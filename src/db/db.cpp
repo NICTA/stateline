@@ -54,6 +54,16 @@ namespace stateline
       writeOptions_.sync = false;
     }
 
+    Database::Database(Database&& other)
+      : settings_(other.settings_), cacheNumBytes_(other.cacheNumBytes_),
+        db_(other.db_), options_(other.options_),
+        writeOptions_(other.writeOptions_),
+        readOptions_(other.readOptions_)
+    {
+      // Set the other's DB pointer to null to steal ownership
+      other.db_ = NULL;
+    }
+
     DBSettings Database::settings() const
     {
       return settings_;
@@ -115,8 +125,11 @@ namespace stateline
 
     Database::~Database()
     {
-      delete db_;
-      delete options_.block_cache;
+      if (db_ != NULL)
+      {
+        delete db_;
+        delete options_.block_cache;
+      }
     }
 
   } // namespace db
