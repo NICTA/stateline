@@ -95,7 +95,8 @@ SET(Boost_USE_STATIC_RUNTIME ON)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
-                                       serialization)
+                                       serialization
+                                       python)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -201,3 +202,8 @@ SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(statelineclient src/app/worker.hpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
+
+##############################################################################
+# Add python target
+##############################################################################
+ADD_SUBDIRECTORY(python)
