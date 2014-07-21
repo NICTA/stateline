@@ -66,6 +66,8 @@ namespace stateline
       {
       }
 
+      ResultData(const ResultData &job) = default;
+
       ResultData(ResultData&& other)
         : type(other.type), data(std::move(other.data))
       {

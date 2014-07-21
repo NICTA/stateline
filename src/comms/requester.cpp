@@ -24,12 +24,6 @@ namespace stateline
     //!
     void sendJob(zmq::socket_t& socket, const std::vector<JobID>& ids, const JobData& job)
     {
-      // Delegate call to the move version.
-      return sendJob(socket, ids, job);
-    }
-
-    void sendJob(zmq::socket_t& socket, const std::vector<JobID>& ids, JobData&& job)
-    {
       std::vector<std::string> idStrings;
       for (auto i : ids)
       {
@@ -37,8 +31,8 @@ namespace stateline
       }
 
       Message m(idStrings, stateline::comms::JOB,
-        { detail::serialise<std::uint32_t>(job.type), std::move(job.globalData), std::move(job.jobData) });
-      send(socket, std::move(m));
+        { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
+      send(socket, m);
     }
 
     //! Read a job result from a socket.
@@ -71,11 +65,6 @@ namespace stateline
       batchSubmit(id, { j });
     }
 
-    void Requester::submit(uint id, JobData&& j)
-    {
-      batchSubmit(id, { std::move(j) });
-    }
-
     std::pair<uint, ResultData> Requester::retrieve()
     {
       auto r = batchRetrieve();
@@ -83,12 +72,6 @@ namespace stateline
     }
 
     void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
-    {
-      // Delegate call to the move version.
-      return batchSubmit(id, jobs);
-    }
-
-    void Requester::batchSubmit(uint id, std::vector<JobData>&& jobs)
     {
       uint nJobs = jobs.size();
       batches_[id] = std::vector<ResultData>(nJobs);
