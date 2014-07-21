@@ -4,7 +4,7 @@
 #include "worker.hpp"
 #include "minion.hpp"
 
-BOOST_PYTHON_MODULE(stateline)
+BOOST_PYTHON_MODULE(_stateline)
 {
   exportDelegator();
   exportRequester();
