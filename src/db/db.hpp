@@ -30,6 +30,9 @@ namespace stateline
       //!
       Database(const DBSettings& s);
 
+      // Move constructor only
+      Database(Database&& other);
+
       //! Clean up and free resources used by the database connection.
       //!
       ~Database();

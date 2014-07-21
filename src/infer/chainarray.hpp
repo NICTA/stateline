@@ -51,15 +51,15 @@ namespace stateline
         ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma,
             double sigmaFactor, const DBSettings &d, uint cacheLength);
 
-        // Cannot be copied due to database
-        ChainArray(const ChainArray &other) = delete;
+        // Move constructor only
+        ChainArray(ChainArray&& other);
 
         //! Get the length of a chain.
         //!
         //! \param id The id of the chain (see \ref id).
         //! \return The number of elements in the chain.
         //!
-        uint length(uint id);
+        uint length(uint id) const;
 
         //! Append a state to a chain.
         //! 
@@ -81,7 +81,7 @@ namespace stateline
         //! \param id The id of the chain (see \ref id).
         //! \return The most recent state in the chain.
         //!
-        State lastState(uint id);
+        State lastState(uint id) const;
 
         //! Return a particular state.
         //!
@@ -89,14 +89,14 @@ namespace stateline
         //! \param index The index of the state (0 for first state).
         //! \return The most recent state in the chain.
         //!
-        State state(uint id, uint index);
+        State state(uint id, uint index) const;
 
         //! Return all states from a chain.
         //!
         //! \param id The id of the chain (see \ref id).
         //! \return The most recent state in the chain.
         //!
-        std::vector<State> states(uint id);
+        std::vector<State> states(uint id) const;
 
         //! Attempt to swap the states in two different chains.
         //!
@@ -159,11 +159,11 @@ namespace stateline
         void flushToDisk(uint id);
 
       private:
-        uint lengthOnDisk(uint id);
+        uint lengthOnDisk(uint id) const;
         void setLengthOnDisk(uint id, uint length);
 
-        State stateFromDisk(uint id, uint index);
-        State stateFromCache(uint id, uint index);
+        State stateFromDisk(uint id, uint index) const;
+        State stateFromCache(uint id, uint index) const;
 
         //! Recover a particular chain from disk.
         //!
@@ -177,7 +177,7 @@ namespace stateline
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
-        db::Database db_;
+        mutable db::Database db_; // Mutable so that chain queries can be const
     };
 
   } // namespace mcmc

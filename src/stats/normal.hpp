@@ -30,6 +30,8 @@ namespace stateline
     class Normal : private NormalDetail, public Multivariate
     {
       public:
+        Normal(std::size_t ndims);
+        Normal(const Eigen::VectorXd &mean);
         Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov);
 
         Eigen::VectorXd mean() const;

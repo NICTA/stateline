@@ -24,6 +24,22 @@ namespace stateline
       covLInv = covL.lu().inverse();
     }
 
+    Normal::Normal(std::size_t ndims)
+      : NormalDetail(Eigen::MatrixXd::Identity(ndims, ndims)),
+        Multivariate(ndims),
+        mean_(Eigen::MatrixXd::Zero(ndims, ndims)),
+        cov_(Eigen::MatrixXd::Identity(ndims, ndims))
+    {
+    }
+
+    Normal::Normal(const Eigen::VectorXd &mean)
+      : NormalDetail(Eigen::MatrixXd::Identity(mean.size(), mean.size())),
+        Multivariate(mean.size()),
+        mean_(mean),
+        cov_(Eigen::MatrixXd::Identity(mean.size(), mean.size()))
+    {
+    }
+
     Normal::Normal(const Eigen::VectorXd &mean, const Eigen::MatrixXd &cov)
       : NormalDetail(cov),
         Multivariate(mean.size()),

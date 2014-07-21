@@ -39,6 +39,9 @@ namespace stateline
       //! The energy (negative log likelihood) of the state.
       double energy;
 
+      //! The step size of the chain when this state was recorded.
+      double sigma;
+
       //! The inverse temperature of the chain when this state was recorded.
       double beta;
 
