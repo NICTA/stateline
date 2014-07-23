@@ -93,7 +93,7 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   worker.connect("tcp://localhost:5555");
 
   // Send multiple jobs in one list (only the specs for 2 and 5 are valid)
-  std::vector<uint> jobList = { 0, 1, 2, 3, 4, 5 };
+  std::vector<uint> jobList = { 1, 2, 5 };
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   auto rep = receive(worker);
   send(worker, Message(HEARTBEAT));
@@ -101,7 +101,7 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   send(worker, Message(HEARTBEAT));
 
   Message expected(PROBLEMSPEC,
-      { "globalSpec", "2", "jobSpec1", "5", "jobSpec2" });
+      { "globalSpec", "1", "", "2", "jobSpec1", "5", "jobSpec2" });
   EXPECT_EQ(expected, rep);
 }
 

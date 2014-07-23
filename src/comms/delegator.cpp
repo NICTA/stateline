@@ -23,8 +23,6 @@ namespace stateline
         : msNetworkPoll_(settings.msPollRate),
           context_(1),
           commonSpecData_(commonSpecData),
-          jobQueues_(jobSpecData.size()),
-          requestQueues_(jobSpecData.size()),
           heartbeat_(context_, settings.heartbeat)
     {
       namespace ph = std::placeholders;
@@ -52,7 +50,7 @@ namespace stateline
       for (auto &jobSpec : jobSpecData)
       {
         // Map the JobID given in the spec to an internal ID
-        jobIdMap_[jobSpec.first] = internalJobId++;
+        jobIdMap_[jobSpec.first] = internalJobId;
 
         // Copy the corresponding spec into our internal spec vector which uses
         // contiguous ID values.
@@ -117,6 +115,12 @@ namespace stateline
           repData.push_back(std::to_string(job));
           repData.push_back(jobSpecData_[jobIdMap_[job]]);
         }
+        else
+        {
+          // Send back an empty string as the spec
+          repData.push_back(std::to_string(job));
+          repData.push_back("");
+        }
       }
 
       //Send back problemspec
@@ -144,11 +148,7 @@ namespace stateline
     {
       uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
 
-      // Ensure that we don't try to do jobs that the delegator does not have specs for
-      if (!jobIdMap_.count(id))
-        return;
-
-      std::deque<Message>& queue = jobQueues_[jobIdMap_[id]];
+      std::deque<Message>& queue = jobQueues_[id];
       if (!queue.empty())
       {
         std::string worker = msgRequestFromMinion.address.back();
@@ -166,7 +166,7 @@ namespace stateline
       else
       {
         // Add the minion to the request queue
-        requestQueues_[jobIdMap_[id]].push_back(msgRequestFromMinion.address);
+        requestQueues_[id].push_back(msgRequestFromMinion.address);
       }
     }
 
@@ -174,7 +174,7 @@ namespace stateline
     {
       uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
 
-      std::deque<std::vector<std::string>>& queue = requestQueues_[jobIdMap_[id]];
+      std::deque<std::vector<std::string>>& queue = requestQueues_[id];
 
       //forward straight to minion if there's one waiting
       if (!queue.empty())
@@ -195,7 +195,7 @@ namespace stateline
       }
       else
       {
-        jobQueues_[jobIdMap_[id]].push_back(msgJobFromRequester);
+        jobQueues_[id].push_back(msgJobFromRequester);
       }
     }
 
@@ -215,9 +215,9 @@ namespace stateline
           VLOG(1) << "Removing " << addressAsString(s) << " from request queue " << id;
           return match;
         };
-        auto wjBegin = std::remove_if(queue.begin(), queue.end(), requestPred);
-        auto wjEnd = queue.end();
-        queue.erase(wjBegin, wjEnd);
+        auto wjBegin = std::remove_if(queue.second.begin(), queue.second.end(), requestPred);
+        auto wjEnd = queue.second.end();
+        queue.second.erase(wjBegin, wjEnd);
         id++;
       }
 
@@ -227,8 +227,9 @@ namespace stateline
       {
         uint id = detail::unserialise<std::uint32_t>(j.data[0]);
         VLOG(1) << "Requeueing " << j << "onto queue " << id;
-        jobQueues_[jobIdMap_[id]].push_front(j);
+        jobQueues_[id].push_front(j);
       }
+
       // disconnect the worker
       VLOG(1) << "Disconnecting " << worker;
       workerToJobMap_.erase(worker);

@@ -149,8 +149,8 @@ namespace stateline
         // Fault tolerance support
         std::map<std::string, std::vector<Message>> workerToJobMap_;
         // The queues for jobs
-        std::vector<std::deque<Message>> jobQueues_;
-        std::vector<std::deque<Address>> requestQueues_;
+        std::map<JobID, std::deque<Message>> jobQueues_;
+        std::map<JobID, std::deque<Address>> requestQueues_;
         std::map<JobID, JobID> jobIdMap_;
         // Heartbeating System
         ServerHeartbeat heartbeat_;
