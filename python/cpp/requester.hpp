@@ -19,10 +19,15 @@ void exportResultData()
   ;
 }
 
-py::tuple requesterRetrieve(comms::Requester &self)
+void requesterBatchSubmit(comms::Requester &self, uint id, const py::list &jobs)
 {
-  std::pair<uint, comms::ResultData> result = self.retrieve();
-  return py::make_tuple(result.first, result.second);
+  self.batchSubmit(id, list2vector<comms::JobData>(jobs));
+}
+
+py::tuple requesterBatchRetrieve(comms::Requester &self)
+{
+  std::pair<uint, std::vector<comms::ResultData>> result = self.batchRetrieve();
+  return py::make_tuple(result.first, vector2list(result.second));
 }
 
 void exportRequester()
@@ -32,7 +37,7 @@ void exportRequester()
 
   py::class_<comms::Requester, boost::noncopyable>("Requester",
       py::init<comms::Delegator &>())
-    .def("submit", &comms::Requester::submit)
-    .def("retrieve", &requesterRetrieve)
+    .def("batch_submit", &requesterBatchSubmit)
+    .def("batch_retrieve", &requesterBatchRetrieve)
   ;
 }

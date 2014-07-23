@@ -25,6 +25,18 @@ std::vector<T> list2vector(const py::list &list)
   return vector;
 }
 
+template <class T>
+py::list vector2list(const std::vector<T> &vector)
+{
+  py::list list;
+  for (auto it = vector.begin(); it != vector.end(); ++it)
+  {
+    list.append(*it);
+  }
+
+  return list;
+}
+
 template <class Key, class Value>
 std::map<Key, Value> dict2map(const py::dict &dict)
 {
