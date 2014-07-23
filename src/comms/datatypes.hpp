@@ -62,7 +62,7 @@ namespace stateline
       ResultData() { }
 
       ResultData(uint type, std::string&& data)
-        : type(type), data(data)
+        : type(type), data(std::move(data))
       {
       }
 
@@ -75,6 +75,9 @@ namespace stateline
 
       ResultData &operator= (ResultData&& other)
       {
+        if (this == &other) return *this;
+
+        type = other.type;
         data = std::move(other.data);
         return *this;
       }
