@@ -107,8 +107,7 @@ class McmcInstance(object):
         self.states = [None] * self.nstacks * self.nchains
 
         # Set default values for other attributes
-        self._attr = np.zeros((2,), dtype=(int, float))
-        self._attr.dtype.names = ('lengths', 'betas')
+        self._attr = np.zeros((2,), dtype=[('lengths', int), ('betas', float)])
 
     def __getitem__(self, item):
         """Get the value of a particular attribute.
