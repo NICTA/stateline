@@ -314,15 +314,16 @@ def until(nsamples=None):
     """
     def filter_length_func(mc, gen):
         # Only need to keep track of the coldest chains
-        lengths = np.zeros((mc.nstacks,))
+        lengths = np.zeros((mc.nstacks,), dtype=int)
         total_length, max_length = 0, nsamples * mc.nstacks
 
         for chain, state in gen:
             if chain.is_coldest and lengths[chain.stack] < nsamples:
                 lengths[chain.stack] += 1
                 total_length += 1
-                if total_length == max_length:
-                    break  # Stop the MCMC
+
             yield chain, state
+            if total_length >= max_length:
+                break  # Stop the MCMC
 
     return filter_length_func
