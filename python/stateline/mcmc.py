@@ -21,7 +21,7 @@ class SingleTaskAsync(AsyncPolicy):
 
     def retrieve(self, req):
         i, result = req.retrieve()
-        return i, result[0]
+        return i, result[0][1]
 
 
 class State(object):
