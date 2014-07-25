@@ -19,9 +19,9 @@ initial = np.random.random((nstacks * nchains, 1))
 mc = mcmc.init(delegator, nstacks, nchains, initial)
 
 # Run MCMC
-samples = mcmc.run(mc, samplers.RWM(np.ones(1,)),
+samples = mcmc.run(mc, samplers.MH(np.ones(1,)),
                    mcmc.thinning(10),
-                   mcmc.until(nsamples=5000))
+                   mcmc.until(nsamples=2000))
 
 # Plot the histogram along with the true distribution
 fig, (ax1, ax2) = plt.subplots(2)
@@ -31,6 +31,6 @@ x = np.linspace(-3.0, 3.0, 100)
 ax1.plot(x, stats.norm.pdf(x), color='r')
 
 # Plot a trace to show mixing behaviour
-ax2.plot(range(samples.shape[0]), samples)
+ax2.plot(range(samples.shape[0]), samples, color='k')
 
 plt.show()
