@@ -189,34 +189,14 @@ def init(delegator, nstacks, nchains, initial, async=None):
 
 
 def _generate_samples(mc, sampler):
-    async, req = mc.async, mc.requester  # Shorthand
-
-    # Start off the chains by submitting new states
-    last_submit = []
-    for chain, state in zip(mc.chains, mc.states):
-        job = sampler.next_job(chain, state)
-        async.submit(req, chain.index, job.sample)
-        last_submit.append(job)
-
-    # Generate infinite stream of states
-    while True:
-        i, logl = async.retrieve(req)
-        chain = mc.chains[i]
-
-        # Update the log likelihood on the new state
-        new_state = last_submit[i]
-        new_state.logl = logl
+    # Generate a infinite stream of samples from the sampler
+    for chain, next_state in sampler.step(mc):
+        # TODO: perform parallel tempering swaps
 
         # Update our chain to use the next state given by the sampler
-        new_state = sampler.next_state(chain, mc.states[i], new_state)
-        mc.states[i] = new_state
-        job = sampler.next_job(chain, new_state)
+        mc.states[chain.index] = next_state
 
-        # Submit the job given by the sampler
-        async.submit(req, i, job.sample)
-        last_submit[i] = job
-
-        yield chain, new_state
+        yield chain, next_state
 
 
 def run(mc, sampler, *filters):
