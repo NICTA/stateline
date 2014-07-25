@@ -244,15 +244,19 @@ def run(mc, sampler, *filters):
         gen = f(mc, gen)
 
     # Generate samples until the last filter runs out.
-    # Note that we don't store the chains here, but in a filter.
-    for _ in gen:
-        pass
+    # TODO: work out just how to pass around state information for chains
+    # TODO: and how to incorporate database persistence. Currently this is just
+    # TODO: a quick hack to get things going.
+    samples = []
+    for chain, state in gen:
+        if chain.is_coldest:
+            samples.append(state.sample)
 
     # Discard any outstanding jobs
     for _ in mc.requester.retrieve_all():
         pass
 
-    return mc
+    return np.array(samples)
 
 
 def burnin(n):
