@@ -13,7 +13,7 @@ class Sampler(object):
         raise NotImplementedError()
 
 
-class RWM(object):
+class RWM(Sampler):
     """A random-walk Metropolis-Hastings sampler.
 
     This sampler uses a multivariate normal distribution with independent
