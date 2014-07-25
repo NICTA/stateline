@@ -156,6 +156,7 @@ def init(delegator, nstacks, nchains, initial, async=None):
     ntotal = nstacks * nchains
 
     # Create a requester for the async policy
+    delegator.start()
     requester = sl.Requester(delegator)
     if async is None:
         async = SingleTaskAsync()
