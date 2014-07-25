@@ -493,62 +493,31 @@ class Minion(_sl.Minion):
         self._BASE.submit_result(self, raw)
 
 
-class MinionPool(_sl.ThreadPool):
-    """Class to run jobs sent by a delegator using a thread pool of Minions."""
+def run_minion(worker, func, job_type=0, use_global=False):
+    """Create a Minion to run a work function.
 
-    _BASE = _sl.ThreadPool
+    Parameters
+    ----------
+    worker : `Worker` instance
+        An instance of `Worker` to connect to.
+    func : callable
+        The work function for the Minions to perform. The input of this
+        function is the job data received by calling `Minion`.`next_job()`.
+        The output must be a picklable object that represents the result
+        of the job. The output is passed to `Minion`.`submit()`.
+    job_type : int, optional
+        The type of job these new Minions should handle. Defaults to 0.
+    use_global : boolean, optional
+        If this is True, then the global data of each job is also passed to
+        the work function (calls func(global_data, job_data)). Otherwise,
+        only the job data is passed to the work function. Defaults to False.
+    """
+    if use_global is True:
+        m = Minion(worker, job_type)
+        for global_data, job_data in m.jobs():
+            m.submit(func(global_data, job_data))
+    else:
+        m = Minion(worker, job_type)
+        for _, job_data in m.jobs():
+            m.submit(func(job_data))
 
-    def __init__(self, worker):
-        """Create a new minion pool.
-
-        Parameters
-        ----------
-        worker : `Worker` instance
-            An instance of `Worker` to connect to.
-        """
-        self._BASE(self, worker)
-        self._worker = worker
-
-    def run(self, func, job_type=0, nthreads=1, use_global=False):
-        """Create Minions to run a work function.
-
-        Parameters
-        ----------
-        func : callable
-            The work function for the Minions to perform. The input of this
-            function is the job data received by calling `Minion`.`next_job()`.
-            The output must be a picklable object that represents the result
-            of the job. The output is passed to `Minion`.`submit()`.
-        job_type : int, optional
-            The type of job these new Minions should handle. Defaults to 0.
-        nthreads : int, optional
-            The number of Minions to run concurrently. Defaults to one Minion.
-        use_global : boolean, optional
-            If this is True, then the global data of each job is also passed to
-            the work function (calls func(global_data, job_data)). Otherwise,
-            only the job data is passed to the work function. Defaults to False.
-        """
-        if use_global is True:
-            def work_func():
-                m = Minion(self._worker, job_type)
-                for global_data, job_data in m.jobs():
-                    m.submit(func(global_data, job_data))
-        else:
-            def work_func():
-                m = Minion(self._worker, job_type)
-                for _, job_data in m.jobs():
-                    m.submit(func(job_data))
-
-        for i in range(nthreads):
-            self._BASE.run(self, work_func)
-
-    def wait(self):
-        """Wait for all the minions to finish.
-
-        Notes
-        -----
-        Currently, the only way that a worker can know if there are no more jobs
-        is when the server disconnects. Hence, this method simply waits until
-        the server disconnects from the worker.
-        """
-        self._BASE.wait(self)
