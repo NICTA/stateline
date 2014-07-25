@@ -193,8 +193,11 @@ def _generate_samples(mc, sampler):
 
     # Start off the chains by submitting new states
     last_submit = []
-    for chain in mc.chains:
-        last_submit.append(sampler.next_job(chain))
+    print mc.chains, mc.states
+    for chain, state in zip(mc.chains, mc.states):
+        job = sampler.next_job(chain, state)
+        async.submit(req, chain.index, job.sample)
+        last_submit.append(job)
 
     # Generate infinite stream of states
     while True:
@@ -211,7 +214,7 @@ def _generate_samples(mc, sampler):
         job = sampler.next_job(chain, new_state)
 
         # Submit the job given by the sampler
-        async.submit(job)
+        async.submit(req, i, job.sample)
         last_submit[i] = job
 
         yield chain, new_state
