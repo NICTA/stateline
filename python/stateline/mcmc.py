@@ -193,7 +193,6 @@ def _generate_samples(mc, sampler):
 
     # Start off the chains by submitting new states
     last_submit = []
-    print mc.chains, mc.states
     for chain, state in zip(mc.chains, mc.states):
         job = sampler.next_job(chain, state)
         async.submit(req, chain.index, job.sample)
