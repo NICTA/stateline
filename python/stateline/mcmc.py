@@ -171,6 +171,7 @@ def init(delegator, nstacks, nchains, initial, async=None):
     for i in range(nstacks):
         for j in range(0, nchains):
             mc.chains.append(Chain(index, i, j))
+            index += 1
 
         # Label with coldest or hottest
         mc.chains[i * nchains].is_coldest = True
