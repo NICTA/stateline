@@ -19,12 +19,12 @@ void exportDelegatorSettings()
 }
 
 boost::shared_ptr<comms::Delegator>
-  delegatorInit(const std::string &globalSpec,
+  delegatorInit(const py::object &globalSpec,
       const py::dict &jobSpec, const DelegatorSettings &settings)
 {
   return boost::shared_ptr<comms::Delegator>(
       new comms::Delegator(
-        globalSpec,
+        py::extract<std::string>(globalSpec),
         dict2map<comms::JobID, std::string>(jobSpec),
         settings));
 }
