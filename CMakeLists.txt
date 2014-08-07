@@ -68,7 +68,7 @@ ENDMACRO(LINK_LOGGING projectName)
 ##############################################################################
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP -fPIC")
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
   SET(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
 ELSE(CMAKE_COMPILER_IS_GNUCXX)
@@ -89,8 +89,8 @@ ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 # Boost
 SET(DESIRED_BOOST_VERSION "1_55_0")
 SET(Boost_ADDITIONAL_VERSIONS "1_55_0")
-SET(Boost_USE_STATIC_LIBS ON)
-SET(Boost_USE_STATIC_RUNTIME ON)
+SET(Boost_USE_STATIC_LIBS OFF)
+SET(Boost_USE_STATIC_RUNTIME OFF)
 
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
@@ -201,3 +201,8 @@ SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(statelineclient src/app/worker.hpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
+
+##############################################################################
+# Add python target
+##############################################################################
+ADD_SUBPROJECT(python)
