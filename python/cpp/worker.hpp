@@ -21,7 +21,7 @@ boost::shared_ptr<comms::Worker>
 
 py::object workerGlobalSpec(comms::Worker &worker)
 {
-  return py::object(py::handle<>(PyUnicode_FromString(worker.globalSpec().c_str())));
+  return py::object(py::handle<>(PyBytes_FromStringAndSize(worker.globalSpec().c_str(), worker.globalSpec().length())));
   //std::wstringstream ws;
   //ws << worker.globalSpec().c_str();
   //return ws.str();
