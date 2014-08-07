@@ -226,10 +226,10 @@ class Requester(_sl.Requester):
             raise RuntimeError("There are no more job results to retrieve.")
         self._num_jobs -= 1
 
-        batch_id, raw_results = self._BASE.batch_retrieve(self)
+        batch_id, raw = self._BASE.batch_retrieve(self)
 
         # Convert the raw results (a list of _sl.ResultData) into list of pairs
-        results = [(res.type, cPickle.loads(res.data)) for res in raw_results]
+        results = [(res.type, cPickle.loads(res.get_data())) for res in raw]
         return batch_id, results
 
     def retrieve_all(self):
@@ -450,7 +450,8 @@ class Minion(_sl.Minion):
 
         # Unpack the raw JobData struct (we can ignore job type because minions
         # can only do one type of job).
-        return cPickle.loads(raw.global_data), cPickle.loads(raw.job_data)
+        return (cPickle.loads(raw.get_global_data()),
+                cPickle.loads(raw.get_job_data()))
 
     def jobs(self):
         """A generator that yields jobs received by the minion.
