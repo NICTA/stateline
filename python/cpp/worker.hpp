@@ -19,9 +19,13 @@ boost::shared_ptr<comms::Worker>
         settings));
 }
 
-std::string workerGlobalSpec(comms::Worker &worker)
+py::object workerGlobalSpec(comms::Worker &worker)
 {
-  return worker.globalSpec();
+  return py::object(py::handle<>(PyUnicode_FromString(worker.globalSpec().c_str())));
+  //std::wstringstream ws;
+  //ws << worker.globalSpec().c_str();
+  //return ws.str();
+  //return worker.globalSpec();
 }
 
 std::string workerJobSpec(comms::Worker &worker, uint jobID)
