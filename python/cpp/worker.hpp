@@ -21,16 +21,12 @@ boost::shared_ptr<comms::Worker>
 
 py::object workerGlobalSpec(comms::Worker &worker)
 {
-  return py::object(py::handle<>(PyBytes_FromStringAndSize(worker.globalSpec().c_str(), worker.globalSpec().length())));
-  //std::wstringstream ws;
-  //ws << worker.globalSpec().c_str();
-  //return ws.str();
-  //return worker.globalSpec();
+  return string2bytes(worker.globalSpec());
 }
 
-std::string workerJobSpec(comms::Worker &worker, uint jobID)
+py::object workerJobSpec(comms::Worker &worker, uint jobID)
 {
-  return worker.jobSpec(jobID);
+  return string2bytes(worker.jobSpec(jobID));
 }
 
 void exportWorker()

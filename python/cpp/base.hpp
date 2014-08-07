@@ -52,3 +52,8 @@ std::map<Key, Value> dict2map(const py::dict &dict)
 
   return map;
 }
+
+py::object string2bytes(const std::string &str)
+{
+  return py::object(py::handle<>(PyBytes_FromStringAndSize(str.c_str(), str.length())));
+}

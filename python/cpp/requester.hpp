@@ -2,12 +2,27 @@
 
 #include "comms/requester.hpp"
 
+py::object getGlobalData(comms::JobData &self)
+{
+  return string2bytes(self.globalData);
+}
+
+py::object getJobData(comms::JobData &self)
+{
+  return string2bytes(self.jobData);
+}
+
+py::object getResultData(comms::ResultData &self)
+{
+  return string2bytes(self.data);
+}
+
 void exportJobData()
 {
   py::class_<comms::JobData>("JobData")
     .def_readwrite("type", &comms::JobData::type)
-    .def_readwrite("global_data", &comms::JobData::globalData)
-    .def_readwrite("job_data", &comms::JobData::jobData)
+    .def("global_data", &getGlobalData)
+    .def("job_data", &getJobData)
   ;
 }
 
@@ -15,7 +30,7 @@ void exportResultData()
 {
   py::class_<comms::ResultData>("ResultData")
     .def_readwrite("type", &comms::ResultData::type)
-    .def_readwrite("data", &comms::ResultData::data)
+    .def("data", &getResultData)
   ;
 }
 
