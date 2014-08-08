@@ -55,6 +55,7 @@ namespace stateline
         // Copy the corresponding spec into our internal spec vector which uses
         // contiguous ID values.
         jobSpecData_.push_back(jobSpec.second);
+        internalJobId++;
       }
 
       VLOG(3) << "Attaching functionality to router";

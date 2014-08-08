@@ -102,6 +102,7 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
 
   Message expected(PROBLEMSPEC,
       { "globalSpec", "1", "", "2", "jobSpec1", "5", "jobSpec2" });
+  EXPECT_EQ(expected.data, rep.data);
   EXPECT_EQ(expected, rep);
 }
 

@@ -16,7 +16,7 @@ TARGET_LINK_LIBRARIES(_stateline ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
   statelineserver statelineclient)
 
 EXECUTE_PROCESS(COMMAND python -c
-  "from distutils.sysconfig import get_python_lib; print get_python_lib()"
+  "from distutils.sysconfig import get_python_lib; print(get_python_lib())"
   OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
