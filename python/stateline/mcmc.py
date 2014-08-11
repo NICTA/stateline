@@ -2,7 +2,7 @@
 
 
 import _stateline as _sl
-import comms as sl
+from . import comms as sl
 import numpy as np
 from collections import namedtuple
 
@@ -76,7 +76,6 @@ class Chain(object):
         self.is_coldest = False
         self.is_hottest = False
 
-
 class McmcInstance(object):
     """Represents the state of an MCMC simulation.
 
@@ -102,6 +101,13 @@ class McmcInstance(object):
         self.async = async
         self.nstacks = nstacks
         self.nchains = nchains
+
+        # self._dbSettings = _sl.DBSettings()
+        # self._dbSettings.directory = "chainDB"
+        # self._dbSettings.recover = False
+        # self._dbSettings.cacheSizeMB = 10.0
+        # self._base = _sl.ChainArray(nstacks,nchains,
+        #         1.1, 0.001, 2.0, self._dbSettings, 1000)
 
         # Set default initial states
         self.states = [None] * self.nstacks * self.nchains

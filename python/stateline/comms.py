@@ -1,7 +1,7 @@
 """This module contains communications and networking classes."""
 
 import _stateline as _sl
-import cPickle
+import pickle
 
 
 class Delegator(_sl.Delegator):
@@ -67,8 +67,8 @@ class Delegator(_sl.Delegator):
             job_specs = {}
 
         # Pickle the specifications objects
-        p_global_spec = cPickle.dumps(global_spec)
-        p_job_specs = dict((k, cPickle.dumps(v)) for k, v in job_specs.items())
+        p_global_spec = pickle.dumps(global_spec)
+        p_job_specs = dict((k, pickle.dumps(v)) for k, v in job_specs.items())
         self._BASE.__init__(self, p_global_spec, p_job_specs, del_s)
 
         # Set python friendly properties
@@ -186,12 +186,12 @@ class Requester(_sl.Requester):
             A picklable object to send along with all the jobs in this batch.
         """
         # Add each of the jobs into a batch
-        p_global_data = cPickle.dumps(global_data)
+        p_global_data = pickle.dumps(global_data)
         batch = []
         for job_type, job_data in jobs:
             job = _sl.JobData()
             job.type = job_type
-            job.job_data = cPickle.dumps(job_data)
+            job.job_data = pickle.dumps(job_data)
             job.global_data = p_global_data
             batch.append(job)
 
@@ -229,7 +229,7 @@ class Requester(_sl.Requester):
         batch_id, raw = self._BASE.batch_retrieve(self)
 
         # Convert the raw results (a list of _sl.ResultData) into list of pairs
-        results = [(res.type, cPickle.loads(res.get_data())) for res in raw]
+        results = [(res.type, pickle.loads(res.get_data())) for res in raw]
         return batch_id, results
 
     def retrieve_all(self):
@@ -315,7 +315,7 @@ class Worker(_sl.Worker):
         self._addr = addr
         self._poll_rate = poll_rate
         self._job_types = job_types
-        self._global_spec = cPickle.loads(self._BASE.global_spec(self))
+        self._global_spec = pickle.loads(self._BASE.global_spec(self))
         self._job_specs = dict()
         for job_type in job_types:
             spec = self._BASE.job_spec(self, job_type)
@@ -324,7 +324,7 @@ class Worker(_sl.Worker):
                 # this job type
                 self._job_specs[job_type] = None
             else:
-                self._job_specs[job_type] = cPickle.loads(spec)
+                self._job_specs[job_type] = pickle.loads(spec)
 
     @property
     def addr(self):
@@ -450,8 +450,8 @@ class Minion(_sl.Minion):
 
         # Unpack the raw JobData struct (we can ignore job type because minions
         # can only do one type of job).
-        return (cPickle.loads(raw.get_global_data()),
-                cPickle.loads(raw.get_job_data()))
+        return (pickle.loads(raw.get_global_data()),
+                pickle.loads(raw.get_job_data()))
 
     def jobs(self):
         """A generator that yields jobs received by the minion.
@@ -490,7 +490,7 @@ class Minion(_sl.Minion):
         # Convert the result into a raw JobResult struct
         raw = _sl.ResultData()
         raw.type = self.job_type
-        raw.data = cPickle.dumps(result)
+        raw.data = pickle.dumps(result)
         self._BASE.submit_result(self, raw)
 
 
