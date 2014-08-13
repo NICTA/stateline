@@ -4,7 +4,7 @@
 #include "worker.hpp"
 #include "minion.hpp"
 #include "threadpool.hpp"
-// #include "chainarray.hpp"
+#include "chainarray.hpp"
 
 BOOST_PYTHON_MODULE(_stateline)
 {
@@ -13,5 +13,5 @@ BOOST_PYTHON_MODULE(_stateline)
   exportWorker();
   exportMinion();
   exportThreadPool();
-  // exportChainArray();
+  exportChainArray();
 }

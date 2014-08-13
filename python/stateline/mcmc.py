@@ -102,12 +102,14 @@ class McmcInstance(object):
         self.nstacks = nstacks
         self.nchains = nchains
 
-        # self._dbSettings = _sl.DBSettings()
-        # self._dbSettings.directory = "chainDB"
-        # self._dbSettings.recover = False
-        # self._dbSettings.cacheSizeMB = 10.0
-        # self._base = _sl.ChainArray(nstacks,nchains,
-        #         1.1, 0.001, 2.0, self._dbSettings, 1000)
+        self._dbSettings = _sl.DBSettings()
+        self._dbSettings.directory = "chainDB"
+        self._dbSettings.recover = False
+        self._dbSettings.cacheSizeMB = 10.0
+        print("Created DBSettings object!")
+        self._base = _sl.ChainArray(nstacks,nchains,
+                1.1, 0.001, 2.0, self._dbSettings, 1000)
+        print("Created chainarray object!")
 
         # Set default initial states
         self.states = [None] * self.nstacks * self.nchains
