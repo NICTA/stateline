@@ -48,8 +48,11 @@ namespace stateline
         //! \param d The database settings used to store chain data.
         //! \param cacheLength The size of the memory cache used to store the chains.
         //!
-        ChainArray(uint nStacks, uint nChains, double tempFactor, double initialSigma,
-            double sigmaFactor, const DBSettings &d, uint cacheLength);
+        ChainArray(uint nStacks, uint nChains, const std::vector<Eigen::VectorXd>& initialSigmas,
+            const std::vector<double> initialBetas, const DBSettings &d, uint cacheLength);
+
+        //! Chain Array recovered from disk
+        ChainArray(uint nStacks, uint nChains, const DBSettings&d, uint cacheLength);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
@@ -67,14 +70,14 @@ namespace stateline
         //! \param proposedState The new state to append.
         //! \return Whether the state accepted or rejected (in which case last state is reappended).
         //!
-        bool append(uint id, const State& proposedState);
+        bool append(uint id, const Eigen::VectorXd& sample, double energy);
 
         //! Initialise a chain (by definitely accepting a new state).
         //!
         //! \param id The id of the chain (see \ref id).
         //! \param state the new state to append
         //!
-        void initialise(uint id, const State& state);
+        void initialise(uint id, const Eigen::VectorXd& sample, double energy);
 
         //! Return the last state from a chain.
         //!
@@ -104,21 +107,21 @@ namespace stateline
         //! \param id2 The id of the second chain (see \ref id).
         //! \return Whether the swap was successful.
         //!
-        bool swap(uint id1, uint id2);
+        SwapType swap(uint id1, uint id2);
 
         //! Get the proposal width of a specific chain.
         //!
         //! \param id The id of the second chain (see \ref id).
         //! \return The proposal width of the chain.
         //!
-        double sigma(uint id) const;
+        Eigen::VectorXd sigma(uint id) const;
 
         //! Set the proposal width of a specific chain.
         //!
         //! \param id The id of the second chain (see \ref id).
         //! \param sigma The new proposal width value.
         //!
-        void setSigma(uint id, double sigma);
+        void setSigma(uint id, const Eigen::VectorXd& sigma);
 
         //! Get the inverse temperature of a specific chain.
         //!
@@ -175,7 +178,7 @@ namespace stateline
         uint nchains_;
         uint cacheLength_;
         std::vector<double> beta_;
-        std::vector<double> sigma_;
+        std::vector<Eigen::VectorXd> sigma_;
         std::vector<std::vector<State>> cache_;
         mutable db::Database db_; // Mutable so that chain queries can be const
     };

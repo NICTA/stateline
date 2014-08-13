@@ -149,8 +149,9 @@ namespace stateline
       }
     } // namespace detail
 
-    ChainArray::ChainArray(uint nStacks, uint nChains, double tempFactor,
-        double initialSigma, double sigmaFactor, const DBSettings& d, uint cacheLength)
+    ChainArray::ChainArray(uint nStacks, uint nChains,
+        const std::vector<Eigen::VectorXd>& initialSigmas,
+        const std::vector<double>& initialBetas, const DBSettings& d, uint cacheLength)
         : nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(cacheLength),
@@ -181,18 +182,15 @@ namespace stateline
           {
             uint id = i * nChains + j;
 
-            double beta = 1.0 / std::pow(tempFactor, j);
-            double sigma = initialSigma * std::pow(sigmaFactor, j);
-            beta_[id] = beta;
-            sigma_[id] = sigma;
+            beta_[id] = initialBetas[id];
+            sigma_[id] = initialSigmas[id];
 
             // All chains start off with length 0
             detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
-            detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma);
-            detail::putToBatch<detail::BETA>(batch, id, 0, beta);
+            detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
+            detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
           }
         }
-
         db_.put(batch);
       }
     }
@@ -229,6 +227,8 @@ namespace stateline
 
       return length;
     }
+
+    //TODO up to here
 
     bool ChainArray::append(uint id, const State& proposedState)
     {

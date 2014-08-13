@@ -21,9 +21,6 @@ namespace stateline
     //! Path to the folder directory containing the database.
     std::string directory;
 
-    //! Whether to recover from existing data in the database or start fresh.
-    bool recover;
-
     //! The size of the database cache in megabytes.
     double cacheSizeMB;
 
@@ -32,7 +29,6 @@ namespace stateline
     {
       DBSettings settings = {};
       settings.directory = "chainDB";
-      settings.recover = false;
       settings.cacheSizeMB = 100;
       return settings;
     }
