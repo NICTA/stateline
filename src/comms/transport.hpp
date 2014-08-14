@@ -84,4 +84,4 @@ namespace stateline
     void setSocketID(const std::string& id, zmq::socket_t & socket);
 
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
