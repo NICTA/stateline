@@ -36,7 +36,7 @@ namespace stateline
     using JobConstructFunction =
       std::function<std::vector<comms::JobData>(const Eigen::VectorXd&)>;
 
-    using ResultLikelihoodFunction = 
+    using ResultEnergyFunction = 
       std::function<double(const std::vector<comms::ResultData>&)>;
 
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray&)>;
@@ -47,7 +47,7 @@ namespace stateline
       std::map<comms::JobID, std::string> perJobSpecData;
 
       JobConstructFunction jobConstructFn;
-      ResultLikelihoodFunction resultLikelihoodFn;
+      ResultEnergyFunction resultLikelihoodFn;
       ProposalFunction proposalFn;
     };
 
