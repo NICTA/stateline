@@ -13,11 +13,115 @@
 #include <random>
 #include <functional>
 #include <Eigen/Core>
+#include <boost/circular_buffer.hpp>
 
 namespace stateline
 {
   namespace mcmc
   {
+
+    class SlidingWindowSigmaAdapter
+    {
+      public:
+        SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, uint windowSize,
+            double coldSigma, double sigmaFactor, uint adaptionLength, uint nStepsPerAdapt, double optimalAccept,
+            double adaptRate, double minFactor, double maxFactor)
+          : nStacks_(nStacks),
+            nChains_(nChains),
+            sigmas_(nStacks*nChains),
+            acceptRates_(nStacks*nChains),
+            lengths_(nStacks*nChains),
+            windowSize_(windowSize),
+            coldSigma_(coldSigma),
+            sigmaFactor_(sigmaFactor),
+            adaptionLength_(adaptionLength),
+            nStepsPerAdapt_(nStepsPerAdapt),
+            optimalAccept_(optimalAccept),
+            adaptRate_(adaptRate),
+            minFactor_(minFactor),
+            maxFactor_(maxFactor)
+        {
+          for (uint i = 0; i < nStacks; i++)
+            for (uint j = 0; j < nChains; j++)
+            {
+              uint id = i * nChains + j;
+              double sigma = coldSigma * std::pow(sigmaFactor, j);
+              sigmas_[id] = Eigen::VectorXd::Ones(nDims) * sigma;
+            }
+
+          for (uint i = 0; i < nChains * nStacks; i++)
+          {
+            lengths_[i] = 1; // assuming we're not recovering
+            acceptRates_[i] = 1;
+            acceptBuffers_.push_back(boost::circular_buffer<bool>(adaptionLength));
+          }
+        }
+
+        void update(uint chainID, const State& state)
+        {
+          lengths_[chainID]+= 1;
+          bool acc = state.accepted;
+          uint oldSize = acceptBuffers_[chainID].size();
+          double oldRate = acceptRates_[chainID];
+          bool isFull = acceptBuffers_[chainID].full();
+          bool lastAcc = acceptBuffers_[chainID].front();
+          // Now push on the new state
+          acceptBuffers_[chainID].push_back(acc);
+          // Compute the new rate
+          uint newSize = acceptBuffers_[chainID].size();
+          double delta = ((int)acc - (int)(lastAcc&&isFull))/(double)newSize;
+          double scale = oldSize/(double)newSize;
+          acceptRates_[chainID] = std::max(oldRate*scale + delta, 0.0);
+          if (lengths_[chainID] % nStepsPerAdapt_ == 0)
+            adaptSigma(chainID);
+        }
+
+
+        std::vector<Eigen::VectorXd> sigmas() const
+        {
+          return sigmas_;
+        }
+
+      private:
+
+        void adaptSigma(uint id)
+        {
+          double acceptRate = acceptRates_[id];
+          double oldSigma= sigmas_[id](0);
+          double factor = std::pow(acceptRate / optimalAccept_, adaptRate_);
+          double boundFactor = std::min(std::max(factor, minFactor_), maxFactor_);
+          double gamma = adaptionLength_/(double)(adaptionLength_+lengths_[id]);
+          double newSigma = oldSigma * std::pow(boundFactor, gamma);
+          VLOG(2) << "Adapting Sigma" << id <<":" << oldSigma << "->" << newSigma << " @acceptrate:" << acceptRate;
+          // Ensure higher temperature chains have larger sigmas than chains colder than it
+          if (id % nChains_ != 0 && newSigma < sigmas_[id - 1](0))
+          {
+            newSigma = sigmas_[id - 1](0);
+          }
+          sigmas_[id] = newSigma * Eigen::VectorXd::Ones(sigmas_[id].size());
+        }
+
+        uint nStacks_;
+        uint nChains_;
+        std::vector<boost::circular_buffer<bool>> acceptBuffers_;
+        std::vector<Eigen::VectorXd> sigmas_;
+        std::vector<double> acceptRates_;
+        std::vector<uint> lengths_;
+        uint windowSize_;
+        double coldSigma_;
+        double sigmaFactor_;
+        uint adaptionLength_;
+        uint nStepsPerAdapt_;
+        double optimalAccept_;
+        double adaptRate_;
+        double minFactor_;
+        double maxFactor_;
+    };
+
+
+
+
+
     
     //! A function to bounce the MCMC proposal off the hard boundaries.
     //! This allows the proposal to always move around without getting stuck at
@@ -28,7 +132,8 @@ namespace stateline
     //! \param max The maximum bound of theta 
     //!  \returns The new bounced theta definitely in the bounds
     //!
-    Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
     { 
       Eigen::VectorXd delta = max - min;
       Eigen::VectorXd result = val;
@@ -73,8 +178,8 @@ namespace stateline
     //! \param max The maximum bound of theta 
     //! \returns The new proposed theta
     //!
-    Eigen::VectorXd adaptiveGaussianProposal(const Eigen::VectorXd &state, double sigma, 
-        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    Eigen::VectorXd adaptiveGaussianProposal(const Eigen::VectorXd &state,
+      const Eigen::VectorXd& sigma, const Eigen::VectorXd& min, const Eigen::VectorXd& max)
     {
       // Random number generators
       static std::random_device rd;
@@ -84,7 +189,7 @@ namespace stateline
       // Vary each paramater according to a Gaussian distribution
       Eigen::VectorXd proposal(state.rows());
       for (int i = 0; i < proposal.rows(); i++)
-        proposal(i) = state(i) + rand(generator) * sigma;
+        proposal(i) = state(i) + rand(generator) * sigma(i);
 
       return bouncyBounds(proposal, min, max);
     }
