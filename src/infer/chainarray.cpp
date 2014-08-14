@@ -486,5 +486,25 @@ namespace stateline
       return numChains() * numStacks();
     }
 
+    uint ChainArray::stackIndex(uint id) const
+    {
+      return id / numChains();
+    }
+
+    uint ChainArray::chainIndex(uint id) const
+    {
+      return id % numChains();
+    }
+
+    bool ChainArray::isHottestInStack(uint id) const
+    {
+      return chainIndex(id) == numChains() - 1;
+    }
+
+    bool ChainArray::isColdestInStack(uint id) const
+    {
+      return chainIndex(id) == 0;
+    }
+
   } // namespace mcmc
 } // namespace stateline

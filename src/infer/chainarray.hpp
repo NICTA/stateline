@@ -82,6 +82,12 @@ namespace stateline
         //!
         void initialise(uint id, const Eigen::VectorXd& sample, double energy);
 
+        //! Forcibly flush the cache for a particular chain to disk.
+        //!
+        //! \param id The id of the chain to flush.
+        //!
+        void flushToDisk(uint id);
+
         //! Return the last state from a chain.
         //!
         //! \param id The id of the chain (see \ref id).
@@ -158,31 +164,13 @@ namespace stateline
         //!
         uint numTotalChains() const;
 
-        //! Forcibly flush the cache for a particular chain to disk.
-        //!
-        //! \param id The id of the chain to flush.
-        //!
-        void flushToDisk(uint id);
+        uint stackIndex(uint id) const;
 
-        uint stackIndex(uint id) const
-        {
-          return id / numChains();
-        }
+        uint chainIndex(uint id) const;
 
-        uint chainIndex(uint id) const
-        {
-          return id % numChains();
-        }
+        bool isHottestInStack(uint id) const;
 
-        bool isHottestInStack(uint id) const
-        {
-          return chainIndex(id) == numChains() - 1;
-        }
-
-        bool isColdestInStack(uint id) const
-        {
-          return chainIndex(id) == 0;
-        }
+        bool isColdestInStack(uint id) const;
 
       private:
         uint lengthOnDisk(uint id) const;
