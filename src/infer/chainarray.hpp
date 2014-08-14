@@ -38,6 +38,12 @@ namespace stateline
     class ChainArray
     {
       public:
+        //! Recover a chain array from disk.
+        //! 
+        //! \param d The database settings used to store chain data.
+        //!
+        ChainArray(const DBSettings &d);
+
         //! Create a chain array.
         //! 
         //! \param nStacks The number of stacks. Each stack have the same temperature sequence.

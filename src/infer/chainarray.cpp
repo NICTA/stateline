@@ -61,16 +61,22 @@ namespace stateline
       //!
       enum DbEntryType : std::int32_t
       {
-        //! Indicates that the database entry is the state vector of a chain.
+        //! Indicates the number of stacks.
+        NSTACKS,
+
+        //! Indicates the number of chains.
+        NCHAINS,
+
+        //! Represents the state vector of a chain.
         STATE,
 
-        //! Indicates that the database entry is the length of a chain.
+        //! Represents the length of a chain.
         LENGTH,
         
-        //! Indicates that the database entry is the step size of a chain.
+        //! Represents the step size of a chain.
         SIGMA,
         
-        //! Indicates that the database entry is the inverse temperature of a chain.
+        //! Represents the inverse temperature of a chain.
         BETA
       };
 
@@ -111,7 +117,7 @@ namespace stateline
       }
 
       template <std::int32_t EntryType, class T>
-      T getFromDb(db::Database &db, std::uint32_t id, std::uint32_t index)
+      T getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
       {
         // Read the given value to the database
         std::string result = db.get(toDbKeyString<EntryType>(id, index));
@@ -121,7 +127,7 @@ namespace stateline
       }
 
       template <std::int32_t EntryType>
-      std::string getFromDb(db::Database &db, std::uint32_t id, std::uint32_t index)
+      std::string getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
       {
         // Read the given value to the database
         std::string result = db.get(toDbKeyString<EntryType>(id, index));
@@ -149,6 +155,32 @@ namespace stateline
       }
     } // namespace detail
 
+    ChainArray::ChainArray(const DBSettings &d)
+      : db_(d)
+    {
+      // Recover the dimensions of the chain array
+      nstacks_ = detail::getFromDb<detail::NSTACKS, std::uint32_t>(db_);
+      nchains_ = detail::getFromDb<detail::NCHAINS, std::uint32_t>(db_);
+
+      // Recover each of the chains
+      for (uint id = 0; id < nstacks_ * nchains_; ++id)
+      {
+        // Recover beta and sigma
+        VLOG(1) << "Recovering chain " << id << " from disk.";
+        beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
+        sigma_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id);
+
+        // Recover the newest state
+        uint len = lengthOnDisk(id);
+        VLOG(1) << "Has length " << len;
+        VLOG(1) << "Current cache length: " << cache_[id].size();
+        if (len > 0)
+        {
+          cache_[id].push_back(stateFromDisk(id, len - 1));
+        }
+      }
+    }
+
     ChainArray::ChainArray(uint nStacks, uint nChains,
         const std::vector<Eigen::VectorXd>& initialSigmas,
         const std::vector<double>& initialBetas, const DBSettings& d, uint cacheLength)
@@ -164,35 +196,29 @@ namespace stateline
       for (auto& c : cache_)
         c.reserve(cacheLength);
 
-      // Set ourselves up in the last state
-      if (d.recover)
+      // Initialise the database
+      leveldb::WriteBatch batch;
+
+      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nstacks);
+      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nchains);
+
+      for (uint i = 0; i < nStacks; i++)
       {
-        LOG(INFO)<< "Recovering chains...";
-        for(uint id = 0; id < nChains * nStacks; id++)
+        for (uint j = 0; j < nChains; j++)
         {
-          recoverFromDisk(id);
+          uint id = i * nChains + j;
+
+          beta_[id] = initialBetas[id];
+          sigma_[id] = initialSigmas[id];
+
+          // All chains start off with length 0
+          detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
+          detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
+          detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
         }
       }
-      else
-      {
-        leveldb::WriteBatch batch;
-        for (uint i = 0; i < nStacks; i++)
-        {
-          for (uint j = 0; j < nChains; j++)
-          {
-            uint id = i * nChains + j;
 
-            beta_[id] = initialBetas[id];
-            sigma_[id] = initialSigmas[id];
-
-            // All chains start off with length 0
-            detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
-            detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
-            detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
-          }
-        }
-        db_.put(batch);
-      }
+      db_.put(batch);
     }
 
     ChainArray::ChainArray(ChainArray&& other)
@@ -204,7 +230,7 @@ namespace stateline
 
     uint ChainArray::lengthOnDisk(uint id) const
     {
-      return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id, 0);
+      return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id);
     }
 
     uint ChainArray::length(uint id) const
@@ -253,26 +279,6 @@ namespace stateline
       cache_[id].back().accepted = true;
       if (cache_[id].size() == cacheLength_)
         flushToDisk(id);
-    }
-
-    void ChainArray::recoverFromDisk(uint id)
-    {
-      uint stack = id / numChains();
-      uint chain = id % numChains();
-
-      // Recover beta and sigma
-      VLOG(1) << "Recovering stack " << stack << " chain " << chain << " from disk:";
-      beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id, 0);
-      sigma_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id, 0);
-
-      uint len = lengthOnDisk(id);
-      VLOG(1) << "Has length " << len;
-      VLOG(1) << "Current cache length: " << cache_[id].size();
-      if (len > 0)
-      {
-        // Recover only the newest state
-        cache_[id].push_back(stateFromDisk(id, len - 1));
-      }
     }
 
     void ChainArray::flushToDisk(uint id)
@@ -365,7 +371,7 @@ namespace stateline
       return v;
     }
 
-    bool ChainArray::swap(uint id1, uint id2)
+    SwapType ChainArray::swap(uint id1, uint id2)
     {
       State& state1 = cache_[id1].back();
       State& state2 = cache_[id2].back();
@@ -385,22 +391,22 @@ namespace stateline
         state2.swapType = SwapType::Reject;
       }
 
-      return swapped;
+      return swapped ? SwapType::Accept : SwapType::Reject;
     }
 
-    double ChainArray::sigma(uint id) const
+    Eigen::VectorXd ChainArray::sigma(uint id) const
     {
       return sigma_[id];
+    }
+
+    void ChainArray::setSigma(uint id, Eigen::VectorXd sigma)
+    {
+      sigma_[id] = sigma;
     }
 
     double ChainArray::beta(uint id) const
     {
       return beta_[id];
-    }
-
-    void ChainArray::setSigma(uint id, double sigma)
-    {
-      sigma_[id] = sigma;
     }
 
     void ChainArray::setBeta(uint id, double beta)
@@ -424,4 +430,4 @@ namespace stateline
     }
 
   } // namespace mcmc
-} // namespace obsidian
+} // namespace stateline
