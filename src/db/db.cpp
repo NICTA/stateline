@@ -133,5 +133,5 @@ namespace stateline
     }
 
   } // namespace db
-} // namespace obsidian
+} // namespace stateline
 

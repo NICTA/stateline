@@ -69,4 +69,4 @@ namespace stateline
     }
 
   } // namespace mcmc 
-}// namespace stateline
+} // namespace stateline

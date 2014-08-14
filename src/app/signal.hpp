@@ -12,7 +12,7 @@
 
 #include <csignal>
 
-namespace obsidian
+namespace stateline
 {
   namespace global
   {
@@ -23,7 +23,7 @@ namespace obsidian
   {
     void handleSignal(int sig)
     {
-      obsidian::global::interruptedBySignal = true;
+      stateline::global::interruptedBySignal = true;
     }
 
     void initialiseSignalHandler()

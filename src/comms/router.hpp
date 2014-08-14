@@ -177,5 +177,5 @@ namespace stateline
         IndexBiMap indexMap_;
     };
 
-  } // namespace obsidian
+  } // namespace stateline
 }// namespace comms

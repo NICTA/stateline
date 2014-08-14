@@ -57,5 +57,5 @@ namespace stateline
       hrc::time_point lastReceivedTime_;
     };
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
 

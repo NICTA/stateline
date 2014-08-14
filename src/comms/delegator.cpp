@@ -283,5 +283,5 @@ namespace stateline
       return jobs;
     }
 
-  } // namespace obsidian
+  } // namespace stateline
 } // namespace comms
