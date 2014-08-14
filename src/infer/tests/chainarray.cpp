@@ -22,10 +22,10 @@ class ChainArrayTest : public testing::Test
   public:
     uint nChains = 3;
     uint nStacks = 2;
-    uint totalChains = nChains * nStacks;
-    double tempFactor = 2.0;
-    double initialSigma = 1.0;
-    double sigmaFactor = 2.0;
+    Eigen::VectorXd sigma;
+    double beta;
+    std::vector<Eigen::VectorXd> sigmas;
+    std::vector<double> betas;
     uint cacheLength = 2;
     std::string path = "./AUTOGENtestChainArray";
     DBSettings settings;
@@ -33,9 +33,17 @@ class ChainArrayTest : public testing::Test
     ChainArrayTest()
     {
       settings.directory = path;
-      settings.recover = false;
       settings.cacheSizeMB = 1.0;
       boost::filesystem::remove_all(path);
+
+      sigma = Eigen::VectorXd::Ones(1);
+      beta = 1.0;
+
+      for (uint i = 0; i < nChains * nStacks; i++)
+      {
+        sigmas.push_back(sigma);
+        betas.push_back(beta);
+      }
     }
 
     ~ChainArrayTest()
@@ -46,8 +54,8 @@ class ChainArrayTest : public testing::Test
 
 TEST_F(ChainArrayTest, chainsStartAtLengthZero)
 {
-  ChainArray chains(nStacks, nChains, tempFactor, initialSigma, sigmaFactor, settings, cacheLength);
-  for (uint i = 0; i < totalChains; i++)
+  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
+  for (uint i = 0; i < chains.numTotalChains(); i++)
   {
     uint length = chains.length(i);
     EXPECT_EQ(0U, length);
@@ -56,17 +64,23 @@ TEST_F(ChainArrayTest, chainsStartAtLengthZero)
 
 TEST_F(ChainArrayTest, canInitialiseChain)
 {
-  ChainArray chains(nStacks, nChains, tempFactor, initialSigma, sigmaFactor, settings, 2);
+  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
 
   // Append a test sample to the chain
   Eigen::VectorXd m(5);
   m << 1.0, 2.0, 3.0, 4.0, 5.0;
-  chains.initialise(0, State { m, 666.0, 1.0, 1.0, true, SwapType::NoAttempt });
+  chains.initialise(0, m, 666.0);
 
   ASSERT_EQ(1U, chains.length(0));
+  EXPECT_TRUE(chains.sigma(0).isApprox(sigma));
+  EXPECT_DOUBLE_EQ(beta, chains.beta(0));
+  
   EXPECT_DOUBLE_EQ(666.0, chains.lastState(0).energy);
-  EXPECT_TRUE(m.isApprox(chains.lastState(0).sample));
-  EXPECT_DOUBLE_EQ(1.0, chains.beta(0));
+  EXPECT_TRUE(chains.lastState(0).sample.isApprox(m));
+  EXPECT_TRUE(chains.lastState(0).sigma.isApprox(sigma));
+  EXPECT_DOUBLE_EQ(beta, chains.lastState(0).beta);
+  EXPECT_EQ(true, chains.lastState(0).accepted);
+  EXPECT_EQ(SwapType::NoAttempt, chains.lastState(0).swapType);
 }
 
 TEST_F(ChainArrayTest, canRecoverChain)
@@ -81,22 +95,22 @@ TEST_F(ChainArrayTest, canRecoverChain)
   // Needs a separate scope to call the destructor on chain array because
   // we can't simultaneously read from the DB.
   {
-    ChainArray chains(nStacks, nChains, tempFactor, initialSigma, sigmaFactor, settings, 2);
-    chains.initialise(0, State { m1, 666.0, 1.0, 1.0, true, SwapType::NoAttempt });
-    chains.append(0, State { m2, -666.0, 1.0, -1.0, false, SwapType::Accept });
+    ChainArray chains(nStacks, nChains, sigmas, betas, settings, 2);
+    chains.initialise(0, m1, 666.0);
+    chains.append(0, m2, 333.0);
     chains.flushToDisk(0);
   }
 
   // Now recover it
-  DBSettings recoverSettings = settings;
-  recoverSettings.recover = true;
-
-  ChainArray recovered(nStacks, nChains, tempFactor, initialSigma, sigmaFactor, recoverSettings, 2);
+  ChainArray recovered(settings, 2);
 
   // Note that the newest state (m2) is never saved to disk, so we only check whether
   // the first state (m1) is present.
   ASSERT_EQ(1U, recovered.length(0));
   EXPECT_DOUBLE_EQ(666.0, recovered.lastState(0).energy);
-  EXPECT_TRUE(m1.isApprox(recovered.lastState(0).sample));
+  EXPECT_TRUE(recovered.lastState(0).sample.isApprox(m1));
+  EXPECT_TRUE(recovered.lastState(0).sigma.isApprox(sigma));
   EXPECT_DOUBLE_EQ(1.0, recovered.beta(0));
+  EXPECT_EQ(true, recovered.lastState(0).accepted);
+  EXPECT_EQ(SwapType::NoAttempt, recovered.lastState(0).swapType);
 }

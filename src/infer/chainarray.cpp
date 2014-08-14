@@ -24,7 +24,7 @@ namespace boost
   namespace serialization
   {
     template<class Archive, typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
-    void serialize(Archive &ar, 
+    void serialize(Archive &ar,
         Eigen::Matrix<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols> &t, 
         const unsigned int version) 
     {
@@ -46,7 +46,7 @@ namespace boost
 
     template <class Archive>
     void serialize(Archive &ar, ::stateline::mcmc::State &s, const unsigned int version) {
-      ar & s.sample & s.energy & s.beta & s.accepted & s.swapType;
+      ar & s.sample & s.energy & s.sigma & s.beta & s.accepted & s.swapType;
     }
   }
 }
@@ -116,6 +116,14 @@ namespace stateline
             leveldb::Slice(value.c_str(), sizeof(char) * value.length()));
       }
 
+      template <std::int32_t EntryType>
+      std::string getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
+      {
+        // Read the given value to the database
+        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        return result;
+      }
+
       template <std::int32_t EntryType, class T>
       T getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
       {
@@ -124,14 +132,6 @@ namespace stateline
 
         // Convert it to the data type that we want.
         return *((T *) &result[0]);
-      }
-
-      template <std::int32_t EntryType>
-      std::string getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
-      {
-        // Read the given value to the database
-        std::string result = db.get(toDbKeyString<EntryType>(id, index));
-        return result;
       }
 
       template <class T>
@@ -217,12 +217,11 @@ namespace stateline
         // Recover beta and sigma
         VLOG(1) << "Recovering chain " << id << " from disk.";
         beta_.push_back(detail::getFromDb<detail::BETA, double>(db_, id));
-        sigma_.push_back(detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA, std::string>(db_, id)));
+        sigma_.push_back(detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA>(db_, id)));
 
         // Recover the newest state
         uint len = lengthOnDisk(id);
         VLOG(1) << "Has length " << len;
-        VLOG(1) << "Current cache length: " << cache_[id].size();
         if (len > 0)
         {
           cache_.push_back({ stateFromDisk(id, len - 1) });
