@@ -59,7 +59,7 @@ namespace stateline
     {
       //! Represents the different types of entries that the database can contain.
       //!
-      enum DbEntryType : std::int32_t
+      enum DBEntryType : std::int32_t
       {
         //! Indicates the number of stacks.
         NSTACKS,
@@ -91,7 +91,7 @@ namespace stateline
       //! \return A string representing the database key that is to store this entry.
       //!
       template <std::int32_t EntryType>
-      std::string toDbKeyString(std::uint32_t id, std::uint32_t index)
+      std::string toDBKeyString(std::uint32_t id, std::uint32_t index)
       {
         // Convert (type, id, index) into a string key
         std::uint32_t idx[3] = { EntryType, id, index };
@@ -103,7 +103,7 @@ namespace stateline
           T value)
       {
         // Write the given value to the batch buffer
-        batch.Put(toDbKeyString<EntryType>(id, index),
+        batch.Put(toDBKeyString<EntryType>(id, index),
             leveldb::Slice((char *)&value, sizeof(T)));
       }
 
@@ -112,7 +112,7 @@ namespace stateline
           std::string value)
       {
         // Write the given value to the batch buffer
-        batch.Put(toDbKeyString<EntryType>(id, index),
+        batch.Put(toDBKeyString<EntryType>(id, index),
             leveldb::Slice(value.c_str(), sizeof(char) * value.length()));
       }
 
@@ -120,7 +120,7 @@ namespace stateline
       std::string getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
       {
         // Read the given value to the database
-        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        std::string result = db.get(toDBKeyString<EntryType>(id, index));
         return result;
       }
 
@@ -128,7 +128,7 @@ namespace stateline
       T getFromDb(db::Database &db, std::uint32_t id = 0, std::uint32_t index = 0)
       {
         // Read the given value to the database
-        std::string result = db.get(toDbKeyString<EntryType>(id, index));
+        std::string result = db.get(toDBKeyString<EntryType>(id, index));
 
         // Convert it to the data type that we want.
         return *((T *) &result[0]);
