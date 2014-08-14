@@ -13,23 +13,23 @@
 
 #include <limits>
 #include <random>
-#include <iomanip>
 #include <chrono>
+#include <map>
 #include <Eigen/Dense>
-#include <boost/circular_buffer.hpp>
 #include <iostream>
 #include <glog/logging.h>
 
 #include "db/db.hpp"
+#include "comms/datatypes.hpp"
+#include "comms/settings.hpp"
+#include "infer/async.hpp"
 #include "infer/settings.hpp"
-#include "infer/logging.hpp"
 #include "infer/chainarray.hpp"
 #include "infer/diagnostics.hpp"
-#include "comms/transport.hpp"
 
 namespace stateline
 {
-  using JobConstuctFunction =
+  using JobConstructFunction =
     std::function<std::vector<comms::JobData>(const Eigen::VectorXd &)>;
   using ResultLikelihoodFunction = 
     std::function<double(const std::vector<comms::ResultData>)>;
@@ -37,46 +37,16 @@ namespace stateline
 
   namespace mcmc
   {
-    class AsyncCommunicator
-    {
-      public:
-        AsyncCommunicator(const std::string& commonSpecData,
-              const std::map<JobID, std::string>& jobSpecData,
-              const DelegatorSettings& settings)
-            : delegator_(commonSpecData, jobSpecData, settings),
-              requester_(delegator_)
-        {
-          delegator_.start();
-        }
-
-        void submit(uint id, const std::vector<comms::JobData>& jobs)
-        {
-          requester_.batchSubmit(id, jobs);
-        }
-      
-        std::pair<uint, std::vector<comms::ResultData>> retrieve()
-        {
-          return requester_.batchRetrieve();
-        }
-
-      private:
-        comms::Delegator delegator_;
-        comms::Requester requester_;
-    };
-
-
     struct ProblemInstance
     {
-     JobConstructFunction jobConstructFn;
-     std::string globalJobSpecData;
-     std::map<JobID, std::string> perJobSpecData,
-     ResultLikelihoodFunction resultLikelihoodFn;
+      std::string globalJobSpecData;
+      std::map<comms::JobID, std::string> perJobSpecData;
 
-     ProposalFunction proposalFn;
-
-     std::vector<Eigen::VectorXd> initialStates;
+      JobConstructFunction jobConstructFn;
+      ResultLikelihoodFunction resultLikelihoodFn;
+      ProposalFunction proposalFn;
+      std::vector<Eigen::VectorXd> initialStates;
     };
-
 
     struct SamplerSettings
     {
@@ -94,20 +64,19 @@ namespace stateline
 
     class Sampler
     {
-
       public:
-
         // with initial states
-        Sampler(const ProblemInstance& problem, const SamplerSettings& settings, const std::vector<Eigen::VectorXd>& initialStates,
-                const std::vector<Eigen::VectorXd>& initialSigmas, const std::vector<double>& initialBetas)
+        Sampler(const ProblemInstance& problem, const SamplerSettings& settings,
+            const std::vector<Eigen::VectorXd>& initialStates,
+            const std::vector<Eigen::VectorXd>& initialSigmas,
+            const std::vector<double>& initialBetas)
           : problem_(problem),
             settings_(settings),
             nstacks_(settings.mcmc.stacks),
             nchains_(settings.mcmc.chains),
             chains_(nstacks_, nchains_, initialSigmas, initialBetas, settings.db, settings.mcmc.cacheLength),
-            step_(0),
             numOutstandingJobs_(0),
-            locked_(s.stacks * s.chains, false),
+            locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
             com_(problem.globalJobSpecData, problem.perJobSpecData, settings.del)
         {
           initialise(initialStates);
@@ -119,11 +88,10 @@ namespace stateline
           settings_(settings),
           nstacks_(settings.mcmc.stacks),
           nchains_(settings.mcmc.chains),
-          chains_(nstacks_, nchains_, settings.db, settings.mcmc.cacheLength),
+          chains_(settings.db, settings.mcmc.cacheLength),
           propStates_(nstacks_*nchains_),
-          step_(0),
           numOutstandingJobs_(0),
-          locked_(s.stacks * s.chains, false),
+          locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
           com_(problem.globalJobSpecData, problem.perJobSpecData, settings.del)
         {
         }
@@ -133,6 +101,7 @@ namespace stateline
           // Listen for replies. As soon as a new state comes back,
           // add it to the corresponding chain, and submit a new proposed state
           std::pair<uint, std::vector<comms::ResultData>> result;
+
           // Wait a for reply
           try
           {
@@ -142,16 +111,13 @@ namespace stateline
           {
             VLOG(3) << "Comms error -- probably shutting down";
           }
+
           numOutstandingJobs_--;
           uint id = result.first;
           double energy = problem_.resultLikelihoodFn(result.second);
 
           // Update the parameters for this id
           chains_.setSigma(id, sigmas[id]);
-
-          // Check if this chain is either the coldest or the hottest
-          bool isHottestChainInStack = id % chains_.numChains() == chains_.numChains() - 1;
-          bool isColdestChainInStack = id % chains_.numChains() == 0;
 
           // Handle the new proposal and add a new state to the chain
           bool propAccepted = chains_.append(id, propStates_[id], energy);
@@ -164,10 +130,11 @@ namespace stateline
             // Try swapping this chain with the one above it
             chains_.setBeta(id+1, betas[id+1]);
             swapped = chains_.swap(id, id + 1);
+
             // Unlock this chain, propgating the lock downwards
             unlock(id);
           }
-          else if (isHottestChainInStack && chains_.length(id) % s_.swapInterval == 0 && chains_.numChains() > 1)
+          else if (chains_.isHottestInStack(id) && chains_.length(id) % settings_.mcmc.swapInterval == 0 && chains_.numChains() > 1)
           {
             // The hottest chain is ready to swap. Lock the next chain
             // to prevent it from proposing any more
@@ -185,21 +152,23 @@ namespace stateline
               VLOG(3) << "Comms error -- probably shutting down";
             }
           }
+
           return {id, propAccepted, swapped};
         }
 
         std::vector<StepResult> flush()
         {
-          // Time limit reached. We need to now retrieve all outstanding job results.
+          // Retrieve all outstanding job results.
           std::vector<StepResult> results;
           while (numOutstandingJobs_--)
           {
-            result = com_.retrieve();
+            auto result = com_.retrieve();
             uint id = result.first;
             double energy = problem_.resultLikelihoodFn(result.second);
             bool propAccepted = chains_.append(id, propStates_[id], energy);
             results.push_back({id, propAccepted, SwapType::NoAttempt});
           }
+
           // Manually flush any chain states that are in memory to disk
           for (uint i = 0; i < chains_.numTotalChains(); i++)
             chains_.flushToDisk(i);
@@ -207,11 +176,10 @@ namespace stateline
         }
 
     private:
-
       void propose(uint id)
       {
         propStates_[id] = problem_.proposalFn(chains_);
-        com_.submit_(id, problem_.jobConstructFn(propStates_[id]));
+        com_.submit(id, problem_.jobConstructFn(propStates_[id]));
         numOutstandingJobs_++;
       }
 
@@ -269,7 +237,6 @@ namespace stateline
       // convenience variables
       const uint nstacks_;
       const uint nchains_;
-      const bool recover_;
 
       // The MCMC chain wrapper
       ChainArray chains_;
@@ -277,8 +244,6 @@ namespace stateline
       // The proposed states in the process of being computed
       std::vector<Eigen::VectorXd> propStates_;
 
-      // count which step we're on
-      uint step_;
       // How many jobs haven't been retrieved?
       uint numOutstandingJobs_;
 
@@ -288,9 +253,7 @@ namespace stateline
 
       // The comms wrapper 
       AsyncCommunicator com_;
-
     };
-
 
   } // namespace mcmc 
 }// namespace stateline

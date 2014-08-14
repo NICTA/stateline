@@ -134,7 +134,8 @@ namespace stateline
         return result;
       }
 
-      std::string serialiseState(const State &state)
+      template <class T>
+      std::string archiveString(const T &state)
       {
         std::stringstream ss;
         boost::archive::text_oarchive oa(ss);
@@ -142,21 +143,69 @@ namespace stateline
         return ss.str();
       }
 
-      State unserialiseState(const std::string &str)
+      template <class T>
+      T unarchiveString(const std::string &str)
       {
         std::stringstream ss;
         ss << str;
 
-        State state;
+        T obj;
         boost::archive::text_iarchive ia(ss);
-        ia >> state;
+        ia >> obj;
 
-        return state;
+        return obj;
       }
     } // namespace detail
 
-    ChainArray::ChainArray(const DBSettings &d)
-      : db_(d)
+    //! Returns true if we want to accept the MCMC step.
+    //!
+    //! \param newState The proposed state.
+    //! \param oldState The current state of the chain.
+    //! \param beta The inverse temperature of the chain.
+    //! \return True if the proposal was accepted.
+    //!
+    bool acceptProposal(const State& newState, const State& oldState, double beta)
+    {
+      static std::random_device rd;
+      static std::mt19937 generator(rd());
+      static std::uniform_real_distribution<> rand; // defaults to [0,1)
+
+      if (std::isinf(newState.energy))
+        return false;
+
+      double deltaEnergy = newState.energy - oldState.energy;
+      double probToAccept = std::exp(-1.0 * beta * deltaEnergy);
+
+      // Roll the dice to determine acceptance
+      bool accept = rand(generator) < probToAccept;
+      return accept;
+    }
+
+    //! Returns true if we want to accept the MCMC swap.
+    //!
+    //! \param stateLow The state of the lower temperature chain.
+    //! \param stateHigh The state of the higher temperature chain.
+    //! \param betaLow The inverse temperature of the lower temperature chain.
+    //! \param betaHigh The inverse temperature of the high temperature chain.
+    //! \return True if the swap was accepted.
+    //!
+    bool acceptSwap(const State& stateLow, const State& stateHigh, double betaLow, double betaHigh)
+    {
+      static std::random_device rd;
+      static std::mt19937 generator(rd());
+      static std::uniform_real_distribution<> rand; // defaults to [0,1)
+
+      // Compute the probability of swapping
+      double deltaEnergy = stateHigh.energy - stateLow.energy;
+      double deltaBeta = betaHigh - betaLow;
+      double probToSwap = std::exp(deltaEnergy * deltaBeta);
+      bool swapAccepted = rand(generator) < probToSwap;
+      return swapAccepted;
+    }
+
+    ChainArray::ChainArray(const DBSettings &d, uint cacheLength)
+      : db_(d, true),
+        cacheLength_(cacheLength)
     {
       // Recover the dimensions of the chain array
       nstacks_ = detail::getFromDb<detail::NSTACKS, std::uint32_t>(db_);
@@ -167,8 +216,8 @@ namespace stateline
       {
         // Recover beta and sigma
         VLOG(1) << "Recovering chain " << id << " from disk.";
-        beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
-        sigma_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id);
+        beta_.push_back(detail::getFromDb<detail::BETA, double>(db_, id));
+        sigma_.push_back(detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA, std::string>(db_, id)));
 
         // Recover the newest state
         uint len = lengthOnDisk(id);
@@ -176,21 +225,28 @@ namespace stateline
         VLOG(1) << "Current cache length: " << cache_[id].size();
         if (len > 0)
         {
-          cache_[id].push_back(stateFromDisk(id, len - 1));
+          cache_.push_back({ stateFromDisk(id, len - 1) });
         }
+        else
+        {
+          cache_.push_back({});
+        }
+
+        // Reserve the cache
+        cache_.back().reserve(cacheLength);
       }
     }
 
     ChainArray::ChainArray(uint nStacks, uint nChains,
         const std::vector<Eigen::VectorXd>& initialSigmas,
         const std::vector<double>& initialBetas, const DBSettings& d, uint cacheLength)
-        : nstacks_(nStacks),
+        : db_(d, false),
+          nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(cacheLength),
           beta_(nStacks * nChains),
           sigma_(nStacks * nChains),
-          cache_(nStacks * nChains),
-          db_(d)
+          cache_(nStacks * nChains)
     {
       // Reserve the cache
       for (auto& c : cache_)
@@ -199,8 +255,8 @@ namespace stateline
       // Initialise the database
       leveldb::WriteBatch batch;
 
-      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nstacks);
-      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nchains);
+      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nStacks);
+      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nChains);
 
       for (uint i = 0; i < nStacks; i++)
       {
@@ -213,7 +269,7 @@ namespace stateline
 
           // All chains start off with length 0
           detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
-          detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
+          detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
           detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
         }
       }
@@ -222,9 +278,9 @@ namespace stateline
     }
 
     ChainArray::ChainArray(ChainArray&& other)
-      : nstacks_(other.nstacks_), nchains_(other.nchains_), cacheLength_(other.cacheLength_),
-        beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
-        cache_(std::move(other.cache_)), db_(std::move(db_))
+      : db_(std::move(db_)), nstacks_(other.nstacks_), nchains_(other.nchains_),
+        cacheLength_(other.cacheLength_), beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
+        cache_(std::move(other.cache_))
     {
     }
 
@@ -242,7 +298,7 @@ namespace stateline
       {
         length = cache_[id].size();
       }
-      else if (id % numChains() == 0)
+      else if (chainIndex(id) == 0)
       {
         length = lengthOnDisk0 + cache_[id].size() - 1;
       }
@@ -254,29 +310,31 @@ namespace stateline
       return length;
     }
 
-    //TODO up to here
-
-    bool ChainArray::append(uint id, const State& proposedState)
+    bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
+      State newState = { sample, energy, sigma_[id], beta_[id] };
       State last = cache_[id].back();
-      bool accepted = acceptProposal(proposedState, last, beta_[id]);
+
+      bool accepted = acceptProposal(newState, last, beta_[id]);
 
       if (accepted)
-        cache_[id].push_back(proposedState);
+        cache_[id].push_back(newState);
       else
         cache_[id].push_back(last);
 
       cache_[id].back().accepted = accepted;
+      cache_[id].back().swapType = SwapType::NoAttempt;
       if (cache_[id].size() == cacheLength_)
         flushToDisk(id);
 
       return accepted;
     }
 
-    void ChainArray::initialise(uint id, const State& s)
+    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, double energy)
     {
-      cache_[id].push_back(s);
+      cache_[id].push_back({ sample, energy, sigma_[id], beta_[id] });
       cache_[id].back().accepted = true;
+      cache_[id].back().swapType = SwapType::NoAttempt;
       if (cache_[id].size() == cacheLength_)
         flushToDisk(id);
     }
@@ -289,13 +347,13 @@ namespace stateline
       State lastState = cache_[id].back();
 
       // Don't put the newest state in
-      if (id % numChains() == 0)
+      if (chainIndex(id) == 0)
       {
         for (uint i = 0; i < cacheLength - 1; i++)
         {
           uint index = diskLength + i;
           detail::putToBatch<detail::STATE>(batch, id, index,
-              detail::serialiseState(cache_[id][i]));
+              detail::archiveString(cache_[id][i]));
         }
 
         uint newLength = diskLength + cacheLength - 1; // don't count newest state
@@ -306,12 +364,12 @@ namespace stateline
       {
         VLOG(3) << "Overwriting high temperature state of chain " << id;
         detail::putToBatch<detail::STATE>(batch, id, 0,
-          detail::serialiseState(cache_[id][cacheLength - 1]));
+          detail::archiveString(cache_[id][cacheLength - 1]));
         detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 1);
       }
 
       // Update sigma and beta
-      detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
+      detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
       detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
 
       // Write the batch
@@ -335,7 +393,7 @@ namespace stateline
       // Read the serialised state from disk
       std::string state = detail::getFromDb<detail::STATE>(db_, id, idx);
 
-      return detail::unserialiseState(state);
+      return detail::unarchiveString<State>(state);
     }
 
     State ChainArray::stateFromCache(uint id, uint idx) const
@@ -399,7 +457,7 @@ namespace stateline
       return sigma_[id];
     }
 
-    void ChainArray::setSigma(uint id, Eigen::VectorXd sigma)
+    void ChainArray::setSigma(uint id, const Eigen::VectorXd& sigma)
     {
       sigma_[id] = sigma;
     }

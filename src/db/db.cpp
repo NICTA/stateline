@@ -22,12 +22,12 @@ namespace stateline
 {
   namespace db
   {
-    Database::Database(const DBSettings& s)
+    Database::Database(const DBSettings& s, bool recover)
         : cacheNumBytes_(s.cacheSizeMB * 1024 * 1024)
     {
       options_.block_cache = leveldb::NewLRUCache(cacheNumBytes_); // Cache in MB
       options_.filter_policy = leveldb::NewBloomFilterPolicy(10); // smart filtering -- bits per key?
-      if (!s.recover)
+      if (!recover)
       {
         options_.error_if_exists = true;
         options_.create_if_missing = true;
@@ -40,7 +40,7 @@ namespace stateline
       leveldb::Status status = leveldb::DB::Open(options_, s.directory, &db_);
       if (!status.ok())
       {
-        if (s.recover)
+        if (recover)
         {
           LOG(ERROR)<< "Could not recover database. Check the path in the config file and disk write permissions";
         }

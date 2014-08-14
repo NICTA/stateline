@@ -17,6 +17,7 @@ namespace stateline
 {
   namespace mcmc
   {
+    /*
     //! A logger which does nothing.
     //!
     class NoLogger
@@ -83,6 +84,6 @@ namespace stateline
         std::vector<double> lowestEnergies_;
         std::chrono::seconds frequency_;
         std::chrono::time_point<std::chrono::steady_clock> nextOutputTime_;
-    };
+    };*/
   }
 }

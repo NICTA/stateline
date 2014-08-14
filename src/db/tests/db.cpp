@@ -25,7 +25,6 @@ class SimpleDB: public testing::Test
     SimpleDB()
     {
       settings.directory = path;
-      settings.recover = false;
       settings.cacheSizeMB = 1.0;
       boost::filesystem::remove_all(path);
     }
@@ -38,7 +37,7 @@ class SimpleDB: public testing::Test
 
 TEST_F(SimpleDB, canWriteAndReadSingleEntry)
 {
-  Database db(settings);
+  Database db(settings, false);
   db.put("hello", "world");
   std::string result = db.get("hello");
   EXPECT_EQ(result,"world");
@@ -46,7 +45,7 @@ TEST_F(SimpleDB, canWriteAndReadSingleEntry)
 
 TEST_F(SimpleDB, canSwapTwoKeys)
 {
-  Database db(settings);
+  Database db(settings, false);
   db.put("key1", "val1");
   db.put("key2", "val2");
 

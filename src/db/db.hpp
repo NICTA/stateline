@@ -28,7 +28,7 @@ namespace stateline
       //!
       //! \param s The database settings.
       //!
-      Database(const DBSettings& s);
+      Database(const DBSettings& s, bool recover);
 
       // Move constructor only
       Database(Database&& other);

@@ -40,7 +40,7 @@ namespace stateline
       double energy;
 
       //! The step size of the chain when this state was recorded.
-      double sigma;
+      Eigen::VectorXd sigma;
 
       //! The inverse temperature of the chain when this state was recorded.
       double beta;

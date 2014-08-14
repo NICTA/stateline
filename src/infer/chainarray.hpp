@@ -42,7 +42,7 @@ namespace stateline
         //! 
         //! \param d The database settings used to store chain data.
         //!
-        ChainArray(const DBSettings &d);
+        ChainArray(const DBSettings &d, uint cacheLength);
 
         //! Create a chain array.
         //! 
@@ -55,10 +55,7 @@ namespace stateline
         //! \param cacheLength The size of the memory cache used to store the chains.
         //!
         ChainArray(uint nStacks, uint nChains, const std::vector<Eigen::VectorXd>& initialSigmas,
-            const std::vector<double> initialBetas, const DBSettings &d, uint cacheLength);
-
-        //! Chain Array recovered from disk
-        ChainArray(uint nStacks, uint nChains, const DBSettings&d, uint cacheLength);
+            const std::vector<double>& initialBetas, const DBSettings &d, uint cacheLength);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
@@ -167,6 +164,26 @@ namespace stateline
         //!
         void flushToDisk(uint id);
 
+        uint stackIndex(uint id) const
+        {
+          return id / numChains();
+        }
+
+        uint chainIndex(uint id) const
+        {
+          return id % numChains();
+        }
+
+        bool isHottestInStack(uint id) const
+        {
+          return chainIndex(id) == numChains() - 1;
+        }
+
+        bool isColdestInStack(uint id) const
+        {
+          return chainIndex(id) == 0;
+        }
+
       private:
         uint lengthOnDisk(uint id) const;
         void setLengthOnDisk(uint id, uint length);
@@ -180,13 +197,13 @@ namespace stateline
         //!
         void recoverFromDisk(uint id);
 
+        mutable db::Database db_; // Mutable so that chain queries can be const
         uint nstacks_;
         uint nchains_;
         uint cacheLength_;
         std::vector<double> beta_;
         std::vector<Eigen::VectorXd> sigma_;
         std::vector<std::vector<State>> cache_;
-        mutable db::Database db_; // Mutable so that chain queries can be const
     };
 
   } // namespace mcmc
