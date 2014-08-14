@@ -160,3 +160,65 @@ TEST_F(ChainArrayTest, canRecoverChain)
   EXPECT_EQ(true, recovered.lastState(0).accepted);
   EXPECT_EQ(SwapType::NoAttempt, recovered.lastState(0).swapType);
 }
+
+TEST_F(ChainArrayTest, canRecoverMultipleChains)
+{
+  // Seed the random number generator
+  std::mt19937 gen(42);
+  srand(42);
+  std::uniform_real_distribution<> dist;
+  
+  // Used to save the state of the chains
+  std::vector<std::vector<State>> states;
+
+  // Needs a separate scope to call the destructor on chain array because
+  // we can't simultaneously read from the DB.
+  {
+    ChainArray chains(nStacks, nChains, sigmas, betas, settings, 2);
+    for (uint i = 0; i < chains.numTotalChains(); i++)
+    {
+      // Initialise the chain
+      chains.initialise(i, Eigen::VectorXd::Random(5), dist(gen));
+    }
+
+    for (uint i = 0; i < chains.numTotalChains(); i++)
+    {
+      for (uint j = 0; j < 10; j++)
+      {
+        // Append some random sample
+        chains.append(i, Eigen::VectorXd::Random(5), dist(gen));
+
+        // Randomly swap with another chain
+        chains.swap(i, rand() % chains.numTotalChains());
+
+        // Randomly set the beta and sigma
+        chains.setBeta(i, dist(gen));
+        chains.setSigma(i, Eigen::VectorXd::Random(5));
+      }
+    }
+
+    // Save the state of the chain so we can verify the recovered version
+    for (uint i = 0; i < chains.numTotalChains(); i++)
+    {
+      states.push_back(chains.states(i));
+    }
+  }
+
+  // Now recover it and verify that chains haven't changed
+  ChainArray recovered(settings, 2);
+
+  ASSERT_EQ(states.size(), recovered.numTotalChains());
+  for (uint i = 0; i < recovered.numTotalChains(); i++)
+  {
+    ASSERT_EQ(states[i].size(), recovered.length(i));
+    for (uint j = 0; j < recovered.length(i); j++)
+    {
+      EXPECT_TRUE(states[i][j].sample.isApprox(recovered.state(i, j).sample));
+      EXPECT_EQ(states[i][j].energy, recovered.state(i, j).energy);
+      EXPECT_TRUE(states[i][j].sigma.isApprox(recovered.state(i, j).sigma));
+      EXPECT_EQ(states[i][j].beta, recovered.state(i, j).beta);
+      EXPECT_EQ(states[i][j].accepted, recovered.state(i, j).accepted);
+      EXPECT_EQ(states[i][j].swapType, recovered.state(i, j).swapType);
+    }
+  }
+}
