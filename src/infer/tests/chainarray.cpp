@@ -83,6 +83,52 @@ TEST_F(ChainArrayTest, canInitialiseChain)
   EXPECT_EQ(SwapType::NoAttempt, chains.lastState(0).swapType);
 }
 
+TEST_F(ChainArrayTest, canSwapChains)
+{
+  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
+
+  // Create test samples
+  Eigen::VectorXd m1(5);
+  m1 << 1.0, 2.0, 3.0, 4.0, 5.0;
+
+  Eigen::VectorXd m2(5);
+  m2 << -1.0, -2.0, -3.0, -4.0, -5.0;
+
+  // Give the two chains different sigma and beta
+  Eigen::VectorXd sigma1 = Eigen::VectorXd::Ones(1) * 0.1;
+  Eigen::VectorXd sigma2 = Eigen::VectorXd::Ones(1) * 0.2;
+
+  chains.setSigma(0, sigma1);
+  chains.setSigma(1, sigma2);
+
+  chains.setBeta(0, 0.1);
+  chains.setBeta(1, 0.11);
+
+  // Append to two separate chains and then swap them
+  chains.initialise(0, m1, 666.0);
+  chains.initialise(1, m2, 667.0);
+  ASSERT_EQ(SwapType::Accept, chains.swap(0, 1));
+
+  ASSERT_EQ(1U, chains.length(0));
+  ASSERT_EQ(1U, chains.length(1));
+  
+  // Chain 0 should be m2
+  EXPECT_DOUBLE_EQ(667.0, chains.lastState(0).energy);
+  EXPECT_TRUE(chains.lastState(0).sample.isApprox(m2));
+  EXPECT_TRUE(chains.lastState(0).sigma.isApprox(sigma2));
+  EXPECT_DOUBLE_EQ(0.11, chains.lastState(0).beta);
+  EXPECT_EQ(true, chains.lastState(0).accepted);
+  EXPECT_EQ(SwapType::Accept, chains.lastState(0).swapType);
+  
+  // Chain 1 should be m1
+  EXPECT_DOUBLE_EQ(666.0, chains.lastState(1).energy);
+  EXPECT_TRUE(chains.lastState(1).sample.isApprox(m1));
+  EXPECT_TRUE(chains.lastState(1).sigma.isApprox(sigma1));
+  EXPECT_DOUBLE_EQ(0.1, chains.lastState(1).beta);
+  EXPECT_EQ(true, chains.lastState(1).accepted);
+  EXPECT_EQ(SwapType::Accept, chains.lastState(1).swapType);
+}
+
 TEST_F(ChainArrayTest, canRecoverChain)
 {
   // Create test samples
