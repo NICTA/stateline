@@ -22,21 +22,25 @@
 #include "db/db.hpp"
 #include "comms/datatypes.hpp"
 #include "comms/settings.hpp"
+#include "comms/serial.hpp"
 #include "infer/async.hpp"
 #include "infer/settings.hpp"
 #include "infer/chainarray.hpp"
 #include "infer/diagnostics.hpp"
+#include "app/serial.hpp"
 
 namespace stateline
 {
-  using JobConstructFunction =
-    std::function<std::vector<comms::JobData>(const Eigen::VectorXd &)>;
-  using ResultLikelihoodFunction = 
-    std::function<double(const std::vector<comms::ResultData>)>;
-  using ProposalFunction = std::function<Eigen::VectorXd(const mcmc::ChainArray& c)>;
-
   namespace mcmc
   {
+    using JobConstructFunction =
+      std::function<std::vector<comms::JobData>(const Eigen::VectorXd&)>;
+
+    using ResultLikelihoodFunction = 
+      std::function<double(const std::vector<comms::ResultData>&)>;
+
+    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray&)>;
+
     struct ProblemInstance
     {
       std::string globalJobSpecData;
@@ -45,7 +49,6 @@ namespace stateline
       JobConstructFunction jobConstructFn;
       ResultLikelihoodFunction resultLikelihoodFn;
       ProposalFunction proposalFn;
-      std::vector<Eigen::VectorXd> initialStates;
     };
 
     struct SamplerSettings
@@ -54,13 +57,16 @@ namespace stateline
       DBSettings db;
       DelegatorSettings del;
     };
-    
-    struct StepResult
+
+    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x)
     {
-      uint id;
-      bool accept;
-      SwapType swap;
-    };
+      return {{ 0, "", serialise(x) }};
+    }
+
+    double singleJobLikelihood(const std::vector<comms::ResultData> &results)
+    {
+      return comms::detail::unserialise<double>(results[0].data);
+    }
 
     class Sampler
     {
@@ -96,7 +102,7 @@ namespace stateline
         {
         }
       
-        StepResult step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas)
+        std::pair<uint, State> step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas)
         {
           // Listen for replies. As soon as a new state comes back,
           // add it to the corresponding chain, and submit a new proposed state
@@ -118,18 +124,17 @@ namespace stateline
 
           // Update the parameters for this id
           chains_.setSigma(id, sigmas[id]);
+          chains_.setBeta(id, betas[id]);
 
           // Handle the new proposal and add a new state to the chain
-          bool propAccepted = chains_.append(id, propStates_[id], energy);
+          chains_.append(id, propStates_[id], energy);
 
           // Check if this chain was locked. If it was locked, it means that
           // the chain above (hotter) locked it so that it can swap with it
-          SwapType swapped = SwapType::NoAttempt;
           if (locked_[id])
           {
             // Try swapping this chain with the one above it
-            chains_.setBeta(id+1, betas[id+1]);
-            swapped = chains_.swap(id, id + 1);
+            chains_.swap(id, id + 1);
 
             // Unlock this chain, propgating the lock downwards
             unlock(id);
@@ -153,32 +158,34 @@ namespace stateline
             }
           }
 
-          return {id, propAccepted, swapped};
+          return {id, chains_.lastState(id)};
         }
 
-        std::vector<StepResult> flush()
+        void flush()
         {
           // Retrieve all outstanding job results.
-          std::vector<StepResult> results;
           while (numOutstandingJobs_--)
           {
             auto result = com_.retrieve();
             uint id = result.first;
             double energy = problem_.resultLikelihoodFn(result.second);
-            bool propAccepted = chains_.append(id, propStates_[id], energy);
-            results.push_back({id, propAccepted, SwapType::NoAttempt});
+            chains_.append(id, propStates_[id], energy);
           }
 
           // Manually flush any chain states that are in memory to disk
           for (uint i = 0; i < chains_.numTotalChains(); i++)
             chains_.flushToDisk(i);
-          return results;
+        }
+
+        const ChainArray &chains() const
+        {
+          return chains_;
         }
 
     private:
       void propose(uint id)
       {
-        propStates_[id] = problem_.proposalFn(chains_);
+        propStates_[id] = problem_.proposalFn(id, chains_);
         com_.submit(id, problem_.jobConstructFn(propStates_[id]));
         numOutstandingJobs_++;
       }

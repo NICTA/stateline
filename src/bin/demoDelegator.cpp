@@ -16,11 +16,9 @@
 #include <chrono>
 #include <thread>
 
-#include "app/logging.hpp"
-#include "app/delegator.hpp"
 #include "infer/mcmc.hpp"
-#include "infer/metropolis.hpp"
 #include "infer/adaptive.hpp"
+#include "app/logging.hpp"
 
 namespace sl = stateline;
 namespace ph = std::placeholders;
@@ -51,31 +49,44 @@ int main(int ac, char *av[])
   Eigen::MatrixXd means(ncomponents, ndims);
   means << -5, -5, -5,
             5,  5,  5;
-
-  // Generate initial states
-  std::vector<Eigen::VectorXd> initialStates;
-  for (uint i = 0; i < nstacks * nchains; i++)
-    initialStates.push_back(Eigen::VectorXd::Random(ndims));
  
-  // Creating a proposal distribution
-  auto proposal = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
+  // Set up the problem
+  sl::mcmc::ProblemInstance problem;
+  problem.globalJobSpecData = sl::serialise(means);
+  problem.jobConstructFn = sl::mcmc::singleJobConstruct;
+  problem.resultLikelihoodFn = sl::mcmc::singleJobLikelihood;
+  problem.proposalFn = std::bind(sl::mcmc::reflectiveGaussianProposal, ph::_1, ph::_2,
       Eigen::VectorXd::Constant(ndims, -10),
-      Eigen::VectorXd::Constant(ndims, 10)); 
+      Eigen::VectorXd::Constant(ndims, 10));
 
-  // Set up and start the delegator
-  sl::comms::Delegator delegator(sl::serialise(means), {{ 0, "" }},
-      sl::DelegatorSettings::Default(5555));
-  delegator.start();
+  // Set up the settings
+  sl::mcmc::SamplerSettings settings;
+  settings.mcmc = sl::MCMCSettings::Default(nstacks, nchains);
+  settings.db = sl::DBSettings::Default();
+  settings.del = sl::DelegatorSettings::Default(5555);
 
-  // Create an async policy for the MCMC
-  sl::SingleTaskAsyncPolicy policy(delegator);
+  // Generate initial parameters
+  std::vector<Eigen::VectorXd> initial;
+  std::vector<Eigen::VectorXd> sigmas;
+  std::vector<double> betas;
+
+  for (uint i = 0; i < nstacks; i++)
+  {
+    for (uint j = 0; j < nchains; j++)
+    {
+      initial.push_back(Eigen::VectorXd::Random(ndims));
+      sigmas.push_back(Eigen::VectorXd::Ones(ndims));
+      betas.push_back(1.0 / std::pow(2.1, j));
+    }
+  }
 
   // Create a sampler and run it
-  sl::mcmc::Sampler sampler(
-      sl::MCMCSettings::Default(nchains, nstacks),
-      sl::DBSettings::Default(), ndims);
-  sl::mcmc::SimpleLogger logger(sampler.settings(), 3);
-  sampler.run(policy, initialStates, proposal, numSeconds, logger);
+  sl::mcmc::Sampler sampler(problem, settings, initial, sigmas, betas);
+  while (true) // TODO: add stopping criteria
+  {
+    // TODO: adapt and survive
+    sampler.step(sigmas, betas);
+  }
 
   // Output the coldest chains to CSV
   std::ofstream out("chain.csv");

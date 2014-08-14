@@ -16,11 +16,11 @@ namespace stateline
   //!
   struct MCMCSettings
   {
-    //! The number of chains per stack.
-    uint chains;
-
     //! The number of stacks used in the simulation.
     uint stacks;
+    
+    //! The number of chains per stack.
+    uint chains;
 
     //! The number of samples between swap attempts.
     uint swapInterval;
@@ -84,11 +84,11 @@ namespace stateline
       return settings;
     }
 
-    static MCMCSettings NoAdaption(uint chains, uint stacks)
+    static MCMCSettings NoAdaption(uint stacks, uint chains)
     {
       MCMCSettings settings = MCMCSettings::Empty();
-      settings.chains = chains;
       settings.stacks = stacks;
+      settings.chains = chains;
       settings.swapInterval = 25;
       settings.adaptionLength = 1;
       settings.cacheLength = 100;
