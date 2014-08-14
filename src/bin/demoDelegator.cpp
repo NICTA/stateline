@@ -16,7 +16,7 @@
 #include <chrono>
 #include <thread>
 
-#include "infer/mcmc.hpp"
+#include "infer/sampler.hpp"
 #include "infer/adaptive.hpp"
 #include "app/logging.hpp"
 
