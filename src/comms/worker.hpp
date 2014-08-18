@@ -145,4 +145,4 @@ namespace stateline
     void disconnectFromServer(const Message& m);
 
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline

@@ -100,5 +100,5 @@ namespace stateline
       std::map<uint, uint> batchLeft_;
     };
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
 

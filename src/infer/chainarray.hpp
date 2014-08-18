@@ -18,7 +18,7 @@ namespace stateline
 {
   namespace mcmc
   {
-    //! Manager for all the states and handle reading / writing from / to databse.
+    //! Manager for all the states and handle reading / writing from / to database.
     //!
     //! \section id The chain ID used by MCMC sampler.
     //!
@@ -195,4 +195,4 @@ namespace stateline
     };
 
   } // namespace mcmc
-} // namespace obsidian
+} // namespace stateline

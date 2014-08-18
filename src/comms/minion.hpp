@@ -62,5 +62,5 @@ namespace stateline
       std::string jobIDString_;
     };
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
 

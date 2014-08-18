@@ -117,5 +117,5 @@ namespace stateline
     std::string addressAsString(const Address& addr);
 
   } // namespace comms
-} // namespace obsidian
+} // namespace stateline
 
