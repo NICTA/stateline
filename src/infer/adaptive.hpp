@@ -54,6 +54,7 @@ namespace stateline
             lengths_[i] = 1; // assuming we're not recovering
             acceptRates_[i] = 1;
             acceptBuffers_.push_back(boost::circular_buffer<bool>(adaptionLength));
+            acceptBuffers_[i].push_back(true); // first state always accepts
           }
         }
 
@@ -119,7 +120,114 @@ namespace stateline
     };
 
 
+    class SlidingWindowBetaAdapter
+    {
+      public:
+        
+        SlidingWindowBetaAdapter( uint nStacks, uint nChains, uint windowSize, double betaFactor,
+            uint adaptionLength, uint nStepsPerAdapt, double optimalSwap,
+              double adaptRate, double minFactor, double maxFactor)
+          : nStacks_(nStacks),
+            nChains_(nChains),
+            betas_(nStacks*nChains),
+            swapRates_(nStacks*nChains),
+            lengths_(nStacks*nChains),
+            windowSize_(windowSize),
+            betaFactor_(betaFactor),
+            adaptionLength_(adaptionLength),
+            nStepsPerAdapt_(nStepsPerAdapt),
+            optimalSwapRate_(optimalSwap),
+            adaptRate_(adaptRate),
+            minFactor_(minFactor),
+            maxFactor_(maxFactor)
+        {
+          for (uint i = 0; i < nStacks; i++)
+            for (uint j = 0; j < nChains; j++)
+            {
+              uint id = i * nChains + j;
+              double beta = 1.0 * std::pow(betaFactor, j);
+              betas_[id] = beta;
+            }
 
+          for (uint i = 0; i < nChains_ * nStacks_; i++)
+          {
+            swapRates_[i] = 0;
+            swapBuffers_.push_back(boost::circular_buffer<bool>(adaptionLength_));
+            swapBuffers_[i].push_back(false); // gets rid of a nan, not really needed
+          }
+        }
+        
+        void update(uint id, State s)
+        {
+          lengths_[id] += 1;
+          SwapType sw = s.swapType;
+          bool attempted = sw == SwapType::NoAttempt;
+          if (attempted)
+          {
+            uint oldSize = swapBuffers_[id].size();
+            double oldRate = swapRates_[id];
+            bool isFull = swapBuffers_[id].full();
+            bool lastSw = swapBuffers_[id].front();
+            // Now push back the new state
+            swapBuffers_[id].push_back(sw == SwapType::Accept);
+            // Compute the new rate
+            uint newSize = swapBuffers_[id].size();
+            double delta = ((int)sw - (int)(lastSw&&isFull))/(double)newSize;
+            double scale = oldSize/(double)newSize;
+            swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
+          }
+          if (lengths_[id] % nStepsPerAdapt_ == 0)
+            adaptBeta(id);
+        }
+
+        std::vector<double> betas(uint id)
+        {
+          return betas_;
+        }
+
+      private:
+        
+        void adaptBeta(uint id)
+        {
+          // Adapt the temperature
+          double swapRate = swapRates_[id];
+          double rawFactor = std::pow(swapRate/optimalSwapRate_, adaptRate_);
+          double boundedFactor = std::min( std::max(rawFactor, minFactor_), maxFactor_);
+          double beta = betas_[id];
+          double lowerBeta = betas_[id-1];// temperature changes propogate UP
+          double factor = 1.0/std::max(boundedFactor, 2*beta/(beta + lowerBeta));
+          // Set the temperature for this chain (because it hasn't proposed yet)
+          double gamma = adaptionLength_/(double)(adaptionLength_+lengths_[id]);
+          double newbeta = betas_[id] * std::pow(factor, gamma);
+          betas_[id] = newbeta;
+          // Just for logging
+          VLOG(2) << "Adapting Beta" << id << ":" << beta << "->" << newbeta << " @swaprate:" << swapRate;
+          // Loop through the other temperatures
+          uint coldestChainId = (uint)(id / (double)nChains_) * nChains_;
+          uint hottestChainId = coldestChainId + nChains_-1;
+          // Set the next temperatures for the other chains (as they're busy)
+          for (uint i = id+1; i <= hottestChainId; i++)
+          {
+            betas_[i] = betas_[i] * std::pow(factor, gamma);
+          }
+        }
+
+        uint nStacks_;
+        uint nChains_;
+        std::vector<double> betas_;
+        std::vector<double> swapRates_;
+        std::vector<boost::circular_buffer<bool>> swapBuffers_;
+        std::vector<uint> lengths_;
+        uint windowSize_;
+        double betaFactor_;
+        uint adaptionLength_;
+        uint nStepsPerAdapt_;
+        double optimalSwapRate_;
+        double adaptRate_;
+        double minFactor_;
+        double maxFactor_;
+
+    };
 
 
     
