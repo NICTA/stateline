@@ -24,6 +24,7 @@ namespace stateline
         nstacks_(settings.mcmc.stacks),
         nchains_(settings.mcmc.chains),
         chains_(nstacks_, nchains_, initialSigmas, initialBetas, settings.db, settings.mcmc.cacheLength),
+        propStates_(nstacks_*nchains_),
         numOutstandingJobs_(0),
         locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
         com_(problem.globalJobSpecData, problem.perJobSpecData, settings.del)

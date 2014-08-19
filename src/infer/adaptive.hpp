@@ -180,7 +180,7 @@ namespace stateline
             adaptBeta(id);
         }
 
-        std::vector<double> betas(uint id)
+        std::vector<double> betas()
         {
           return betas_;
         }
