@@ -83,6 +83,11 @@ namespace stateline
           return sigmas_;
         }
 
+        std::vector<double> acceptRates() const
+        {
+          return acceptRates_;
+        }
+
       private:
 
         void adaptSigma(uint id)
@@ -183,6 +188,11 @@ namespace stateline
         std::vector<double> betas()
         {
           return betas_;
+        }
+        
+        std::vector<double> swapRates() const
+        {
+          return swapRates_;
         }
 
       private:
