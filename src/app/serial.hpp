@@ -15,12 +15,12 @@
 
 namespace stateline
 {
-  std::string serialise(const Eigen::VectorXd &vector)
+  inline std::string serialise(const Eigen::VectorXd &vector)
   {
     return std::string((char *)vector.data(), vector.size() * sizeof(double));
   }
 
-  std::string serialise(const Eigen::MatrixXd &matrix)
+  inline std::string serialise(const Eigen::MatrixXd &matrix)
   {
     std::uint32_t rows = matrix.rows();
 
@@ -30,10 +30,10 @@ namespace stateline
   }
 
   template <class T>
-  T unserialise(const std::string &str);
+  inline T unserialise(const std::string &str);
 
   template <>
-  Eigen::VectorXd unserialise(const std::string &str)
+  inline Eigen::VectorXd unserialise(const std::string &str)
   {
     Eigen::VectorXd vector(str.length() / sizeof(double));
     memcpy(vector.data(), str.c_str(), str.length());
@@ -41,7 +41,7 @@ namespace stateline
   }
 
   template <>
-  Eigen::MatrixXd unserialise(const std::string &str)
+  inline Eigen::MatrixXd unserialise(const std::string &str)
   {
     // Read the header containing the number of rows.
     std::size_t rows = *((std::uint32_t *)str.data());

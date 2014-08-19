@@ -13,7 +13,6 @@
 
 #include <glog/logging.h>
 
-#include "infer/metropolis.hpp"
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
@@ -32,13 +31,13 @@ namespace boost
       std::size_t rows = t.rows(), cols = t.cols();
       ar & rows & cols;
 
-      if (rows * cols != t.size())
+      if ((uint)(rows * cols) != t.size())
       {
         // Allocate memory if necessary
         t.resize(rows, cols);
       }
 
-      for(std::size_t i = 0; i < t.size(); i++)
+      for(std::size_t i = 0; i < (std::size_t)t.size(); i++)
       {
         ar & t.data()[i];
       }

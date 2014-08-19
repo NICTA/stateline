@@ -37,7 +37,7 @@ namespace stateline
         {
           // Ensure that all the components have the same number of dimensions
           for (const auto &comp : components)
-            assert(weights.size() == stats::length(comp));
+            assert((uint)weights.size() == stats::length(comp));
         }
 
         Eigen::VectorXd weights() const

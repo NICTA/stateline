@@ -39,7 +39,7 @@ namespace stateline
     using ResultEnergyFunction = 
       std::function<double(const std::vector<comms::ResultData>&)>;
 
-    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray&)>;
+    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray& chains)>;
 
     struct ProblemInstance
     {
@@ -58,15 +58,9 @@ namespace stateline
       DelegatorSettings del;
     };
 
-    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x)
-    {
-      return {{ 0, "", serialise(x) }};
-    }
+    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
 
-    double singleJobLikelihood(const std::vector<comms::ResultData> &results)
-    {
-      return comms::detail::unserialise<double>(results[0].data);
-    }
+    double singleJobLikelihood(const std::vector<comms::ResultData> &results);
 
   } // namespace mcmc 
 } // namespace stateline

@@ -176,7 +176,7 @@ namespace stateline
             double scale = oldSize/(double)newSize;
             swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
           }
-          if (lengths_[id] % nStepsPerAdapt_ == 0)
+          if ((lengths_[id] % nStepsPerAdapt_ == 0) && (id % nChains_ != 0))
             adaptBeta(id);
         }
 
@@ -286,18 +286,20 @@ namespace stateline
     //! \param max The maximum bound of theta 
     //! \returns The new proposed theta
     //!
-    Eigen::VectorXd adaptiveGaussianProposal(const Eigen::VectorXd &state,
-      const Eigen::VectorXd& sigma, const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    Eigen::VectorXd adaptiveGaussianProposal(uint id, const ChainArray& chains,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
     {
       // Random number generators
+      Eigen::VectorXd sigma = chains.sigma(id);
+      State state = chains.lastState(id);
       static std::random_device rd;
       static std::mt19937 generator(rd());
       static std::normal_distribution<> rand; // Standard normal
 
       // Vary each paramater according to a Gaussian distribution
-      Eigen::VectorXd proposal(state.rows());
+      Eigen::VectorXd proposal(state.sample.rows());
       for (int i = 0; i < proposal.rows(); i++)
-        proposal(i) = state(i) + rand(generator) * sigma(i);
+        proposal(i) = state.sample(i) + rand(generator) * sigma(i);
 
       return bouncyBounds(proposal, min, max);
     }

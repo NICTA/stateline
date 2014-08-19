@@ -191,7 +191,7 @@ ADD_SUBPROJECT(src/bin)
 # Build final libraries for server and client
 ##############################################################################
 SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY} logging)
-SET(STATELINE_SERVER delegator requester serverheartbeat chainarray sampler)
+SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT worker minion clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/logging.hpp)
@@ -205,4 +205,4 @@ SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 ##############################################################################
 # Add python target
 ##############################################################################
-ADD_SUBPROJECT(python)
+#ADD_SUBPROJECT(python)

@@ -43,7 +43,7 @@ int main(int ac, char *av[])
   const std::size_t ndims = 3;
   const std::size_t nchains = 5;
   const std::size_t nstacks = 2;
-  const std::size_t numSeconds = 60;
+  // const std::size_t numSeconds = 60;
 
   // Initialise the parameters of the distribution we are sampling from
   Eigen::MatrixXd means(ncomponents, ndims);
@@ -55,7 +55,7 @@ int main(int ac, char *av[])
   problem.globalJobSpecData = sl::serialise(means);
   problem.jobConstructFn = sl::mcmc::singleJobConstruct;
   problem.resultLikelihoodFn = sl::mcmc::singleJobLikelihood;
-  problem.proposalFn = std::bind(sl::mcmc::reflectiveGaussianProposal, ph::_1, ph::_2,
+  problem.proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
       Eigen::VectorXd::Constant(ndims, -10),
       Eigen::VectorXd::Constant(ndims, 10));
 
