@@ -10,7 +10,7 @@ zs = []
 burnin = 3000
 thinning = 25
 
-with open('chain.csv', 'r') as csvfile:
+with open('output_chain.csv', 'r') as csvfile:
   reader = csv.reader(csvfile)
   for x, y, z in reader:
     xs.append(x)
