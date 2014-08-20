@@ -42,8 +42,8 @@ namespace stateline
     class Message
     {
       public:
-        Message(const Message &msg) = default;
-        Message &operator=(const Message &msg) = default;
+        Message(const Message &) = default;
+        Message &operator=(const Message &) = default;
 
         Message(Message&& msg);
 

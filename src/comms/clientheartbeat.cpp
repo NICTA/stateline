@@ -54,9 +54,9 @@ namespace stateline
       router_.add_socket(SocketID::HEARTBEAT, heartbeat);
 
       // Specify functionality 
-      auto onRcvHEARTBEAT = [&] (const Message&m)
+      auto onRcvHEARTBEAT = [&] (const Message &)
       { heartbeatArrived(lastReceivedTime_);};
-      auto onRcvGOODBYE = [&] (const Message&m)
+      auto onRcvGOODBYE = [&] (const Message &)
       { router_.stop();};
 
       auto timeout = [&] ()
@@ -89,7 +89,7 @@ namespace stateline
       router_.stop();
     }
 
-    void failedSend(const Message& m)
+    void failedSend(const Message &)
     {
       LOG(ERROR)<< "HEARTBEAT FAILED TO SEND TO LOCAL SOCKET";
       throw std::runtime_error("heartbeat thread send failed");

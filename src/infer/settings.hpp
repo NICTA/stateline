@@ -32,7 +32,7 @@ namespace stateline
     //! Empty settings with all parameters set to zero.
     static MCMCSettings Empty()
     {
-      MCMCSettings settings = {};
+      MCMCSettings settings;
       return settings;
     }
 

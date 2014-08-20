@@ -51,12 +51,5 @@ namespace stateline
       //! The type of swap that occurred when this state was recorded.
       SwapType swapType;
     };
-
-    //! Type representing proposal acceptance functions.
-    using PropAcceptFn = std::function<bool(const State&, const State&, double)>;
-
-    //! Type representing swap acceptance functions.
-    using SwapAcceptFn = std::function<bool(const State&, const State&, double, double)>;
-
   }
 }

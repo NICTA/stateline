@@ -29,7 +29,7 @@ namespace stateline
 
     static HeartbeatSettings WorkerDefault()
     {
-      HeartbeatSettings settings = {};
+      HeartbeatSettings settings;
       settings.msRate = 1000;
       settings.msPollRate = 500;
       settings.msTimeout = 3000;
@@ -38,7 +38,7 @@ namespace stateline
 
     static HeartbeatSettings DelegatorDefault()
     {
-      HeartbeatSettings settings = {};
+      HeartbeatSettings settings;
       settings.msRate = 1000;
       settings.msPollRate = 500;
       settings.msTimeout = 10000;
@@ -62,7 +62,7 @@ namespace stateline
     //! Default delegator settings
     static DelegatorSettings Default(uint port)
     {
-      DelegatorSettings settings = {};
+      DelegatorSettings settings;
       settings.msPollRate = 100;
       settings.port = port;
       settings.heartbeat = HeartbeatSettings::DelegatorDefault();
@@ -86,7 +86,7 @@ namespace stateline
     //! Default delegator settings
     static WorkerSettings Default(const std::string &address)
     {
-      WorkerSettings settings = {};
+      WorkerSettings settings;
       settings.msPollRate = 100;
       settings.address = address;
       settings.heartbeat = HeartbeatSettings::WorkerDefault();

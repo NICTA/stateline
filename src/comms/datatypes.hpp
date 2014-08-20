@@ -37,7 +37,7 @@ namespace stateline
 
       JobData() { }
 
-      JobData(const JobData &job) = default;
+      JobData(const JobData &) = default;
 
       JobData(uint type, std::string&& globalData, std::string&& jobData)
         : type(type), globalData(globalData), jobData(jobData)
@@ -61,12 +61,12 @@ namespace stateline
 
       ResultData() { }
 
+      ResultData(const ResultData &) = default;
+
       ResultData(uint type, std::string&& data)
         : type(type), data(std::move(data))
       {
       }
-
-      ResultData(const ResultData &job) = default;
 
       ResultData(ResultData&& other)
         : type(other.type), data(std::move(other.data))

@@ -27,7 +27,7 @@ namespace stateline
     //! Default settings
     static DBSettings Default()
     {
-      DBSettings settings = {};
+      DBSettings settings;
       settings.directory = "chainDB";
       settings.cacheSizeMB = 100;
       return settings;
