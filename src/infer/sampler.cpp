@@ -95,7 +95,6 @@ namespace stateline
       {
         // Try swapping this chain with the one above it
         chains_.swap(id, id + 1);
-
         // Unlock this chain, propgating the lock downwards
         unlock(id);
       }

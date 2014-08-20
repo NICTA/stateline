@@ -289,23 +289,7 @@ namespace stateline
 
     uint ChainArray::length(uint id) const
     {
-      uint lengthOnDisk0 = lengthOnDisk(id);
-      uint length;
-
-      if (lengthOnDisk0 == 0)
-      {
-        length = cache_[id].size();
-      }
-      else if (chainIndex(id) == 0)
-      {
-        length = lengthOnDisk0 + cache_[id].size() - 1;
-      }
-      else
-      {
-        length = lengthOnDisk0;
-      }
-
-      return length;
+      return lengthOnDisk(id) + cache_[id].size() - 1;
     }
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
@@ -429,22 +413,23 @@ namespace stateline
 
     SwapType ChainArray::swap(uint id1, uint id2)
     {
-      State& state1 = cache_[id1].back();
-      State& state2 = cache_[id2].back();
+      uint hId = std::max(id1, id2);
+      uint lId = std::min(id1, id2);
+      State& stateh = cache_[hId].back();
+      State& statel = cache_[lId].back();
 
       // Determine if we accept this swap
-      bool swapped = acceptSwap(state1, state2, beta_[id1], beta_[id2]);
+      bool swapped = acceptSwap(stateh, statel, beta_[hId], beta_[lId]);
 
+      // Save the swap only on the lower temperature chain
       if (swapped)
       {
-        std::swap(state1, state2);
-        state1.swapType = SwapType::Accept;
-        state2.swapType = SwapType::Accept;
+        std::swap(stateh, statel);
+        statel.swapType = SwapType::Accept;
       }
       else
       {
-        state1.swapType = SwapType::Reject;
-        state2.swapType = SwapType::Reject;
+        statel.swapType = SwapType::Reject;
       }
 
       return swapped ? SwapType::Accept : SwapType::Reject;

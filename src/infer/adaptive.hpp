@@ -156,7 +156,7 @@ namespace stateline
 
           for (uint i = 0; i < nChains_ * nStacks_; i++)
           {
-            swapRates_[i] = 0;
+            swapRates_[i] = 0.0;
             swapBuffers_.push_back(boost::circular_buffer<bool>(adaptionLength_));
             swapBuffers_[i].push_back(false); // gets rid of a nan, not really needed
           }
@@ -165,22 +165,23 @@ namespace stateline
         void update(uint id, State s)
         {
           lengths_[id] += 1;
-          SwapType sw = s.swapType;
-          bool attempted = sw == SwapType::NoAttempt;
+          bool attempted = s.swapType != SwapType::NoAttempt;
           if (attempted)
           {
-            uint oldSize = swapBuffers_[id].size();
-            double oldRate = swapRates_[id];
-            bool isFull = swapBuffers_[id].full();
-            bool lastSw = swapBuffers_[id].front();
+            bool sw = s.swapType == SwapType::Accept;
+            uint oldSize = swapBuffers_[id+1].size();
+            double oldRate = swapRates_[id+1];
+            bool isFull = swapBuffers_[id+1].full();
+            bool lastSw = swapBuffers_[id+1].front();
             // Now push back the new state
-            swapBuffers_[id].push_back(sw == SwapType::Accept);
+            swapBuffers_[id+1].push_back(sw);
             // Compute the new rate
-            uint newSize = swapBuffers_[id].size();
+            uint newSize = swapBuffers_[id+1].size();
             double delta = ((int)sw - (int)(lastSw&&isFull))/(double)newSize;
             double scale = oldSize/(double)newSize;
-            swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
+            swapRates_[id+1] = std::max(oldRate*scale + delta, 0.0);
           }
+          // Every so often adapt beta
           if ((lengths_[id] % nStepsPerAdapt_ == 0) && (id % nChains_ != 0))
             adaptBeta(id);
         }

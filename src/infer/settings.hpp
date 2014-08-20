@@ -42,7 +42,7 @@ namespace stateline
       settings.stacks = stacks;
       settings.chains = chains;
       settings.swapInterval = 25;
-      settings.cacheLength = 100;
+      settings.cacheLength = 1000;
       return settings;
     }
   };

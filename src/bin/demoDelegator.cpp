@@ -59,6 +59,9 @@ class Logger
       swapRates_(swapRates)
   {
     std::fill(lengths_.begin(), lengths_.end(), 1);
+    std::fill(minEnergies_.begin(), minEnergies_.end(), std::numeric_limits<double>::infinity());
+    std::fill(nAcceptsGlobal_.begin(), nAcceptsGlobal_.end(), 1);
+    std::fill(nSwapAttemptsGlobal_.begin(), nSwapAttemptsGlobal_.end(), 0);
   }
 
     void update(uint id, const sl::mcmc::State & s)
@@ -80,7 +83,7 @@ class Logger
       // print to the screen
       lastPrintTime_ = ch::steady_clock::now();
       std::stringstream s;
-      s << "\n\nChainID Length MinEngy CurrEngy Sigma AcptRt GlbAcptRt Beta SwapRt GlbSwapRt\n";
+      s << "\n\nID   Length   MinEngy     CurrEngy     Sigma   AcptRt     GlbAcptRt   Beta        SwapRt   GlbSwapRt\n";
       s << "-----------------------------------------------------------------------------------------------------\n";
       for (uint i = 0; i < lengths_.size(); i++)
       {
@@ -125,20 +128,20 @@ int main(int ac, char *av[])
   const std::size_t numSeconds = 60;
 
 
-  uint sigmaWindowSize=100000;
-  double coldSigma=0.0001;
+  uint sigmaWindowSize=20000;
+  double coldSigma=2.0;
   double sigmaFactor=1.5;
   uint sigmaAdaptionLength=100000;
-  uint sigmaNStepsPerAdapt=250;
+  uint sigmaNStepsPerAdapt=2500;
   double sigmaOptimalAccept=0.24;
   double sigmaAdaptRate=0.2;
   double sigmaMinFactor=0.8;
   double sigmaMaxFactor=1.25;
 
-  uint betaWindowSize=100000;
+  uint betaWindowSize=20000;
   double betaFactor=0.66;
   uint betaAdaptionLength=100000;
-  uint betaNStepsPerAdapt=500;
+  uint betaNStepsPerAdapt=5000;
   double betaOptimalSwapRate=0.24;
   double betaAdaptRate=0.2;
   double betaMinFactor=0.8;
