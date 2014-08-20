@@ -169,17 +169,17 @@ namespace stateline
           if (attempted)
           {
             bool sw = s.swapType == SwapType::Accept;
-            uint oldSize = swapBuffers_[id+1].size();
-            double oldRate = swapRates_[id+1];
-            bool isFull = swapBuffers_[id+1].full();
-            bool lastSw = swapBuffers_[id+1].front();
+            uint oldSize = swapBuffers_[id].size();
+            double oldRate = swapRates_[id];
+            bool isFull = swapBuffers_[id].full();
+            bool lastSw = swapBuffers_[id].front();
             // Now push back the new state
-            swapBuffers_[id+1].push_back(sw);
+            swapBuffers_[id].push_back(sw);
             // Compute the new rate
-            uint newSize = swapBuffers_[id+1].size();
+            uint newSize = swapBuffers_[id].size();
             double delta = ((int)sw - (int)(lastSw&&isFull))/(double)newSize;
             double scale = oldSize/(double)newSize;
-            swapRates_[id+1] = std::max(oldRate*scale + delta, 0.0);
+            swapRates_[id] = std::max(oldRate*scale + delta, 0.0);
           }
           // Every so often adapt beta
           if ((lengths_[id] % nStepsPerAdapt_ == 0) && (id % nChains_ != 0))
@@ -201,7 +201,7 @@ namespace stateline
         void adaptBeta(uint id)
         {
           // Adapt the temperature
-          double swapRate = swapRates_[id];
+          double swapRate = swapRates_[id-1]; 
           double rawFactor = std::pow(swapRate/optimalSwapRate_, adaptRate_);
           double boundedFactor = std::min( std::max(rawFactor, minFactor_), maxFactor_);
           double beta = betas_[id];

@@ -61,7 +61,7 @@ class Logger
     std::fill(lengths_.begin(), lengths_.end(), 1);
     std::fill(minEnergies_.begin(), minEnergies_.end(), std::numeric_limits<double>::infinity());
     std::fill(nAcceptsGlobal_.begin(), nAcceptsGlobal_.end(), 1);
-    std::fill(nSwapAttemptsGlobal_.begin(), nSwapAttemptsGlobal_.end(), 0);
+    std::fill(nSwapAttemptsGlobal_.begin(), nSwapAttemptsGlobal_.end(), 1); // for nan-free behaviour
   }
 
     void update(uint id, const sl::mcmc::State & s)
