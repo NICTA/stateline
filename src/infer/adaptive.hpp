@@ -20,32 +20,80 @@ namespace stateline
   namespace mcmc
   {
 
+    struct SlidingWindowSigmaSettings
+    {
+      //! The number of states in the sliding window used to calculate the
+      //! acceptance rate
+      uint windowSize;
+
+      //! The value of sigma for the coldest (beta=1) chain
+      double coldSigma;
+
+      //! The geometric factor for each hotter chain's sigma
+      double sigmaFactor;
+
+      //! The time constant of the diminishing adaption
+      uint adaptionLength;
+
+      //! The number of steps between adaptions
+      uint nStepsPerAdapt;
+
+      //! The accept rate being targeted by the adaption of sigma
+      double optimalAccept;
+
+      //! The multiplicative rate at which adaption occurs
+      double adaptRate;
+
+      //! The minimum multiplicative factor by which sigma can change in a
+      //! single adaption
+      double minAdaptFactor;
+      
+      //! The maximum multiplicative factor by which sigma can change in a
+      //! single adaption
+      double maxAdaptFactor;
+
+
+      //! Empty settings with all parameters set to zero.
+      static SlidingWindowSigmaSettings Empty()
+      {
+        SlidingWindowSigmaSettings settings = {};
+        return settings;
+      }
+
+      static SlidingWindowSigmaSettings Default()
+      {
+        SlidingWindowSigmaSettings settings = SlidingWindowSigmaSettings::Empty();
+      
+        settings.windowSize = 100000;
+        settings.coldSigma = 1.0;
+        settings.sigmaFactor = 1.5;
+        settings.adaptionLength = 100000;
+        settings.nStepsPerAdapt = 2500;
+        settings.optimalAccept = 0.24;
+        settings.adaptRate = 0.2;
+        settings.minAdaptFactor = 0.8;
+        settings.maxAdaptFactor = 1.25;
+        return settings;
+      }
+    };
+
     class SlidingWindowSigmaAdapter
     {
       public:
-        SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, uint windowSize,
-            double coldSigma, double sigmaFactor, uint adaptionLength, uint nStepsPerAdapt, double optimalAccept,
-            double adaptRate, double minFactor, double maxFactor)
+        SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, 
+            const SlidingWindowSigmaSettings& settings)
           : nStacks_(nStacks),
             nChains_(nChains),
             sigmas_(nStacks*nChains),
             acceptRates_(nStacks*nChains),
             lengths_(nStacks*nChains),
-            windowSize_(windowSize),
-            coldSigma_(coldSigma),
-            sigmaFactor_(sigmaFactor),
-            adaptionLength_(adaptionLength),
-            nStepsPerAdapt_(nStepsPerAdapt),
-            optimalAccept_(optimalAccept),
-            adaptRate_(adaptRate),
-            minFactor_(minFactor),
-            maxFactor_(maxFactor)
+            s_(settings)
         {
           for (uint i = 0; i < nStacks; i++)
             for (uint j = 0; j < nChains; j++)
             {
               uint id = i * nChains + j;
-              double sigma = coldSigma * std::pow(sigmaFactor, j);
+              double sigma = s_.coldSigma * std::pow(s_.sigmaFactor, j);
               sigmas_[id] = Eigen::VectorXd::Ones(nDims) * sigma;
             }
 
@@ -53,7 +101,7 @@ namespace stateline
           {
             lengths_[i] = 1; // assuming we're not recovering
             acceptRates_[i] = 1;
-            acceptBuffers_.push_back(boost::circular_buffer<bool>(adaptionLength));
+            acceptBuffers_.push_back(boost::circular_buffer<bool>(s_.adaptionLength));
             acceptBuffers_[i].push_back(true); // first state always accepts
           }
         }
@@ -73,10 +121,9 @@ namespace stateline
           double delta = ((int)acc - (int)(lastAcc&&isFull))/(double)newSize;
           double scale = oldSize/(double)newSize;
           acceptRates_[chainID] = std::max(oldRate*scale + delta, 0.0);
-          if (lengths_[chainID] % nStepsPerAdapt_ == 0)
+          if (lengths_[chainID] % s_.nStepsPerAdapt == 0)
             adaptSigma(chainID);
         }
-
 
         std::vector<Eigen::VectorXd> sigmas() const
         {
@@ -94,9 +141,9 @@ namespace stateline
         {
           double acceptRate = acceptRates_[id];
           double oldSigma= sigmas_[id](0);
-          double factor = std::pow(acceptRate / optimalAccept_, adaptRate_);
-          double boundFactor = std::min(std::max(factor, minFactor_), maxFactor_);
-          double gamma = adaptionLength_/(double)(adaptionLength_+lengths_[id]);
+          double factor = std::pow(acceptRate / s_.optimalAccept, s_.adaptRate);
+          double boundFactor = std::min(std::max(factor, s_.minAdaptFactor), s_.maxAdaptFactor);
+          double gamma = s_.adaptionLength/(double)(s_.adaptionLength+lengths_[id]);
           double newSigma = oldSigma * std::pow(boundFactor, gamma);
           VLOG(2) << "Adapting Sigma" << id <<":" << oldSigma << "->" << newSigma << " @acceptrate:" << acceptRate;
           // Ensure higher temperature chains have larger sigmas than chains colder than it
@@ -113,15 +160,7 @@ namespace stateline
         std::vector<Eigen::VectorXd> sigmas_;
         std::vector<double> acceptRates_;
         std::vector<uint> lengths_;
-        uint windowSize_;
-        double coldSigma_;
-        double sigmaFactor_;
-        uint adaptionLength_;
-        uint nStepsPerAdapt_;
-        double optimalAccept_;
-        double adaptRate_;
-        double minFactor_;
-        double maxFactor_;
+        SlidingWindowSigmaSettings s_;
     };
 
 
