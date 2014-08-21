@@ -41,7 +41,7 @@ namespace stateline
       {
         auto result = com_.retrieve();
         uint id = result.first;
-        double energy = problem_.resultLikelihoodFn(result.second);
+        double energy = problem_.resultEnergyFn(result.second);
         chains_.initialise(id, initialStates[i], energy); 
       }
 
@@ -80,7 +80,7 @@ namespace stateline
 
       numOutstandingJobs_--;
       uint id = result.first;
-      double energy = problem_.resultLikelihoodFn(result.second);
+      double energy = problem_.resultEnergyFn(result.second);
 
       // Update the parameters for this id
       chains_.setSigma(id, sigmas[id]);
@@ -127,7 +127,7 @@ namespace stateline
       {
         auto result = com_.retrieve();
         uint id = result.first;
-        double energy = problem_.resultLikelihoodFn(result.second);
+        double energy = problem_.resultEnergyFn(result.second);
         chains_.append(id, propStates_[id], energy);
       }
 

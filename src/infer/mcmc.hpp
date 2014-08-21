@@ -47,7 +47,7 @@ namespace stateline
       std::map<comms::JobID, std::string> perJobSpecData;
 
       JobConstructFunction jobConstructFn;
-      ResultEnergyFunction resultLikelihoodFn;
+      ResultEnergyFunction resultEnergyFn;
       ProposalFunction proposalFn;
     };
 
@@ -60,7 +60,7 @@ namespace stateline
 
     std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
 
-    double singleJobLikelihood(const std::vector<comms::ResultData> &results);
+    double singleJobEnergy(const std::vector<comms::ResultData> &results);
 
   } // namespace mcmc 
 } // namespace stateline

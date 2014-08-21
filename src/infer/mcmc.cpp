@@ -21,7 +21,7 @@ namespace stateline
       return {{ 0, "", serialise(x) }};
     }
 
-    double singleJobLikelihood(const std::vector<comms::ResultData> &results)
+    double singleJobEnergy(const std::vector<comms::ResultData> &results)
     {
       return comms::detail::unserialise<double>(results[0].data);
     }

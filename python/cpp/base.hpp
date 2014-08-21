@@ -1,7 +1,10 @@
 #pragma once
 
+#include <Eigen/Dense>
+
 #include <Python.h>
 #include <boost/python.hpp>
+#include <numpy/arrayobject.h>
 
 #include <map>
 
@@ -53,7 +56,31 @@ std::map<Key, Value> dict2map(const py::dict &dict)
   return map;
 }
 
+template <class Key, class Value>
+py::dict map2dict(const std::map<Key, Value> &map)
+{
+  py::dict dict;
+  for (const auto &it : map)
+    dict[it.first] = it.second;
+  return map;
+}
+
 py::object string2bytes(const std::string &str)
 {
   return py::object(py::handle<>(PyBytes_FromStringAndSize(str.c_str(), str.length())));
 }
+
+py::object eigen2numpy(const Eigen::VectorXd &vec)
+{
+    npy_intp shape[] = { vec.size() };
+    PyArrayObject *array = (PyArrayObject *)PyArray_SimpleNew(
+        1, shape, NPY_DOUBLE
+    );
+
+    double *dest = (double *)PyArray_DATA(array);
+    memcpy(dest, vec.data(), sizeof(double) * vec.size());
+
+    return py::object(py::handle<>(array));
+}
+
+

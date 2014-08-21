@@ -141,7 +141,7 @@ int main(int ac, char *av[])
   sl::mcmc::ProblemInstance problem;
   problem.globalJobSpecData = sl::serialise(means);
   problem.jobConstructFn = sl::mcmc::singleJobConstruct;
-  problem.resultLikelihoodFn = sl::mcmc::singleJobLikelihood;
+  problem.resultEnergyFn = sl::mcmc::singleJobEnergy;
   problem.proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
       Eigen::VectorXd::Constant(ndims, -10),
       Eigen::VectorXd::Constant(ndims, 10));

@@ -1,17 +1,17 @@
 #include "base.hpp"
-#include "delegator.hpp"
-#include "requester.hpp"
+#include "problem.hpp"
+#include "state.hpp"
+#include "sampler.hpp"
+#include "settings.hpp"
 #include "worker.hpp"
 #include "minion.hpp"
-#include "threadpool.hpp"
-#include "chainarray.hpp"
 
 BOOST_PYTHON_MODULE(_stateline)
 {
-  exportDelegator();
-  exportRequester();
+  exportProblemInstance();
+  exportState();
+  exportSampler();
+  exportSettings();
   exportWorker();
   exportMinion();
-  exportThreadPool();
-  exportChainArray();
 }
