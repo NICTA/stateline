@@ -127,25 +127,8 @@ int main(int ac, char *av[])
   const std::size_t nstacks = 2;
   const std::size_t numSeconds = 60;
 
-
-  uint sigmaWindowSize=20000;
-  double coldSigma=2.0;
-  double sigmaFactor=1.5;
-  uint sigmaAdaptionLength=100000;
-  uint sigmaNStepsPerAdapt=2500;
-  double sigmaOptimalAccept=0.24;
-  double sigmaAdaptRate=0.2;
-  double sigmaMinFactor=0.8;
-  double sigmaMaxFactor=1.25;
-
-  uint betaWindowSize=20000;
-  double betaFactor=0.66;
-  uint betaAdaptionLength=100000;
-  uint betaNStepsPerAdapt=5000;
-  double betaOptimalSwapRate=0.24;
-  double betaAdaptRate=0.2;
-  double betaMinFactor=0.8;
-  double betaMaxFactor=1.25;
+  sl::mcmc::SlidingWindowSigmaSettings sigmaSettings = sl::mcmc::SlidingWindowSigmaSettings::Default();
+  sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default();
 
   uint msRefresh = 500;
 
@@ -182,14 +165,10 @@ int main(int ac, char *av[])
 
   // Create an adaption system for sigma
   sl::mcmc::SlidingWindowSigmaAdapter sigmaAdapter(nstacks,nchains, ndims,
-      sigmaWindowSize,coldSigma,sigmaFactor, sigmaAdaptionLength,
-      sigmaNStepsPerAdapt, sigmaOptimalAccept,
-      sigmaAdaptRate, sigmaMinFactor, sigmaMaxFactor);
+      sigmaSettings);
 
   // Create an adaption system for beta
-  sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaWindowSize,
-      betaFactor, betaAdaptionLength, betaNStepsPerAdapt, betaOptimalSwapRate,
-      betaAdaptRate, betaMinFactor, betaMaxFactor);
+  sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
   
   // define initial parameters
   std::vector<Eigen::VectorXd> sigmas = sigmaAdapter.sigmas();
