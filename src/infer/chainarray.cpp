@@ -294,7 +294,7 @@ namespace stateline
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
-      State newState = { sample, energy, sigma_[id], beta_[id] };
+      State newState(sample, energy, sigma_[id], beta_[id]);
       State last = cache_[id].back();
 
       bool accepted = acceptProposal(newState, last, beta_[id]);

@@ -12,6 +12,8 @@
 
 #include <Eigen/Dense>
 
+#include "state.hpp"
+
 namespace stateline
 {
   namespace mcmc
@@ -20,18 +22,23 @@ namespace stateline
     //! It is a convergence metric that takes into account the variance of the 
     //! means between chains and the variance of the samples within each chain.
     //!
-    class EpsrConvergenceCriteria
+    class EPSRDiagnostic
     {
       public:
         //! Initialise the convergence criteria.
         //!
-        //! \param numChains The number of chains to be tested for convergence.
+        //! \param nStacks The number of stacks.
+        //! \param nChains The number of stacks per chain.
         //! \param numDims The number of dimensions in each state.
+        //! \param threshold Threshold for convergence.
         //!
-        EpsrConvergenceCriteria(int numChains, int numDims) :
-          M_(Eigen::ArrayXXd::Zero(numDims, numChains)),
-          S_(Eigen::ArrayXXd::Zero(numDims, numChains)),
-          numSamples_(Eigen::ArrayXi::Zero(numChains))
+        EPSRDiagnostic(uint nStacks, uint nChains, uint nDims, double threshold = 1.1) :
+          nStacks_(nStacks),
+          nChains_(nChains),
+          M_(Eigen::ArrayXXd::Zero(nDims, nStacks)),
+          S_(Eigen::ArrayXXd::Zero(nDims, nStacks)),
+          numSamples_(Eigen::ArrayXi::Zero(nStacks)),
+          threshold_(threshold)
         {
         }
 
@@ -40,19 +47,26 @@ namespace stateline
         //! \param id The chain which has the new sample.
         //! \param sample The new sample to update the convergence statistics with.
         //!
-        void update(uint id, const Eigen::VectorXd &sample)
+        void update(uint id, const State& state)
         {
-          // See http://www.johndcook.com/standard_deviation.html
-          int n = numSamples_(id) + 1;
+          // We only monitor the convergence of the coldest chains
+          if (id % nChains_ == 0)
+          {
+            // Convert global ID to coldest chain ID
+            id = id / nChains_;
 
-          Eigen::ArrayXd x = sample.array();
+            // See http://www.johndcook.com/standard_deviation.html
+            int n = numSamples_(id) + 1;
 
-          // Update the running mean and variance
-          Eigen::ArrayXd newM = M_.col(id) + (x - M_.col(id)) / n;
-          S_.col(id) = S_.col(id) + (x - M_.col(id)) * (x - newM);
-          M_.col(id) = newM;
+            Eigen::ArrayXd x = state.sample.array();
 
-          numSamples_(id) = n;
+            // Update the running mean and variance
+            Eigen::ArrayXd newM = M_.col(id) + (x - M_.col(id)) / n;
+            S_.col(id) = S_.col(id) + (x - M_.col(id)) * (x - newM);
+            M_.col(id) = newM;
+
+            numSamples_(id) = n;
+          }
         }
 
         //! Compute the estimated potential scale factor. A low value indicates
@@ -65,8 +79,8 @@ namespace stateline
           // Number of samples (use the length of the shortest chain)
           int n = numSamples_.minCoeff();
 
-          // Number of chains
-          int m = numSamples_.rows();
+          // Number of chains in the coldest temperature
+          int m = nStacks_;
 
           // Find the overall mean of the chains
           Eigen::ArrayXXd overallMean = M_.rowwise().mean().replicate(1, M_.cols());
@@ -85,19 +99,22 @@ namespace stateline
         }
 
         //! Check if all the chains have converged. The chains have converged if the
-        //! potential scale reduction factor is below 1.1 for all dimensions.
+        //! potential scale reduction factor is below the threshold for all dimensions.
         //!
         //! \return Whether all the chains have converged.
         //!
         bool hasConverged() const
         {
-          return (rHat() < 1.1).all();
+          return (rHat() < threshold_).all();
         }
 
       private:
+        uint nStacks_;
+        uint nChains_;
         Eigen::ArrayXXd M_;
         Eigen::ArrayXXd S_;
         Eigen::ArrayXi numSamples_;
+        double threshold_;
     };
   }
 }

@@ -50,6 +50,21 @@ namespace stateline
 
       //! The type of swap that occurred when this state was recorded.
       SwapType swapType;
+
+      State()
+      {
+      }
+
+      State(const Eigen::VectorXd &sample)
+        : sample(sample)
+      {
+      }
+
+      State(const Eigen::VectorXd &sample, double energy,
+          const Eigen::VectorXd &sigma, double beta)
+        : sample(sample), energy(energy), sigma(sigma), beta(beta)
+      {
+      }
     };
   }
 }

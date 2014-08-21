@@ -200,6 +200,9 @@ int main(int ac, char *av[])
   // Create a sampler
   sl::mcmc::Sampler sampler(problem, settings, initial, sigmas, betas);
 
+  // Create a diagnostic
+  sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
+
   // Create a logger
   Logger log(nstacks, nchains, msRefresh, sigmas, acceptRates, betas, swapRates);
   
@@ -218,7 +221,10 @@ int main(int ac, char *av[])
     betas = betaAdapter.betas();
     swapRates = betaAdapter.swapRates();
     log.update(id, state);
+    diagnostic.update(id, state);
   }
+
+  std::cout << "convergence: " << diagnostic.rHat().transpose() << std::endl;
 
   // Output the coldest chains to CSV
   std::ofstream out("output_chain.csv");
