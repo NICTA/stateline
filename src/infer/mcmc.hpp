@@ -41,16 +41,57 @@ namespace stateline
 
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray& chains)>;
 
+
+    class WorkerInterface
+    {
+      public:
+        WorkerInferface(const std::string& globalSpecData,
+            const std::map<comms::JobID, std::string>& perJobSpecData,
+            const JobConstructFunction& jobConstructFn,
+            const ResultEnergyFunction& resultEnergyFn,
+            const DelegatorSettings& settings)
+          : jobConstructFn_(jobConstructFn),
+            resultEnergyFn_(resultEnergyFn),
+            delegator_(globalSpecData, perJobSpecData, settings),
+            requester_(delegator_)
+        {
+          delegator_.start();
+        }
+
+        void submit(uint id, const Eigen::VectorXd& x)
+        {
+          requester_.batchSubmit(id, jobConstructFn_(x));
+        }
+
+        std::pair<uint, double> retrieve()
+        {
+          auto result = requester_.batchRetrieve();
+          return std::make_pair(result.first, resultEnergyFn_(result.second));
+        }
+
+      private:
+        JobConstructFunction jobConstructFn_;
+        ResultEnergyFunction resultEnergyFn_;
+        comms::Delegator delegator_;
+        comms::Requester requester_;
+    };
+    
+    
+    
     struct ProblemInstance
     {
       std::string globalJobSpecData;
       std::map<comms::JobID, std::string> perJobSpecData;
 
-      JobConstructFunction jobConstructFn;
-      ResultEnergyFunction resultLikelihoodFn;
-      ProposalFunction proposalFn;
+
+      void submit();
+
+      std::pair<> retrieve();
     };
 
+    ProposalFunction proposalFn;
+    
+    
     struct SamplerSettings
     {
       MCMCSettings mcmc;

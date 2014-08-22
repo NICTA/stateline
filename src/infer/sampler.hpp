@@ -21,9 +21,7 @@ namespace stateline
     {
       public:
         Sampler(const ProblemInstance& problem, const SamplerSettings& settings,
-            const std::vector<Eigen::VectorXd>& initialStates,
-            const std::vector<Eigen::VectorXd>& initialSigmas,
-            const std::vector<double>& initialBetas);
+            ChainArray& chainArray);
       
         // Recover!
         Sampler(const ProblemInstance& problem, const SamplerSettings& settings);
@@ -49,7 +47,7 @@ namespace stateline
       const uint nchains_;
 
       // The MCMC chain wrapper
-      ChainArray chains_;
+      ChainArray& chains_;
 
       // The proposed states in the process of being computed
       std::vector<Eigen::VectorXd> propStates_;

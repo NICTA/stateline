@@ -54,8 +54,10 @@ namespace stateline
         //! \param d The database settings used to store chain data.
         //! \param cacheLength The size of the memory cache used to store the chains.
         //!
-        ChainArray(uint nStacks, uint nChains, const std::vector<Eigen::VectorXd>& initialSigmas,
-            const std::vector<double>& initialBetas, const DBSettings &d, uint cacheLength);
+        ChainArray(uint nStacks, uint nChains, 
+            const std::vector<Eigen::VectorXd>& initialSigmas,
+            const std::vector<double>& initialBetas, 
+            const DBSettings &d, uint cacheLength);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
@@ -80,7 +82,7 @@ namespace stateline
         //! \param id The id of the chain (see \ref id).
         //! \param state the new state to append
         //!
-        void initialise(uint id, const Eigen::VectorXd& sample, double energy);
+        void initialise(uint id, double energy);
 
         //! Forcibly flush the cache for a particular chain to disk.
         //!

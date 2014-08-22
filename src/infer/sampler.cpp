@@ -16,14 +16,12 @@ namespace stateline
   namespace mcmc
   {
     Sampler::Sampler(const ProblemInstance& problem, const SamplerSettings& settings,
-        const std::vector<Eigen::VectorXd>& initialStates,
-        const std::vector<Eigen::VectorXd>& initialSigmas,
-        const std::vector<double>& initialBetas)
+        ChainArray& chainArray)
       : problem_(problem),
         settings_(settings),
         nstacks_(settings.mcmc.stacks),
         nchains_(settings.mcmc.chains),
-        chains_(nstacks_, nchains_, initialSigmas, initialBetas, settings.db, settings.mcmc.cacheLength),
+        chains_(chainArray),
         propStates_(nstacks_*nchains_),
         numOutstandingJobs_(0),
         locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
@@ -32,7 +30,7 @@ namespace stateline
       // Evaluate the initial states of the chains
       for (uint i = 0; i < chains_.numTotalChains(); i++)
       {
-        propStates_[i] = initialStates[i];
+        propStates_[i] = chains_.lastState(i);
         com_.submit(i, problem_.jobConstructFn(propStates_[i]));
       }
 
@@ -42,7 +40,7 @@ namespace stateline
         auto result = com_.retrieve();
         uint id = result.first;
         double energy = problem_.resultLikelihoodFn(result.second);
-        chains_.initialise(id, initialStates[i], energy); 
+        // chains_.initialise(id, initialStates[i], energy); 
       }
 
       start();
