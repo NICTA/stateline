@@ -20,47 +20,43 @@ namespace stateline
     class Sampler
     {
       public:
-        Sampler(const ProblemInstance& problem, const SamplerSettings& settings,
-            ChainArray& chainArray);
-      
-        // Recover!
-        Sampler(const ProblemInstance& problem, const SamplerSettings& settings);
+        Sampler(WorkerInterface& workerInterface, 
+                ChainArray& chainArray,
+                const ProposalFunction& propFn,
+                const SamplerSettings& settings);
       
         std::pair<uint, State> step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas);
 
         void flush();
 
-        const ChainArray &chains() const;
+      private:
 
-    private:
-      void propose(uint id);
+        void propose(uint id);
 
-      void unlock(uint id);
+        void unlock(uint id);
 
-      void start();
+        WorkerInterface& workerInterface_;
+        // The MCMC chain wrapper
+        ChainArray& chains_;
+        
+        ProposalFunction propFn_;
+        
+        SamplerSettings settings_;
 
-      ProblemInstance problem_;
-      SamplerSettings settings_;
+        // convenience variables
+        const uint nstacks_;
+        const uint nchains_;
 
-      // convenience variables
-      const uint nstacks_;
-      const uint nchains_;
+        // The proposed states in the process of being computed
+        std::vector<Eigen::VectorXd> propStates_;
 
-      // The MCMC chain wrapper
-      ChainArray& chains_;
+        // How many jobs haven't been retrieved?
+        uint numOutstandingJobs_;
 
-      // The proposed states in the process of being computed
-      std::vector<Eigen::VectorXd> propStates_;
+        // Whether a chain is locked. A locked chain will wait for any outstanding
+        // job results and propagate the lock.
+        std::vector<bool> locked_;
 
-      // How many jobs haven't been retrieved?
-      uint numOutstandingJobs_;
-
-      // Whether a chain is locked. A locked chain will wait for any outstanding
-      // job results and propagate the lock.
-      std::vector<bool> locked_;
-
-      // The comms wrapper 
-      AsyncCommunicator com_;
     };
   }
 }

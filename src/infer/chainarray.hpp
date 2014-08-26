@@ -18,6 +18,35 @@ namespace stateline
 {
   namespace mcmc
   {
+    //! Settings for interacting with the MCMC Chain Array
+    //!
+    struct ChainSettings
+    {
+      //! Read database state from disk
+      bool recoverFromDisk;
+
+      //! Path to the folder directory containing the database.
+      std::string databasePath;
+
+      //
+      uint chainCacheLength;
+
+      //! The size of the database cache in megabytes.
+      double databaseCacheSizeMB;
+
+      //! Default settings
+      static ChainSettings Default()
+      {
+        ChainSettings settings;
+        settings.recoverFromDisk = false;
+        settings.databasePath = "chainDB";
+        settings.chainCacheLength = 1000;
+        settings.databaseCacheSizeMB = 100;
+        return settings;
+      }
+    };
+    
+    
     //! Manager for all the states and handle reading / writing from / to database.
     //!
     //! \section id The chain ID used by MCMC sampler.
@@ -38,29 +67,20 @@ namespace stateline
     class ChainArray
     {
       public:
-        //! Recover a chain array from disk.
-        //! 
-        //! \param d The database settings used to store chain data.
-        //!
-        ChainArray(const DBSettings &d, uint cacheLength);
 
         //! Create a chain array.
         //! 
         //! \param nStacks The number of stacks. Each stack have the same temperature sequence.
         //! \param nChains The number of chains in each stack.
-        //! \param tempFactor The ratio between the temperatures of consecutive chains in a stack.
-        //! \param initialSigma The initial step sizes of the chains.
-        //! \param sigmaFactor The ratio between the temperatures of consectuive chains in a stack.
-        //! \param d The database settings used to store chain data.
-        //! \param cacheLength The size of the memory cache used to store the chains.
-        //!
-        ChainArray(uint nStacks, uint nChains, 
-            const std::vector<Eigen::VectorXd>& initialSigmas,
-            const std::vector<double>& initialBetas, 
-            const DBSettings &d, uint cacheLength);
+        //! \param settings The Chain array settings object
+        //
+        ChainArray(uint nStacks, uint nChains, const ChainSettings& settings);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
+    
+        // Destructor
+        // ~ChainArray();
 
         //! Get the length of a chain.
         //!
@@ -80,9 +100,10 @@ namespace stateline
         //! Initialise a chain (by definitely accepting a new state).
         //!
         //! \param id The id of the chain (see \ref id).
-        //! \param state the new state to append
-        //!
-        void initialise(uint id, double energy);
+        //! \param sample the new state to append
+        //! \param sigma the proposal vector for the chain
+        //! \param beta the temperature of the new chain
+        void initialise(uint id, const Eigen::VectorXd& sample, double energy, const Eigen::VectorXd& sigma, double beta);
 
         //! Forcibly flush the cache for a particular chain to disk.
         //!
@@ -175,6 +196,9 @@ namespace stateline
         bool isColdestInStack(uint id) const;
 
       private:
+
+        void recover();
+        void init();
         uint lengthOnDisk(uint id) const;
         void setLengthOnDisk(uint id, uint length);
 

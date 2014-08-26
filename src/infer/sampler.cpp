@@ -15,61 +15,38 @@ namespace stateline
 {
   namespace mcmc
   {
-    Sampler::Sampler(const ProblemInstance& problem, const SamplerSettings& settings,
-        ChainArray& chainArray)
-      : problem_(problem),
+    Sampler::Sampler(WorkerInterface& workerInterface, 
+                     ChainArray& chainArray,
+                     const ProposalFunction& propFn,
+                     const SamplerSettings& settings)
+      : workerInterface_(workerInterface),
+        chains_(chainArray),
+        propFn_(propFn),
         settings_(settings),
         nstacks_(settings.mcmc.stacks),
         nchains_(settings.mcmc.chains),
-        chains_(chainArray),
         propStates_(nstacks_*nchains_),
         numOutstandingJobs_(0),
-        locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
-        com_(problem.globalJobSpecData, problem.perJobSpecData, settings.del)
+        locked_(settings.mcmc.stacks * settings.mcmc.chains, false)
     {
-      // Evaluate the initial states of the chains
+      // Start all the chains from hottest to coldest
       for (uint i = 0; i < chains_.numTotalChains(); i++)
       {
-        propStates_[i] = chains_.lastState(i);
-        com_.submit(i, problem_.jobConstructFn(propStates_[i]));
+        uint c = chains_.numTotalChains() - i - 1;
+        propose(c);
       }
-
-      // Retrieve the energies and temperatures for the initial states
-      for (uint i = 0; i < chains_.numTotalChains(); i++)
-      {
-        auto result = com_.retrieve();
-        uint id = result.first;
-        double energy = problem_.resultLikelihoodFn(result.second);
-        // chains_.initialise(id, initialStates[i], energy); 
-      }
-
-      start();
     }
     
-    Sampler::Sampler(const ProblemInstance& problem, const SamplerSettings& settings)
-      : problem_(problem),
-        settings_(settings),
-        nstacks_(settings.mcmc.stacks),
-        nchains_(settings.mcmc.chains),
-        chains_(settings.db, settings.mcmc.cacheLength),
-        propStates_(nstacks_*nchains_),
-        numOutstandingJobs_(0),
-        locked_(settings.mcmc.stacks * settings.mcmc.chains, false),
-        com_(problem.globalJobSpecData, problem.perJobSpecData, settings.del)
-    {
-      start();
-    }
-
     std::pair<uint, State> Sampler::step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas)
     {
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
-      std::pair<uint, std::vector<comms::ResultData>> result;
-
+      uint id;
+      double energy;
       // Wait a for reply
       try
       {
-        result = com_.retrieve();
+        std::tie(id, energy) = workerInterface_.retrieve();
       }
       catch (...)
       {
@@ -77,8 +54,6 @@ namespace stateline
       }
 
       numOutstandingJobs_--;
-      uint id = result.first;
-      double energy = problem_.resultLikelihoodFn(result.second);
 
       // Update the parameters for this id
       chains_.setSigma(id, sigmas[id]);
@@ -123,9 +98,9 @@ namespace stateline
       // Retrieve all outstanding job results.
       while (numOutstandingJobs_--)
       {
-        auto result = com_.retrieve();
-        uint id = result.first;
-        double energy = problem_.resultLikelihoodFn(result.second);
+        uint id;
+        double energy;
+        std::tie(id, energy) = workerInterface_.retrieve();
         chains_.append(id, propStates_[id], energy);
       }
 
@@ -134,15 +109,10 @@ namespace stateline
         chains_.flushToDisk(i);
     }
 
-    const ChainArray &Sampler::chains() const
-    {
-      return chains_;
-    }
-
     void Sampler::propose(uint id)
     {
-      propStates_[id] = problem_.proposalFn(id, chains_);
-      com_.submit(id, problem_.jobConstructFn(propStates_[id]));
+      propStates_[id] = propFn_(id, chains_);
+      workerInterface_.submit(id, propStates_[id]);
       numOutstandingJobs_++;
     }
 
@@ -168,14 +138,6 @@ namespace stateline
       }
     }
 
-    void Sampler::start()
-    {
-      // Start all the chains from hottest to coldest
-      for (uint i = 0; i < chains_.numTotalChains(); i++)
-      {
-        uint c = chains_.numTotalChains() - i - 1;
-        propose(c);
-      }
-    }
+  
   }
 }

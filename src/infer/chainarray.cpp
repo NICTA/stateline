@@ -202,9 +202,44 @@ namespace stateline
       return swapAccepted;
     }
 
-    ChainArray::ChainArray(const DBSettings &d, uint cacheLength)
-      : db_(d, true),
-        cacheLength_(cacheLength)
+
+    ChainArray::ChainArray(uint nStacks, uint nChains,
+                           const ChainSettings& settings)
+        : db_({settings.databasePath, settings.databaseCacheSizeMB}, settings.recoverFromDisk),
+          nstacks_(nStacks),
+          nchains_(nChains),
+          cacheLength_(settings.chainCacheLength),
+          beta_(nStacks * nChains),
+          sigma_(nStacks * nChains),
+          cache_(nStacks * nChains)
+    {
+      for (uint i=0; i < nstacks_*nchains_; i++)
+        cache_[i].reserve(cacheLength_);
+      
+      if (settings.recoverFromDisk)
+        recover();
+      else
+        init();
+    }
+    
+    ChainArray::ChainArray(ChainArray&& other)
+      : db_(std::move(db_)), nstacks_(other.nstacks_), nchains_(other.nchains_),
+      cacheLength_(other.cacheLength_), beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
+      cache_(std::move(other.cache_))
+    {
+    }
+
+    // ChainArray::~ChainArray()
+    // {
+    //   for (uint i = 0; i < nstacks_*nchains_; i++)
+    //   {
+    //     if (cache_[i].size() > 0)
+    //       flushToDisk(i);
+    //   }
+    // }
+    
+    
+    void ChainArray::recover()
     {
       // Recover the dimensions of the chain array
       nstacks_ = detail::getFromDb<detail::NSTACKS, std::uint32_t>(db_);
@@ -215,73 +250,48 @@ namespace stateline
       {
         // Recover beta and sigma
         VLOG(1) << "Recovering chain " << id << " from disk.";
-        beta_.push_back(detail::getFromDb<detail::BETA, double>(db_, id));
-        sigma_.push_back(detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA>(db_, id)));
+        beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
+        sigma_[id] = detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA>(db_, id));
 
         // Recover the newest state
         uint len = lengthOnDisk(id);
         VLOG(1) << "Has length " << len;
         if (len > 0)
         {
-          cache_.push_back({ stateFromDisk(id, len - 1) });
+          std::cout << "placing state from disk back in cache..." << std::endl;
+          State s = stateFromDisk(id, len - 1);
+          cache_[id].push_back(s);
+          std::cout << "cache index " << id << " now has size " << cache_[id].size() << std::endl;
         }
-        else
-        {
-          cache_.push_back({});
-        }
-
-        // Reserve the cache
-        cache_.back().reserve(cacheLength);
       }
     }
 
-    ChainArray::ChainArray(uint nStacks, uint nChains,
-        const std::vector<Eigen::VectorXd>& initialSigmas,
-        const std::vector<double>& initialBetas, const DBSettings& d, uint cacheLength)
-        : db_(d, false),
-          nstacks_(nStacks),
-          nchains_(nChains),
-          cacheLength_(cacheLength),
-          beta_(nStacks * nChains),
-          sigma_(nStacks * nChains),
-          cache_(nStacks * nChains)
+
+    void ChainArray::init()
     {
       // Reserve the cache
       for (auto& c : cache_)
-        c.reserve(cacheLength);
+        c.reserve(cacheLength_);
 
       // Initialise the database
       leveldb::WriteBatch batch;
 
-      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nStacks);
-      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nChains);
+      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nstacks_);
+      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nchains_);
 
-      for (uint i = 0; i < nStacks; i++)
+      for (uint i = 0; i < nstacks_; i++)
       {
-        for (uint j = 0; j < nChains; j++)
+        for (uint j = 0; j < nchains_; j++)
         {
-          uint id = i * nChains + j;
-
-          beta_[id] = initialBetas[id];
-          sigma_[id] = initialSigmas[id];
-
+          uint id = i * nchains_ + j;
           // All chains start off with length 0
           detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
-          detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
-          detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
         }
       }
-
       db_.put(batch);
     }
 
-    ChainArray::ChainArray(ChainArray&& other)
-      : db_(std::move(db_)), nstacks_(other.nstacks_), nchains_(other.nchains_),
-        cacheLength_(other.cacheLength_), beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
-        cache_(std::move(other.cache_))
-    {
-    }
-
+    
     uint ChainArray::lengthOnDisk(uint id) const
     {
       return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id);
@@ -289,7 +299,12 @@ namespace stateline
 
     uint ChainArray::length(uint id) const
     {
-      return lengthOnDisk(id) + cache_[id].size() - 1;
+      std::cout << "length called" << std::endl;
+      std::cout << "on disk: " << lengthOnDisk(id) << std::endl;
+      std::cout << "in cache: " << cache_[id].size() << std::endl;
+      uint result = lengthOnDisk(id) + cache_[id].size() - (uint)(lengthOnDisk(id)>0);
+      std::cout << "returned: " << result <<  "\n" << std::endl;
+      return result;
     }
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
@@ -312,13 +327,20 @@ namespace stateline
       return accepted;
     }
 
-    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, double energy)
+    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, double energy, const Eigen::VectorXd& sigma, double beta)
     {
+      setSigma(id, sigma);
+      setBeta(id, beta);
+
+      // leveldb::WriteBatch batch;
+      // detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
+      // detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
+      // db_.put(batch);
+      
       cache_[id].push_back({ sample, energy, sigma_[id], beta_[id] });
       cache_[id].back().accepted = true;
       cache_[id].back().swapType = SwapType::NoAttempt;
-      if (cache_[id].size() == cacheLength_)
-        flushToDisk(id);
+      flushToDisk(id);
     }
 
     void ChainArray::flushToDisk(uint id)

@@ -46,4 +46,14 @@ namespace stateline
       return settings;
     }
   };
+
+  struct SamplerSettings
+  {
+    MCMCSettings mcmc;
+    DBSettings db;
+    DelegatorSettings del;
+  };
+
+
+
 }

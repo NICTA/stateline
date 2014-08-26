@@ -28,12 +28,14 @@ class ChainArrayTest : public testing::Test
     std::vector<double> betas;
     uint cacheLength = 2;
     std::string path = "./AUTOGENtestChainArray";
-    DBSettings settings;
+    ChainSettings settings;
 
     ChainArrayTest()
     {
-      settings.directory = path;
-      settings.cacheSizeMB = 1.0;
+      settings.databasePath = path;
+      settings.databaseCacheSizeMB = 1.0;
+      settings.chainCacheLength = 100;
+      settings.recoverFromDisk = false;
       boost::filesystem::remove_all(path);
 
       sigma = Eigen::VectorXd::Ones(1);
@@ -54,7 +56,7 @@ class ChainArrayTest : public testing::Test
 
 TEST_F(ChainArrayTest, chainsStartAtLengthZero)
 {
-  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
+  ChainArray chains(nStacks, nChains, settings);
   for (uint i = 0; i < chains.numTotalChains(); i++)
   {
     uint length = chains.length(i);
@@ -64,12 +66,12 @@ TEST_F(ChainArrayTest, chainsStartAtLengthZero)
 
 TEST_F(ChainArrayTest, canInitialiseChain)
 {
-  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
+  ChainArray chains(nStacks, nChains, settings);
 
   // Append a test sample to the chain
   Eigen::VectorXd m(5);
   m << 1.0, 2.0, 3.0, 4.0, 5.0;
-  chains.initialise(0, m, 666.0);
+  chains.initialise(0, m, 666.0, sigma, beta);
 
   ASSERT_EQ(1U, chains.length(0));
   EXPECT_TRUE(chains.sigma(0).isApprox(sigma));
@@ -85,7 +87,7 @@ TEST_F(ChainArrayTest, canInitialiseChain)
 
 TEST_F(ChainArrayTest, canSwapChains)
 {
-  ChainArray chains(nStacks, nChains, sigmas, betas, settings, cacheLength);
+  ChainArray chains(nStacks, nChains, settings);
 
   // Create test samples
   Eigen::VectorXd m1(5);
@@ -98,15 +100,9 @@ TEST_F(ChainArrayTest, canSwapChains)
   Eigen::VectorXd sigma1 = Eigen::VectorXd::Ones(1) * 0.1;
   Eigen::VectorXd sigma2 = Eigen::VectorXd::Ones(1) * 0.2;
 
-  chains.setSigma(0, sigma1);
-  chains.setSigma(1, sigma2);
-
-  chains.setBeta(0, 0.1);
-  chains.setBeta(1, 0.11);
-
   // Append to two separate chains and then swap them
-  chains.initialise(0, m1, 666.0);
-  chains.initialise(1, m2, 667.0);
+  chains.initialise(0, m1, 666.0, sigma1, 0.1);
+  chains.initialise(1, m2, 667.0, sigma2, 0.11);
   ASSERT_EQ(SwapType::Accept, chains.swap(0, 1));
 
   ASSERT_EQ(1U, chains.length(0));
@@ -126,7 +122,7 @@ TEST_F(ChainArrayTest, canSwapChains)
   EXPECT_TRUE(chains.lastState(1).sigma.isApprox(sigma1));
   EXPECT_DOUBLE_EQ(0.1, chains.lastState(1).beta);
   EXPECT_EQ(true, chains.lastState(1).accepted);
-  EXPECT_EQ(SwapType::Accept, chains.lastState(1).swapType);
+  EXPECT_EQ(SwapType::NoAttempt, chains.lastState(1).swapType);
 }
 
 TEST_F(ChainArrayTest, canRecoverChain)
@@ -141,14 +137,19 @@ TEST_F(ChainArrayTest, canRecoverChain)
   // Needs a separate scope to call the destructor on chain array because
   // we can't simultaneously read from the DB.
   {
-    ChainArray chains(nStacks, nChains, sigmas, betas, settings, 2);
-    chains.initialise(0, m1, 666.0);
+    std::cout << "Creating chain" << std::endl;
+    ChainArray chains(1, 1, settings);
+    chains.initialise(0, m1, 666.0, sigma, beta);
     chains.append(0, m2, 333.0);
     chains.flushToDisk(0);
+    std::cout << "Destroying chain" << std::endl;
   }
 
   // Now recover it
-  ChainArray recovered(settings, 2);
+  settings.recoverFromDisk = true;
+  std::cout << "Recovering chain" << std::endl;
+  ChainArray recovered(nStacks, nChains, settings);
+  std::cout << "Testing chain" << std::endl;
 
   // Note that the newest state (m2) is never saved to disk, so we only check whether
   // the first state (m1) is present.
@@ -159,6 +160,7 @@ TEST_F(ChainArrayTest, canRecoverChain)
   EXPECT_DOUBLE_EQ(1.0, recovered.beta(0));
   EXPECT_EQ(true, recovered.lastState(0).accepted);
   EXPECT_EQ(SwapType::NoAttempt, recovered.lastState(0).swapType);
+  settings.recoverFromDisk = false;
 }
 
 TEST_F(ChainArrayTest, canRecoverMultipleChains)
@@ -174,11 +176,11 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
   // Needs a separate scope to call the destructor on chain array because
   // we can't simultaneously read from the DB.
   {
-    ChainArray chains(nStacks, nChains, sigmas, betas, settings, 2);
+    ChainArray chains(2, 2, settings);
     for (uint i = 0; i < chains.numTotalChains(); i++)
     {
       // Initialise the chain
-      chains.initialise(i, Eigen::VectorXd::Random(5), dist(gen));
+      chains.initialise(i, Eigen::VectorXd::Random(5), dist(gen), sigma, beta);
     }
 
     for (uint i = 0; i < chains.numTotalChains(); i++)
@@ -195,6 +197,7 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
         chains.setBeta(i, dist(gen));
         chains.setSigma(i, Eigen::VectorXd::Random(5));
       }
+      chains.flushToDisk(i);
     }
 
     // Save the state of the chain so we can verify the recovered version
@@ -205,7 +208,8 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
   }
 
   // Now recover it and verify that chains haven't changed
-  ChainArray recovered(settings, 2);
+  settings.recoverFromDisk = true;
+  ChainArray recovered(2, 2, settings);
 
   ASSERT_EQ(states.size(), recovered.numTotalChains());
   for (uint i = 0; i < recovered.numTotalChains(); i++)
@@ -221,4 +225,5 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
       EXPECT_EQ(states[i][j].swapType, recovered.state(i, j).swapType);
     }
   }
+  settings.recoverFromDisk = false;
 }

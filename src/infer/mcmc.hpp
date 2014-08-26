@@ -23,6 +23,8 @@
 #include "comms/datatypes.hpp"
 #include "comms/settings.hpp"
 #include "comms/serial.hpp"
+#include "comms/delegator.hpp"
+#include "comms/requester.hpp"
 #include "infer/async.hpp"
 #include "infer/settings.hpp"
 #include "infer/chainarray.hpp"
@@ -45,11 +47,12 @@ namespace stateline
     class WorkerInterface
     {
       public:
-        WorkerInferface(const std::string& globalSpecData,
+        WorkerInterface(const std::string& globalSpecData,
             const std::map<comms::JobID, std::string>& perJobSpecData,
             const JobConstructFunction& jobConstructFn,
             const ResultEnergyFunction& resultEnergyFn,
             const DelegatorSettings& settings)
+
           : jobConstructFn_(jobConstructFn),
             resultEnergyFn_(resultEnergyFn),
             delegator_(globalSpecData, perJobSpecData, settings),
@@ -75,33 +78,6 @@ namespace stateline
         comms::Delegator delegator_;
         comms::Requester requester_;
     };
-    
-    
-    
-    struct ProblemInstance
-    {
-      std::string globalJobSpecData;
-      std::map<comms::JobID, std::string> perJobSpecData;
-
-
-      void submit();
-
-      std::pair<> retrieve();
-    };
-
-    ProposalFunction proposalFn;
-    
-    
-    struct SamplerSettings
-    {
-      MCMCSettings mcmc;
-      DBSettings db;
-      DelegatorSettings del;
-    };
-
-    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
-
-    double singleJobLikelihood(const std::vector<comms::ResultData> &results);
 
   } // namespace mcmc 
 } // namespace stateline
