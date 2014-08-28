@@ -1,5 +1,6 @@
 #include "base.hpp"
 #include "problem.hpp"
+#include "datatypes.hpp"
 #include "state.hpp"
 #include "sampler.hpp"
 #include "settings.hpp"
@@ -9,6 +10,8 @@
 BOOST_PYTHON_MODULE(_stateline)
 {
   exportProblemInstance();
+  exportJobData();
+  exportJobResult();
   exportState();
   exportSampler();
   exportSettings();
