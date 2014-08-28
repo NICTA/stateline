@@ -2,9 +2,10 @@
 
 #include "infer/sampler.hpp"
 
-void samplerStep(mcmc::Sampler &sampler, py::list sigmas, py::list betas)
+py::tuple samplerStep(mcmc::Sampler &sampler, py::list sigmas, py::list betas)
 {
-  sampler.step(lnumpy2veigen(sigmas), list2vector<double>(betas));
+  auto result = sampler.step(lnumpy2veigen(sigmas), list2vector<double>(betas));
+  return py::make_tuple(result.first, result.second);
 }
 
 void exportSampler()
