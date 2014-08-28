@@ -73,9 +73,52 @@ class Sampler(_sl.Sampler):
     _BASE = _sl.Sampler
 
 
-class SlidingWindowSigmaAdapter(_sl.SlidingWindowSigmaAdapter)
+class SlidingWindowSigmaAdapter(_sl.SlidingWindowSigmaAdapter):
     """"""
     _BASE = _sl.SlidingWindowSigmaAdapter
 
-    def __init__(self, chainarray?)
+    def __init__(self):
         pass
+
+    def update(self, i, state):
+        self._BASE.update(self, i, state)
+
+    def sigmas(self):
+        self._BASE.sigmas(self)
+
+    def accept_rates(self):
+        self._BASE.accept_rates(self)
+
+
+class SlidingWindowBetaAdapter(_sl.SlidingWindowBetaAdapter):
+    """"""
+    _BASE = _sl.SlidingWindowBetaAdapter
+
+    def __init__(self):
+        pass
+
+    def update(self, i, state):
+        self._BASE.update(self, i, state)
+
+    def betas(self):
+        return self._BASE.betas(self)
+
+    def swap_rates(self):
+        return self._BASE.swap_rates(self)
+
+
+class EPSRDiagnostic(_sl.EPSRDiagnostic):
+    """"""
+    _BASE = _sl.EPSRDiagnostic
+
+    def __init__(self):
+        pass
+
+    def update(self, i, state):
+      self._BASE.update(self, i, state)
+
+    def r_hat(self):
+      return self._BASE.rHat(self)
+
+    def has_converged(self):
+      return self._BASE.has_converged(self)
