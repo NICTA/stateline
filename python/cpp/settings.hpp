@@ -11,7 +11,7 @@ void exportMCMCSettings()
     .def_readwrite("nchains", &MCMCSettings::chains)
     .def_readwrite("swap_interval", &MCMCSettings::swapInterval)
     .def_readwrite("cache_length", &MCMCSettings::cacheLength)
-  ;
+    ;
 }
 
 void exportDBSettings()
@@ -19,7 +19,7 @@ void exportDBSettings()
   py::class_<DBSettings>("DBSettings")
     .def_readwrite("directory", &DBSettings::directory)
     .def_readwrite("cache_size", &DBSettings::cacheSizeMB)
-  ;
+    ;
 }
 
 void exportHeartbeatSettings()
@@ -28,12 +28,12 @@ void exportHeartbeatSettings()
     .def_readwrite("rate", &HeartbeatSettings::msRate)
     .def_readwrite("poll_rate", &HeartbeatSettings::msPollRate)
     .def_readwrite("timeout", &HeartbeatSettings::msTimeout)
-  ;
+    ;
 }
 
 void exportDelegatorSettings()
 {
- py::class_<DelegatorSettings>("DelegatorSettings")
+  py::class_<DelegatorSettings>("DelegatorSettings")
     .def_readwrite("poll_rate", &DelegatorSettings::msPollRate)
     .def_readwrite("port", &DelegatorSettings::port)
     .def_readwrite("heartbeat", &DelegatorSettings::heartbeat);
@@ -45,7 +45,7 @@ void exportWorkerSettings()
     .def_readwrite("poll_rate", &WorkerSettings::msPollRate)
     .def_readwrite("address", &WorkerSettings::address)
     .def_readwrite("heartbeat", &WorkerSettings::heartbeat)
-  ;
+    ;
 }
 
 void exportSettings()
