@@ -31,9 +31,7 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Demo Options");
   opts.add_options()
-    ("nthin,t", po::value<uint>()->default_value(10), "The number of samples discarded for each sample used")
-    ("burnin,b", po::value<uint>()->default_value(0), "The number of samples to discard from the beginning");
-
+  ("recover,r", po::bool_switch()->default_value(false), "Recover an existing chain");
   return opts;
 }
 
@@ -118,6 +116,17 @@ class Logger
 
 int main(int ac, char *av[])
 {
+  // Parse the command line 
+  po::variables_map vm;
+  try
+  {
+    po::store(po::parse_command_line(ac, av, commandLineOptions()), vm);
+    po::notify(vm);
+  } catch (const std::exception& ex)
+  {
+    std::cout << "Error: Unrecognised commandline arguments\n\n" << commandLineOptions() << "\n";
+    exit(EXIT_FAILURE);
+  }
   // Initialise logging
   sl::initLogging("server", 0, true, "");
 
@@ -161,20 +170,24 @@ int main(int ac, char *av[])
                               Eigen::VectorXd::Constant(ndims, -10),
                               Eigen::VectorXd::Constant(ndims, 10));
   
+  // Recover the chain array?
+  bool recover = vm["recover"].as<bool>();
   // Create a chain array
-  sl::mcmc::ChainArray chains(nstacks, nchains, sl::mcmc::ChainSettings::Default());
-  // Generate initial samples
-  for (uint i = 0; i < nstacks * nchains; i++)
+  sl::mcmc::ChainArray chains(nstacks, nchains, sl::mcmc::ChainSettings::Default(recover));
+  if (!recover)
   {
-    Eigen::VectorXd sample = Eigen::VectorXd::Random(ndims);
-    workerInterface.submit(i, sample);
-    uint j;
-    double energy;
-    std::tie(j, energy) = workerInterface.retrieve();
-    chains.initialise(i, sample, energy, sigmas[i], betas[i]);
+    // Generate initial samples
+    for (uint i = 0; i < nstacks * nchains; i++)
+    {
+      Eigen::VectorXd sample = Eigen::VectorXd::Random(ndims);
+      workerInterface.submit(i, sample);
+      uint j;
+      double energy;
+      std::tie(j, energy) = workerInterface.retrieve();
+      chains.initialise(i, sample, energy, sigmas[i], betas[i]);
+    }
   }
 
-  
   // Create a sampler
   sl::mcmc::Sampler sampler(workerInterface, chains, proposalFn, swapInterval);
 

@@ -35,10 +35,10 @@ namespace stateline
       double databaseCacheSizeMB;
 
       //! Default settings
-      static ChainSettings Default()
+      static ChainSettings Default(bool recoverFromDisk)
       {
         ChainSettings settings;
-        settings.recoverFromDisk = false;
+        settings.recoverFromDisk = recoverFromDisk;
         settings.databasePath = "chainDB";
         settings.chainCacheLength = 1000;
         settings.databaseCacheSizeMB = 100;

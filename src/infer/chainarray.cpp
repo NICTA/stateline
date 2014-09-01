@@ -378,7 +378,6 @@ namespace stateline
     State ChainArray::state(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
-      uint cacheSize = cache_[id].size();
       if (idx < dlen)
         return stateFromDisk(id, idx);
       else
