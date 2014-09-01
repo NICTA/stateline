@@ -61,8 +61,10 @@ namespace stateline
       }
 
       State(const Eigen::VectorXd &sample, double energy,
-          const Eigen::VectorXd &sigma, double beta)
-        : sample(sample), energy(energy), sigma(sigma), beta(beta)
+          const Eigen::VectorXd &sigma, double beta, bool accepted,
+          SwapType swapType)
+        : sample(sample), energy(energy), sigma(sigma), beta(beta),
+        accepted(accepted), swapType(swapType)
       {
       }
     };

@@ -141,7 +141,6 @@ TEST_F(ChainArrayTest, canRecoverChain)
     ChainArray chains(1, 1, settings);
     chains.initialise(0, m1, 666.0, sigma, beta);
     chains.append(0, m2, 333.0);
-    chains.flushToDisk(0);
     std::cout << "Destroying chain" << std::endl;
   }
 
@@ -151,11 +150,9 @@ TEST_F(ChainArrayTest, canRecoverChain)
   ChainArray recovered(nStacks, nChains, settings);
   std::cout << "Testing chain" << std::endl;
 
-  // Note that the newest state (m2) is never saved to disk, so we only check whether
-  // the first state (m1) is present.
-  ASSERT_EQ(1U, recovered.length(0));
-  EXPECT_DOUBLE_EQ(666.0, recovered.lastState(0).energy);
-  EXPECT_TRUE(recovered.lastState(0).sample.isApprox(m1));
+  ASSERT_EQ(2U, recovered.length(0));
+  EXPECT_DOUBLE_EQ(333.0, recovered.lastState(0).energy);
+  EXPECT_TRUE(recovered.lastState(0).sample.isApprox(m2));
   EXPECT_TRUE(recovered.lastState(0).sigma.isApprox(sigma));
   EXPECT_DOUBLE_EQ(1.0, recovered.beta(0));
   EXPECT_EQ(true, recovered.lastState(0).accepted);
@@ -197,13 +194,15 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
         chains.setBeta(i, dist(gen));
         chains.setSigma(i, Eigen::VectorXd::Random(5));
       }
-      chains.flushToDisk(i);
     }
-
     // Save the state of the chain so we can verify the recovered version
     for (uint i = 0; i < chains.numTotalChains(); i++)
     {
-      states.push_back(chains.states(i));
+      // we only save recent state from non-cold chains
+      if (i % 2 == 0)
+        states.push_back(chains.states(i));
+      else
+        states.push_back({chains.lastState(i)});
     }
   }
 
@@ -214,6 +213,7 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
   ASSERT_EQ(states.size(), recovered.numTotalChains());
   for (uint i = 0; i < recovered.numTotalChains(); i++)
   {
+    std::cout << "checking chain " << i << " with length:" << recovered.length(i) << std::endl;
     ASSERT_EQ(states[i].size(), recovered.length(i));
     for (uint j = 0; j < recovered.length(i); j++)
     {

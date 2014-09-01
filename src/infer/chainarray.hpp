@@ -80,7 +80,7 @@ namespace stateline
         ChainArray(ChainArray&& other);
     
         // Destructor
-        // ~ChainArray();
+        ~ChainArray();
 
         //! Get the length of a chain.
         //!

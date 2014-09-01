@@ -229,14 +229,14 @@ namespace stateline
     {
     }
 
-    // ChainArray::~ChainArray()
-    // {
-    //   for (uint i = 0; i < nstacks_*nchains_; i++)
-    //   {
-    //     if (cache_[i].size() > 0)
-    //       flushToDisk(i);
-    //   }
-    // }
+    ChainArray::~ChainArray()
+    {
+      for (uint i = 0; i < nstacks_*nchains_; i++)
+      {
+        if (cache_[i].size() > 0)
+          flushToDisk(i);
+      }
+    }
     
     
     void ChainArray::recover()
@@ -252,42 +252,17 @@ namespace stateline
         VLOG(1) << "Recovering chain " << id << " from disk.";
         beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
         sigma_[id] = detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA>(db_, id));
-
-        // Recover the newest state
-        uint len = lengthOnDisk(id);
-        VLOG(1) << "Has length " << len;
-        if (len > 0)
-        {
-          std::cout << "placing state from disk back in cache..." << std::endl;
-          State s = stateFromDisk(id, len - 1);
-          cache_[id].push_back(s);
-          std::cout << "cache index " << id << " now has size " << cache_[id].size() << std::endl;
-        }
       }
     }
 
-
     void ChainArray::init()
     {
-      // Reserve the cache
-      for (auto& c : cache_)
-        c.reserve(cacheLength_);
-
       // Initialise the database
       leveldb::WriteBatch batch;
-
       detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nstacks_);
       detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nchains_);
-
-      for (uint i = 0; i < nstacks_; i++)
-      {
-        for (uint j = 0; j < nchains_; j++)
-        {
-          uint id = i * nchains_ + j;
-          // All chains start off with length 0
-          detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 0);
-        }
-      }
+      for (uint i = 0; i < nstacks_*nchains_; i++)
+        detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, i, 0, 0);
       db_.put(batch);
     }
 
@@ -299,19 +274,14 @@ namespace stateline
 
     uint ChainArray::length(uint id) const
     {
-      std::cout << "length called" << std::endl;
-      std::cout << "on disk: " << lengthOnDisk(id) << std::endl;
-      std::cout << "in cache: " << cache_[id].size() << std::endl;
-      uint result = lengthOnDisk(id) + cache_[id].size() - (uint)(lengthOnDisk(id)>0);
-      std::cout << "returned: " << result <<  "\n" << std::endl;
+      uint result = lengthOnDisk(id) + cache_[id].size();
       return result;
     }
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
-      State newState(sample, energy, sigma_[id], beta_[id]);
+      State newState(sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt);
       State last = cache_[id].back();
-
       bool accepted = acceptProposal(newState, last, beta_[id]);
 
       if (accepted)
@@ -327,20 +297,18 @@ namespace stateline
       return accepted;
     }
 
-    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, double energy, const Eigen::VectorXd& sigma, double beta)
+    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, 
+        double energy, const Eigen::VectorXd& sigma, double beta)
     {
       setSigma(id, sigma);
       setBeta(id, beta);
+      cache_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
 
-      // leveldb::WriteBatch batch;
-      // detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
-      // detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
-      // db_.put(batch);
-      
-      cache_[id].push_back({ sample, energy, sigma_[id], beta_[id] });
-      cache_[id].back().accepted = true;
-      cache_[id].back().swapType = SwapType::NoAttempt;
-      flushToDisk(id);
+      // Now update the disk
+      leveldb::WriteBatch batch;
+      detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
+      detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
+      db_.put(batch);
     }
 
     void ChainArray::flushToDisk(uint id)
@@ -348,30 +316,27 @@ namespace stateline
       leveldb::WriteBatch batch;
       uint diskLength = lengthOnDisk(id);
       uint cacheLength = cache_[id].size();
-      State lastState = cache_[id].back();
 
-      // Don't put the newest state in
+      // for t=1 chains only (cold) chains only
       if (chainIndex(id) == 0)
       {
-        for (uint i = 0; i < cacheLength - 1; i++)
+        for (uint i = 0; i < cacheLength; i++)
         {
           uint index = diskLength + i;
           detail::putToBatch<detail::STATE>(batch, id, index,
               detail::archiveString(cache_[id][i]));
         }
-
-        uint newLength = diskLength + cacheLength - 1; // don't count newest state
-        VLOG(3) << "Flushing cache of chain " << id << ". new length: " << newLength;
+        uint newLength = diskLength + cacheLength;  // new on disk length
+        VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, newLength);
       }
       else
       {
         VLOG(3) << "Overwriting high temperature state of chain " << id;
         detail::putToBatch<detail::STATE>(batch, id, 0,
-          detail::archiveString(cache_[id][cacheLength - 1]));
+          detail::archiveString(cache_[id].back()));
         detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 1);
       }
-
       // Update sigma and beta
       detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
       detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
@@ -381,22 +346,22 @@ namespace stateline
 
       // Re-initialise the cache
       cache_[id].clear();
-      cache_[id].push_back(lastState);
     }
 
     State ChainArray::lastState(uint id) const
     {
-      return cache_[id].back();
+      uint dlen = lengthOnDisk(id);
+      uint cacheSize = cache_[id].size();
+      uint idx = dlen + cache_[id].size() - 1;
+      return state(id, idx);
     }
 
     State ChainArray::stateFromDisk(uint id, uint idx) const
     {
       uint dlen = lengthOnDisk(id);
       CHECK(idx < dlen) << "Can't access state " << idx << " in chain " << id << " from disk when " << dlen << " states stored on disk";
-
       // Read the serialised state from disk
       std::string state = detail::getFromDb<detail::STATE>(db_, id, idx);
-
       return detail::unarchiveString<State>(state);
     }
 
@@ -416,7 +381,7 @@ namespace stateline
     {
       uint dlen = lengthOnDisk(id);
       uint cacheSize = cache_[id].size();
-      if (idx < dlen || (idx == dlen && cacheSize == 0))
+      if (idx < dlen)
         return stateFromDisk(id, idx);
       else
         return stateFromCache(id, idx);
@@ -435,6 +400,8 @@ namespace stateline
 
     SwapType ChainArray::swap(uint id1, uint id2)
     {
+      CHECK(cache_[id1].size() > 0 ) << "Can't swap in cache when cache empty";
+      CHECK(cache_[id2].size() > 0 ) << "Can't swap in cache when cache empty";
       uint hId = std::max(id1, id2);
       uint lId = std::min(id1, id2);
       State& stateh = cache_[hId].back();
