@@ -23,7 +23,7 @@ namespace stateline
         Sampler(WorkerInterface& workerInterface, 
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
-                const SamplerSettings& settings);
+                uint swapInterval);
       
         std::pair<uint, State> step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas);
 
@@ -41,14 +41,15 @@ namespace stateline
         
         ProposalFunction propFn_;
         
-        SamplerSettings settings_;
-
         // convenience variables
         const uint nstacks_;
         const uint nchains_;
 
         // The proposed states in the process of being computed
         std::vector<Eigen::VectorXd> propStates_;
+
+        // How often to attempt a swap
+        uint swapInterval_;
 
         // How many jobs haven't been retrieved?
         uint numOutstandingJobs_;

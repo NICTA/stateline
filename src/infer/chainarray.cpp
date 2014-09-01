@@ -281,7 +281,7 @@ namespace stateline
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
       State newState(sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt);
-      State last = cache_[id].back();
+      State last = lastState(id);
       bool accepted = acceptProposal(newState, last, beta_[id]);
 
       if (accepted)
@@ -350,9 +350,7 @@ namespace stateline
 
     State ChainArray::lastState(uint id) const
     {
-      uint dlen = lengthOnDisk(id);
-      uint cacheSize = cache_[id].size();
-      uint idx = dlen + cache_[id].size() - 1;
+      uint idx = lengthOnDisk(id) + cache_[id].size() - 1;
       return state(id, idx);
     }
 

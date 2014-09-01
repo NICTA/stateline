@@ -18,16 +18,16 @@ namespace stateline
     Sampler::Sampler(WorkerInterface& workerInterface, 
                      ChainArray& chainArray,
                      const ProposalFunction& propFn,
-                     const SamplerSettings& settings)
+                     uint swapInterval)
       : workerInterface_(workerInterface),
         chains_(chainArray),
         propFn_(propFn),
-        settings_(settings),
-        nstacks_(settings.mcmc.stacks),
-        nchains_(settings.mcmc.chains),
+        nstacks_(chains_.numStacks()),
+        nchains_(chains_.numChains()),
         propStates_(nstacks_*nchains_),
+        swapInterval_(swapInterval),
         numOutstandingJobs_(0),
-        locked_(settings.mcmc.stacks * settings.mcmc.chains, false)
+        locked_(nstacks_ * nchains_, false)
     {
       // Start all the chains from hottest to coldest
       for (uint i = 0; i < chains_.numTotalChains(); i++)
@@ -71,7 +71,7 @@ namespace stateline
         // Unlock this chain, propgating the lock downwards
         unlock(id);
       }
-      else if (chains_.isHottestInStack(id) && chains_.length(id) % settings_.mcmc.swapInterval == 0 && chains_.numChains() > 1)
+      else if (chains_.isHottestInStack(id) && chains_.length(id) % swapInterval_ == 0 && chains_.numChains() > 1)
       {
         // The hottest chain is ready to swap. Lock the next chain
         // to prevent it from proposing any more
