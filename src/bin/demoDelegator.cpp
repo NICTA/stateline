@@ -138,19 +138,16 @@ int main(int ac, char *av[])
             5,  5,  5;
  
   // Set up the problem
-  sl::mcmc::ProblemInstance problem;
-  problem.globalJobSpecData = sl::serialise(means);
-  problem.jobConstructFn = sl::mcmc::singleJobConstruct;
-  problem.resultLikelihoodFn = sl::mcmc::singleJobLikelihood;
-  problem.proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
-      Eigen::VectorXd::Constant(ndims, -10),
-      Eigen::VectorXd::Constant(ndims, 10));
-
-  // Set up the settings
-  sl::mcmc::SamplerSettings settings;
-  settings.mcmc = sl::MCMCSettings::Default(nstacks, nchains);
-  settings.db = sl::DBSettings::Default();
-  settings.del = sl::DelegatorSettings::Default(5555);
+  sl::mcmc::WorkerInterface workerInterface(sl::serialise(means),
+      {}, // empty per-job map
+      sl::mcmc::singleJobConstruct,
+      sl::mcmc::singleJobLikelihood,
+      sl::DelegatorSettings::Default(5555));
+     
+  
+  auto proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
+                              Eigen::VectorXd::Constant(ndims, -10),
+                              Eigen::VectorXd::Constant(ndims, 10));
 
   // Generate initial parameters
   std::vector<Eigen::VectorXd> initial;
@@ -176,8 +173,13 @@ int main(int ac, char *av[])
   std::vector<double> betas = betaAdapter.betas();
   std::vector<double> swapRates = betaAdapter.swapRates();
 
+
+  // Create a chain array
+  sl::mcmc::ChainArray chains(nstacks, nchains, sl::mcmc::ChainSettings::Default());
+
+
   // Create a sampler
-  sl::mcmc::Sampler sampler(problem, settings, initial, sigmas, betas);
+  sl::mcmc::Sampler sampler(workerInterface, chains, proposalFn, samplerSettings);
 
   // Create a diagnostic
   sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
