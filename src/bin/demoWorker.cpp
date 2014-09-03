@@ -14,20 +14,43 @@
 
 #include <chrono>
 #include <thread>
+#include <boost/program_options.hpp>
 
 #include "app/logging.hpp"
 #include "app/worker.hpp"
 #include "stats/mixture.hpp"
 
 namespace sl = stateline;
+namespace po = boost::program_options;
+
+po::options_description commandLineOptions()
+{
+  auto opts = po::options_description("Demo Options");
+  opts.add_options()
+    ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of delegator")
+    ;
+  return opts;
+}
 
 int main(int ac, char *av[])
 {
+  // Parse the command line 
+  po::variables_map vm;
+  try
+  {
+    po::store(po::parse_command_line(ac, av, commandLineOptions()), vm);
+    po::notify(vm);
+  } catch (const std::exception& ex)
+  {
+    std::cout << "Error: Unrecognised commandline arguments\n\n" << commandLineOptions() << "\n";
+    exit(EXIT_FAILURE);
+  }
   // Initialise logging
   sl::initLogging("client", 0, true, "");
 
   // Initialise workers
-  sl::WorkerSettings settings = sl::WorkerSettings::Default("localhost:5555");
+  std::string address = vm["address"].as<std::string>();
+  sl::WorkerSettings settings = sl::WorkerSettings::Default(address);
   
   // Create a worker to communicate with the server
   sl::comms::Worker worker({ 0 }, settings);

@@ -31,7 +31,10 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Demo Options");
   opts.add_options()
-  ("recover,r", po::bool_switch()->default_value(false), "Recover an existing chain");
+  ("recover,r", po::bool_switch()->default_value(false), "Recover an existing chain")
+  ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
+  ("time,t",po::value<uint>()->default_value(60), "Number of seconds the sampler will run for")
+  ;
   return opts;
 }
 
@@ -134,7 +137,7 @@ int main(int ac, char *av[])
   const std::size_t ndims = 3;
   const std::size_t nchains = 10;
   const std::size_t nstacks = 2;
-  const std::size_t numSeconds = 60;
+  const std::size_t numSeconds = vm["time"].as<uint>();
   const std::size_t swapInterval = 10;
   uint msRefresh = 500;
 
@@ -158,12 +161,13 @@ int main(int ac, char *av[])
   means << -5, -5, -5,
             5,  5,  5;
  
+  uint port = vm["port"].as<uint>();
   // Set up the problem
   sl::mcmc::WorkerInterface workerInterface(sl::serialise(means),
       {}, // empty per-job map
       sl::mcmc::singleJobConstruct,
       sl::mcmc::singleJobLikelihood,
-      sl::DelegatorSettings::Default(5555));
+      sl::DelegatorSettings::Default(port));
      
   
   auto proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
