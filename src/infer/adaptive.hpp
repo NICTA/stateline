@@ -56,7 +56,7 @@ namespace stateline
       //! Empty settings with all parameters set to zero.
       static SlidingWindowSigmaSettings Empty()
       {
-        SlidingWindowSigmaSettings settings = {};
+        SlidingWindowSigmaSettings settings = {0,0,0,0,0,0,0,0,0};
         return settings;
       }
 
@@ -196,7 +196,7 @@ namespace stateline
       //! Empty settings with all parameters set to zero.
       static SlidingWindowBetaSettings Empty()
       {
-        SlidingWindowBetaSettings settings = {};
+        SlidingWindowBetaSettings settings = {0,0,0,0,0,0,0,0};
         return settings;
       }
 

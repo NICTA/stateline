@@ -11,7 +11,7 @@
 #ADD_LIBRARY(sampler sampler.cpp)
 #TARGET_LINK_LIBRARIES(sampler chainarray)
 
-ADD_LIBRARY(mcmc sampler.cpp chainarray.cpp mcmc.cpp)
+ADD_LIBRARY(mcmc sampler.cpp chainarray.cpp mcmc.cpp diagnostics.cpp)
 TARGET_LINK_LIBRARIES(mcmc db ${Boost_SERIALIZATION_LIBRARY})
 
 
@@ -19,4 +19,4 @@ TARGET_LINK_LIBRARIES(mcmc db ${Boost_SERIALIZATION_LIBRARY})
 ADD_TEST(test-chainarray tests/chainarray.cpp mcmc
                          ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
-ADD_TEST(test-diagnostics tests/diagnostics.cpp ${Boost_SYSTEM_LIBRARY})
+ADD_TEST(test-diagnostics tests/diagnostics.cpp ${Boost_SYSTEM_LIBRARY} mcmc)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "comms/requester.hpp"
+#include "comms/datatypes.hpp"
 
 py::object getGlobalData(comms::JobData &self)
 {
@@ -34,28 +34,5 @@ void exportResultData()
     .def_readwrite("type", &comms::ResultData::type)
     .def("get_data", &getResultData)
     .def_readwrite("data", &comms::ResultData::data)
-  ;
-}
-
-void requesterBatchSubmit(comms::Requester &self, uint id, const py::list &jobs)
-{
-  self.batchSubmit(id, list2vector<comms::JobData>(jobs));
-}
-
-py::tuple requesterBatchRetrieve(comms::Requester &self)
-{
-  std::pair<uint, std::vector<comms::ResultData>> result = self.batchRetrieve();
-  return py::make_tuple(result.first, vector2list(result.second));
-}
-
-void exportRequester()
-{
-  exportJobData();
-  exportResultData();
-
-  py::class_<comms::Requester, boost::noncopyable>("Requester",
-      py::init<comms::Delegator &>())
-    .def("batch_submit", &requesterBatchSubmit)
-    .def("batch_retrieve", &requesterBatchRetrieve)
   ;
 }

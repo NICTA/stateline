@@ -11,17 +11,22 @@ loc, scale = 0.0, 1.0
 # Parameters of the MCMC set up
 nstacks, nchains = 1, 1
 
-# Create a delegator and send the distribution parameters
-delegator = sl.Delegator(5555, global_spec=(loc, scale))
+# Create a problem instance with the distribution parameters as global spec
+problem = sl.ProblemInstance((loc, scale))
+
+# Initialise default MCMC settings
+settings = sl.SamplerSettings(nstacks, nchains)
 
 # Initialise the chains with samples drawn from a uniform prior
 initial = np.random.random((nstacks * nchains, 1))
-mc = mcmc.init(delegator, nstacks, nchains, initial)
 
 # Run MCMC
-samples = mcmc.run(mc, samplers.MH(np.ones(1,)),
-                   mcmc.thinning(10),
-                   mcmc.until(nsamples=2000))
+sampler = sl.Sampler()
+
+for _ in range(2000):
+    id, state = sampler.step(sigmas, betas)
+
+samples = sampler.chains.samples(0)
 
 # Plot the histogram along with the true distribution
 fig, (ax1, ax2) = plt.subplots(2)

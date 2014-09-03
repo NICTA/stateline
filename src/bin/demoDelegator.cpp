@@ -166,7 +166,7 @@ int main(int ac, char *av[])
   sl::mcmc::WorkerInterface workerInterface(sl::serialise(means),
       {}, // empty per-job map
       sl::mcmc::singleJobConstruct,
-      sl::mcmc::singleJobLikelihood,
+      sl::mcmc::singleJobEnergy,
       sl::DelegatorSettings::Default(port));
      
   

@@ -80,7 +80,7 @@ namespace stateline
     };
 
     std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
-    double singleJobLikelihood(const std::vector<comms::ResultData> &results);
+    double singleJobEnergy(const std::vector<comms::ResultData> &results);
 
   } // namespace mcmc 
 } // namespace stateline
