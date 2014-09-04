@@ -1,26 +1,6 @@
 #pragma once
 
-#include "infer/settings.hpp"
-#include "db/settings.hpp"
 #include "comms/settings.hpp"
-
-void exportMCMCSettings()
-{
-  py::class_<MCMCSettings>("MCMCSettings")
-    .def_readwrite("nstacks", &MCMCSettings::stacks)
-    .def_readwrite("nchains", &MCMCSettings::chains)
-    .def_readwrite("swap_interval", &MCMCSettings::swapInterval)
-    .def_readwrite("cache_length", &MCMCSettings::cacheLength)
-    ;
-}
-
-void exportDBSettings()
-{
-  py::class_<DBSettings>("DBSettings")
-    .def_readwrite("directory", &DBSettings::directory)
-    .def_readwrite("cache_size", &DBSettings::cacheSizeMB)
-    ;
-}
 
 void exportHeartbeatSettings()
 {
@@ -50,8 +30,6 @@ void exportWorkerSettings()
 
 void exportSettings()
 {
-  exportMCMCSettings();
-  exportDBSettings();
   exportHeartbeatSettings();
   exportDelegatorSettings();
   exportWorkerSettings();

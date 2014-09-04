@@ -1,5 +1,7 @@
 #pragma once
 
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+
 #include <Eigen/Dense>
 
 #include <Python.h>
@@ -73,39 +75,33 @@ py::object string2bytes(const std::string &str)
 py::object eigen2numpy(const Eigen::VectorXd &vec)
 {
   npy_intp shape[] = { vec.size() };
-  PyArrayObject *array = (PyArrayObject *)PyArray_SimpleNew(
-      1, shape, NPY_DOUBLE
-      );
+  PyObject *array = (PyObject *)PyArray_SimpleNewFromData(
+    1, shape, NPY_DOUBLE, const_cast<double *>(&vec[0])
+  );
 
-  double *dest = (double *)PyArray_DATA(array);
-  memcpy(dest, vec.data(), sizeof(double) * vec.size());
-
-  return py::object(py::handle<>(array));
+  return py::numeric::array(py::handle<>(array)).copy();
 }
 
 py::object veigen2lnumpy(const std::vector<Eigen::VectorXd> &vvec)
 {
   std::vector<py::object> vec;
   for (const auto &x : vvec)
-    list.push_back(eigen2numpy(x));
+    vec.push_back(eigen2numpy(x));
   return vector2list(vec);
 }
 
-Eigen::VectorXd numpy2eigen(const py::object &x)
+Eigen::VectorXd numpy2eigen(py::object x)
 {
-  if (!PyArray_Check(X.ptr()))
-    throw invalid_argument("PyObject is not an array!");
-
   PyArrayObject *ptr = (PyArrayObject *)x.ptr();
 
   if (!PyArray_ISFLOAT(ptr))
-    throw invalid_argument("PyObject is not an array of floats/doubles!");
+    throw std::invalid_argument("PyObject is not an array of floats/doubles!");
 
   return Eigen::Map<Eigen::VectorXd>((double *)PyArray_DATA(ptr),
-      PyArray_DIMS(ptr)[0]);
+      PyArray_SHAPE(ptr)[0]);
 }
 
-std::vector<Eigen::VectorXd> lnumpy2veigen(const py::object &x)
+std::vector<Eigen::VectorXd> lnumpy2veigen(py::object x)
 {
   std::vector<Eigen::VectorXd> list;
   for (int i = 0; i < py::len(x); i++)

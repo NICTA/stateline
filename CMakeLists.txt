@@ -39,7 +39,6 @@ SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Search variables for prereqs
 SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
-SET(BOOST_ROOT ${PREREQ_DIR})
 SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
@@ -96,6 +95,7 @@ FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
                                        serialization)
+MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -104,7 +104,7 @@ FIND_PACKAGE(ZMQ REQUIRED)
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
 # Python
-FIND_PACKAGE(PythonInterp)
+FIND_PACKAGE(PythonInterp 3)
 
 # Leveldb
 FIND_PACKAGE(Leveldb)
