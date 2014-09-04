@@ -1,20 +1,26 @@
 //!
-//! State class for MCMC.
+//! Contains the MCMC datatypes
 //!
-//! \file infer/state.hpp
+//! \file infer/datatypes.hpp
 //! \author Lachlan McCalman
+//! \author Darren Shen
 //! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
+//!
 
 #pragma once
 
-#include <Eigen/Core>
+#include <Eigen/Dense>
+#include <glog/logging.h>
+#include "comms/workerinterface.hpp"
+
 
 namespace stateline
 {
   namespace mcmc
   {
+
     //! Used for recording swapping of chains.
     //!
     enum class SwapType
@@ -51,22 +57,13 @@ namespace stateline
       //! The type of swap that occurred when this state was recorded.
       SwapType swapType;
 
-      State()
-      {
-      }
-
-      State(const Eigen::VectorXd &sample)
-        : sample(sample)
-      {
-      }
-
-      State(const Eigen::VectorXd &sample, double energy,
-          const Eigen::VectorXd &sigma, double beta, bool accepted,
-          SwapType swapType)
-        : sample(sample), energy(energy), sigma(sigma), beta(beta),
-        accepted(accepted), swapType(swapType)
-      {
-      }
     };
-  }
-}
+
+    using WorkerInterface = 
+      comms::WorkerInterface<const Eigen::VectorXd&, double>;
+
+    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
+    double singleJobEnergy(const std::vector<comms::ResultData> &results);
+
+  } // namespace mcmc 
+} // namespace stateline

@@ -17,6 +17,7 @@ namespace stateline
 {
   namespace comms
   {
+   
     //! Numeric Job ID associated with each job type.
     typedef uint JobID;
 
@@ -82,6 +83,7 @@ namespace stateline
         return *this;
       }
     };
+    
 
   } // namespace comms
 } // namespace stateline

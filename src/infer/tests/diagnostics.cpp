@@ -25,7 +25,9 @@ TEST(DiagnosticsTest, EPSRConstantChains)
   {
     for (int j = 0; j < 5; j++)
     {
-      epsr.update(j, State(Eigen::VectorXd::Ones(1) * x(i, j)));
+      State state;
+      state.sample = Eigen::VectorXd::Ones(1) * x(i, j);
+      epsr.update(j, state);
     }
   }
 
@@ -42,7 +44,9 @@ TEST(DiagnosticsTest, EPSRDuplicateLinSpacedChains)
   {
     for (int j = 0; j < chain.rows(); j++)
     {
-      epsr.update(i, State(Eigen::VectorXd::Ones(1) * chain(j)));
+      State state;
+      state.sample = Eigen::VectorXd::Ones(1) * chain(j);
+      epsr.update(i, state);
     }
   }
 
@@ -63,8 +67,12 @@ TEST(DiagnosticsTest, EPSRRandomChains)
   EPSRDiagnostic epsr(2, 1, 1);
   for (int i = 0; i < x.rows(); i++)
   {
-    epsr.update(0, State(Eigen::VectorXd::Ones(1) * x(i, 0)));
-    epsr.update(1, State(Eigen::VectorXd::Ones(1) * x(i, 1)));
+    State state1;
+    state1.sample = Eigen::VectorXd::Ones(1) * x(i, 0);
+    epsr.update(0, state1);
+    State state2;
+    state2.sample = Eigen::VectorXd::Ones(1) * x(i, 1); 
+    epsr.update(1, state2);
   }
 
   EXPECT_NEAR(1.340739719234503, epsr.rHat()(0), 1e-10);

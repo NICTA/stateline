@@ -1,16 +1,9 @@
-//!
-//! Contains the implementation of Monte Carlo Markov Chain simulations.
-//!
-//! \file infer/mcmc.cpp
-//! \author Lachlan McCalman
-//! \author Darren Shen
-//! \date 2014
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
-//!
 
-
-#include "infer/mcmc.hpp"
+#include "infer/util.hpp"
+#include "app/serial.hpp"
+#include "comms/serial.hpp"
 
 namespace stateline
 {
@@ -25,5 +18,6 @@ namespace stateline
     {
       return comms::detail::unserialise<double>(results[0].data);
     }
+
   } // namespace mcmc
 } // namespace stateline

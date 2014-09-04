@@ -11,15 +11,34 @@
 
 #pragma once
 
-#include "infer/mcmc.hpp"
+#include "infer/datatypes.hpp"
+#include "infer/chainarray.hpp"
 
 namespace stateline
 {
   namespace mcmc
   {
+    
+    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray& chains)>;
+    
+    
+    //! A truncated Gaussian proposal function. It randomly varies each value in
+    //! the state according to a truncated Gaussian distribution. It also bounces of the
+    //! walls of the hard boundaries given so as not to get stuck in corners.
+    //! 
+    //! \param state The current state of the chain
+    //! \param sigma The standard deviation of the distribution (step size of the proposal)
+    //! \param min The minimum bound of theta 
+    //! \param max The maximum bound of theta 
+    //! \returns The new proposed theta
+    //!
+    Eigen::VectorXd truncatedGaussianProposal(uint id, const ChainArray& chains,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max);
+    
     class Sampler
     {
       public:
+
         Sampler(WorkerInterface& workerInterface, 
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,

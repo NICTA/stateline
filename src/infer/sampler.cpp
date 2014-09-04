@@ -15,6 +15,62 @@ namespace stateline
 {
   namespace mcmc
   {
+    
+    // A function to bounce the MCMC proposal off the hard boundaries.
+    Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    { 
+      Eigen::VectorXd delta = max - min;
+      Eigen::VectorXd result = val;
+      Eigen::Matrix<bool, Eigen::Dynamic, 1> tooBig = (val.array() > max.array());
+      Eigen::Matrix<bool, Eigen::Dynamic, 1> tooSmall = (val.array() < min.array());
+      for (uint i=0; i< result.size(); i++)
+      {
+        bool big = tooBig(i);
+        bool small = tooSmall(i);
+        if (big)
+        {
+          double overstep = val(i)-max(i);
+          int nSteps = (int)(overstep /  delta(i));
+          double stillToGo = overstep - nSteps*delta(i);
+          if (nSteps % 2 == 0)
+            result(i) = max(i) - stillToGo;
+          else
+            result(i) = min(i) + stillToGo;
+        }
+        if (small)
+        {
+          double understep = min(i) - val(i);
+          int nSteps = (int)(understep / delta(i));
+          double stillToGo = understep - nSteps*delta(i);
+          if (nSteps % 2 == 0)
+            result(i) = min(i) + stillToGo;
+          else
+            result(i) = max(i) - stillToGo;
+        }
+      }
+      return result;
+    }
+
+    Eigen::VectorXd truncatedGaussianProposal(uint id, const ChainArray& chains,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    {
+      // Random number generators
+      Eigen::VectorXd sigma = chains.sigma(id);
+      State state = chains.lastState(id);
+      static std::random_device rd;
+      static std::mt19937 generator(rd());
+      static std::normal_distribution<> rand; // Standard normal
+
+      // Vary each paramater according to a Gaussian distribution
+      Eigen::VectorXd proposal(state.sample.rows());
+      for (int i = 0; i < proposal.rows(); i++)
+        proposal(i) = state.sample(i) + rand(generator) * sigma(i);
+
+      return bouncyBounds(proposal, min, max);
+    }
+
+
     Sampler::Sampler(WorkerInterface& workerInterface, 
                      ChainArray& chainArray,
                      const ProposalFunction& propFn,

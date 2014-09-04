@@ -12,7 +12,7 @@
 #pragma once
 
 #include "db/db.hpp"
-#include "infer/state.hpp"
+#include "infer/datatypes.hpp"
 
 namespace stateline
 {
@@ -35,15 +35,7 @@ namespace stateline
       double databaseCacheSizeMB;
 
       //! Default settings
-      static ChainSettings Default(bool recoverFromDisk)
-      {
-        ChainSettings settings;
-        settings.recoverFromDisk = recoverFromDisk;
-        settings.databasePath = "chainDB";
-        settings.chainCacheLength = 1000;
-        settings.databaseCacheSizeMB = 100;
-        return settings;
-      }
+      static ChainSettings Default(bool recoverFromDisk);
     };
     
     

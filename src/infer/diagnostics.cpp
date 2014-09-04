@@ -8,7 +8,7 @@
 //! \copyright (c) 2014, NICTA
 //!
 
-#include "diagnostics.hpp"
+#include "infer/diagnostics.hpp"
 
 namespace stateline
 {

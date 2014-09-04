@@ -54,6 +54,18 @@ namespace stateline
 {
   namespace mcmc
   {
+    
+    ChainSettings ChainSettings::Default(bool recoverFromDisk)
+    {
+      ChainSettings settings;
+      settings.recoverFromDisk = recoverFromDisk;
+      settings.databasePath = "chainDB";
+      settings.chainCacheLength = 1000;
+      settings.databaseCacheSizeMB = 100;
+      return settings;
+    }
+    
+    
     namespace detail
     {
       //! Represents the different types of entries that the database can contain.
@@ -280,7 +292,7 @@ namespace stateline
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
-      State newState(sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt);
+      State newState = {sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt};
       State last = lastState(id);
       bool accepted = acceptProposal(newState, last, beta_[id]);
 

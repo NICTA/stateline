@@ -20,7 +20,9 @@
 
 #include "infer/sampler.hpp"
 #include "infer/adaptive.hpp"
+#include "infer/diagnostics.hpp"
 #include "app/logging.hpp"
+#include "app/serial.hpp"
 
 namespace sl = stateline;
 namespace ph = std::placeholders;
@@ -170,7 +172,7 @@ int main(int ac, char *av[])
       sl::DelegatorSettings::Default(port));
      
   
-  auto proposalFn = std::bind(sl::mcmc::adaptiveGaussianProposal, ph::_1, ph::_2,
+  auto proposalFn = std::bind(sl::mcmc::truncatedGaussianProposal, ph::_1, ph::_2,
                               Eigen::VectorXd::Constant(ndims, -10),
                               Eigen::VectorXd::Constant(ndims, 10));
   
@@ -194,7 +196,6 @@ int main(int ac, char *av[])
 
   // Create a sampler
   sl::mcmc::Sampler sampler(workerInterface, chains, proposalFn, swapInterval);
-
 
   // Create a diagnostic
   sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
