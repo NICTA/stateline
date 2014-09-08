@@ -87,15 +87,18 @@ IF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
 # Boost
+SET(Boost_NO_SYSTEM_PATHS ON)
 SET(DESIRED_BOOST_VERSION "1_55_0")
 SET(Boost_ADDITIONAL_VERSIONS "1_55_0")
-SET(Boost_USE_STATIC_LIBS OFF)
-SET(Boost_USE_STATIC_RUNTIME OFF)
+SET(Boost_USE_STATIC_LIBS ON)
+SET(Boost_USE_STATIC_RUNTIME ON)
 
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
+                                       python3
                                        serialization)
+
 MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
 
 # ZeroMQ
