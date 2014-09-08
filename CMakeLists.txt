@@ -43,6 +43,7 @@ SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(LEVELDB_ROOT_DIR ${PREREQ_DIR})
+SET(BOOST_ROOT ${PREREQ_DIR})
 
 ##############################################################################
 # LOGGING (GLOG)
