@@ -6,6 +6,7 @@
 #include "settings.hpp"
 #include "worker.hpp"
 #include "minion.hpp"
+#include "app/logging.hpp"
 
 void numpyTest(const py::object &obj)
 {
@@ -38,4 +39,5 @@ BOOST_PYTHON_MODULE(_stateline)
   exportWorker();
   exportMinion();
   py::def("numpy_test", numpyTest);
+  py::def("init_logging", initLogging);
 }

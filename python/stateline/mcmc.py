@@ -85,6 +85,12 @@ class WorkerInterface(_sl.WorkerInterface):
         self._BASE.__init__(self, p_global_spec, p_job_specs,
                             job_construct_fn, result_energy_fn, port)
 
+    def submit(self, i, x):
+        self._BASE.submit(self, i, np.asarray(x, dtype=float))
+
+    def retrieve(self):
+        return self._BASE.retrieve(self)
+
 #class Sampler(_sl.Sampler):
 #    """Represents a Markov-Chain Monte Carlo sampler."""
 #

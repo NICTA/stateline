@@ -85,16 +85,19 @@ namespace stateline
       auto msgProblemSpec = router_.receive(SocketID::NETWORK);
       VLOG(3) << "Received " << msgProblemSpec;
       globalSpec_ = msgProblemSpec.data[0];
-      uint index = 1;
 
-      while (index + 3 <= msgProblemSpec.data.size())
+      // The rest of the messages are pairs of JobId and JobSpecs
+      uint njobs = (msgProblemSpec.data.size() - 1) / 2;
+      for (uint i = 0; i < njobs; i++)
       {
-        uint jobid = std::stoi(msgProblemSpec.data[index++]);
+        // Index of the JobID for this job spec
+        uint index = 2 * i + 1;
+
+        uint jobid = std::stoi(msgProblemSpec.data[index]);
         jobsEnabled_.insert(jobid);
-        std::string spec = msgProblemSpec.data[index++];
-        std::string readings = msgProblemSpec.data[index++];
+
+        std::string spec = msgProblemSpec.data[index + 1];
         jobSpecs_.insert(std::make_pair(jobid, spec));
-        jobResults_.insert(std::make_pair(jobid, readings));
       }
 
       LOG(INFO)<< "Problem Specification Initialised";

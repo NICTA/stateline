@@ -11,7 +11,10 @@ boost::shared_ptr<mcmc::WorkerInterface>
         dict2map<uint, std::string>(jobSpec),
         [jobConstructFn](const Eigen::VectorXd &x)
         {
-          return list2vector<comms::JobData>((py::list)jobConstructFn(eigen2numpy(x)));
+          std::cout << "CONSTRUCTING: " << x << std::endl;
+          py::object jobs = jobConstructFn(eigen2numpy(x));
+          // TODO: verify jobs is a list
+          return list2vector<comms::JobData>((py::list)jobs);
         },
         [resultEnergyFn](const std::vector<comms::ResultData> &x)
         {

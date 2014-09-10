@@ -101,16 +101,6 @@ namespace stateline
         return jobsEnabled_;
       }
 
-      //! Return the result of a particular job.
-      //!
-      //! \param jobID The ID of the job.
-      //! \return A const reference to the serialised result of a job.
-      //!
-      const std::string& jobResults(uint jobID)
-      {
-        return jobResults_[jobID];
-      }
-
     private:
       // Context for all local sockets
       zmq::context_t context_;
@@ -118,7 +108,6 @@ namespace stateline
       std::string globalSpec_;
       std::set<uint> jobsEnabled_;
       std::map<uint, std::string> jobSpecs_;
-      std::map<uint, std::string> jobResults_;
 
       // Heartbeating System
       ClientHeartbeat heartbeat_;
