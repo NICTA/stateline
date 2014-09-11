@@ -1,8 +1,9 @@
-SET(PYTHON_INCLUDE_DIR "/usr/include/python3.4m")
+SET(PythonLibs_DIR "/usr/include/python3.4m")
 FIND_PACKAGE(PythonLibs 3.4)
 
 IF(NOT ${PYTHONLIBS_FOUND})
-  SET(PYTHON_INCLUDE_DIR "/usr/include/python3.3m")
+  #SET(PYTHON_INCLUDE_DIR "/usr/include/python3.3m")
+  SET(PythonLibs_DIR "/usr/include/python3.3m")
   FIND_PACKAGE(PythonLibs 3.3 REQUIRED)
 ENDIF(NOT ${PYTHONLIBS_FOUND})
 
