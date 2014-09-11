@@ -4,6 +4,42 @@ import _stateline as _sl
 import pickle
 
 
+class JobData(_sl.JobData):
+    _BASE = _sl.JobData
+
+    def __init__(self, job_type, global_data, job_data):
+        self._BASE.__init__(self, job_type,
+                            pickle.dumps(global_data), pickle.dumps(job_data))
+        self._job_type = job_type
+
+    @property
+    def job_type(self):
+        return self._job_type
+
+    @property
+    def global_data(self):
+        return pickle.loads(self._BASE.get_global_data(self))
+
+    @property
+    def job_data(self):
+        return pickle.loads(self._BASE.get_job_data(self))
+
+
+class ResultData(_sl.ResultData):
+    _BASE = _sl.ResultData
+
+    def __init__(self, job_type, data):
+        self._BASE.__init__(self, job_type, pickle.dumps(data))
+        self._job_type = job_type
+
+    @property
+    def job_type(self):
+        return self._BASE.job_type
+
+    @property
+    def data(self):
+        return pickle.loads(self._BASE.get_data(self))
+
 class Worker(_sl.Worker):
     """Class used to store distribute jobs to `Minion` instances.
 
@@ -240,11 +276,8 @@ class Minion(_sl.Minion):
                                'a job result.')
         self._got_job = False
 
-        # Convert the result into a raw JobResult struct
-        raw = _sl.ResultData()
-        raw.type = self.job_type
-        raw.data = pickle.dumps(result)
-        self._BASE.submit_result(self, raw)
+        # Submit the result
+        self._BASE.submit_result(self, ResultData(self.job_type, result))
 
 
 def run_minion(worker, func, job_type=0, use_global=False):

@@ -74,10 +74,10 @@ py::object string2bytes(const std::string &str)
 
 py::object eigen2numpy(const Eigen::VectorXd &vec)
 {
-  npy_intp shape[] = { vec.size() };
-  PyObject *array = (PyObject *)PyArray_SimpleNewFromData(
-    1, shape, NPY_DOUBLE, const_cast<double *>(&vec[0])
-  );
+  npy_intp size = vec.size();
+
+  double *data = const_cast<double *>(&vec[0]);
+  PyObject *array = PyArray_SimpleNewFromData(1, &size, NPY_DOUBLE, data);
 
   return py::numeric::array(py::handle<>(array)).copy();
 }

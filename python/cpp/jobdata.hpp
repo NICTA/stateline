@@ -12,13 +12,24 @@ py::object getJobData(comms::JobData &self)
   return string2bytes(self.jobData);
 }
 
+void setGlobalData(comms::JobData &self, const std::string &value)
+{
+  self.globalData = value;
+}
+
+void setJobData(comms::JobData &self, const std::string &value)
+{
+  self.jobData = value;
+}
+
 void exportJobData()
 {
-  py::class_<comms::JobData>("JobData")
-    .def_readwrite("type", &comms::JobData::type)
+  py::class_<comms::JobData>("JobData",
+      py::init<uint, const std::string &, const std::string &>())
+    .def_readwrite("job_type", &comms::JobData::type)
     .def("get_global_data", getGlobalData)
     .def("get_job_data", getJobData)
-    .def_readwrite("global_data", &comms::JobData::globalData)
-    .def_readwrite("job_data", &comms::JobData::jobData)
+    .def("set_global_data", setGlobalData)
+    .def("set_job_data", setJobData)
   ;
 }

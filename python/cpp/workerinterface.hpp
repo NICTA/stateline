@@ -11,7 +11,6 @@ boost::shared_ptr<mcmc::WorkerInterface>
         dict2map<uint, std::string>(jobSpec),
         [jobConstructFn](const Eigen::VectorXd &x)
         {
-          std::cout << "CONSTRUCTING: " << x << std::endl;
           py::object jobs = jobConstructFn(eigen2numpy(x));
           // TODO: verify jobs is a list
           return list2vector<comms::JobData>((py::list)jobs);
@@ -27,6 +26,7 @@ boost::shared_ptr<mcmc::WorkerInterface>
 void workerInterfaceSubmit(mcmc::WorkerInterface &self, uint id, py::object x)
 {
   self.submit(id, numpy2eigen(x));
+  std::cout << "SUBMITTED " << id << std::endl;
 }
 
 py::tuple workerInterfaceRetrieve(mcmc::WorkerInterface &self)

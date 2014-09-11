@@ -73,6 +73,7 @@ namespace stateline
 
     void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
     {
+      std::cout << "SUBMITTING " << jobs[0].type << std::endl;
       uint nJobs = jobs.size();
       batches_[id] = std::vector<ResultData>(nJobs);
       batchLeft_[id] = nJobs;

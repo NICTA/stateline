@@ -2,6 +2,7 @@
 
 
 import _stateline as _sl
+import stateline.comms as comms
 import numpy as np
 import pickle
 
@@ -82,8 +83,16 @@ class WorkerInterface(_sl.WorkerInterface):
                  job_construct_fn, result_energy_fn):
         p_global_spec = pickle.dumps(global_spec)
         p_job_specs = dict((k, pickle.dumps(v)) for k, v in job_specs.items())
+
+        # We need to wrap the result energy function because it is passed a
+        # list of raw C++ wrapper of ResultData, instead of the python class.
+        def wrapped_result_energy_fn(results):
+            # TODO better way to do this?
+            x = [comms.ResultData(r.job_type, pickle.loads(r.get_data())) for r in results]
+            return result_energy_fn(x)
+
         self._BASE.__init__(self, p_global_spec, p_job_specs,
-                            job_construct_fn, result_energy_fn, port)
+                            job_construct_fn, wrapped_result_energy_fn, port)
 
     def submit(self, i, x):
         self._BASE.submit(self, i, np.asarray(x, dtype=float))
