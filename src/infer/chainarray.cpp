@@ -289,7 +289,7 @@ namespace stateline
       uint result = lengthOnDisk(id) + cache_[id].size();
       return result;
     }
-
+    
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
       State newState = {sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt};
@@ -377,13 +377,10 @@ namespace stateline
 
     State ChainArray::stateFromCache(uint id, uint idx) const
     {
-      CHECK(cache_[id].size() > 0) << "Can't access state " << idx << " in chain " << id << " from cache when cache empty!";
-
       uint dlen = lengthOnDisk(id);
       uint cacheIdx = idx - dlen;
-
       CHECK(cacheIdx < cache_[id].size()) << "Can't access state " << idx << " in chain " << id << ": index beyond cache boundary";
-
+      CHECK(cacheIdx >= 0) << "Can't access state " << idx << " in chain " << id << ": negative index into cache";
       return cache_[id][cacheIdx];
     }
 
@@ -406,15 +403,29 @@ namespace stateline
       }
       return v;
     }
+    
+    void ChainArray::setLastState(uint id, const State& state)
+    {
+      if (cache_[id].size() > 0)
+      {
+        cache_[id].back() = state;
+      }
+      else
+      {
+        leveldb::WriteBatch batch;
+        detail::putToBatch<detail::STATE>(batch, id, lengthOnDisk(id)-1,
+            detail::archiveString(state));
+        db_.put(batch);
+      }
+    }
 
     SwapType ChainArray::swap(uint id1, uint id2)
     {
-      CHECK(cache_[id1].size() > 0 ) << "Can't swap in cache when cache empty";
-      CHECK(cache_[id2].size() > 0 ) << "Can't swap in cache when cache empty";
       uint hId = std::max(id1, id2);
       uint lId = std::min(id1, id2);
-      State& stateh = cache_[hId].back();
-      State& statel = cache_[lId].back();
+      
+      State stateh = lastState(hId);
+      State statel = lastState(lId);
 
       // Determine if we accept this swap
       bool swapped = acceptSwap(stateh, statel, beta_[hId], beta_[lId]);
@@ -424,12 +435,14 @@ namespace stateline
       {
         std::swap(stateh, statel);
         statel.swapType = SwapType::Accept;
+        setLastState(hId, stateh);
+        setLastState(lId, statel);
       }
       else
       {
         statel.swapType = SwapType::Reject;
+        setLastState(lId, statel);
       }
-
       return swapped ? SwapType::Accept : SwapType::Reject;
     }
 
