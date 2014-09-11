@@ -3,7 +3,8 @@
 #include "infer/datatypes.hpp"
 
 boost::shared_ptr<mcmc::WorkerInterface>
-  workerInterfaceInit(const std::string &globalSpec, py::dict jobSpec, py::object jobConstructFn, py::object resultEnergyFn, uint port)
+  workerInterfaceInit(const std::string &globalSpec, py::dict jobSpec,
+      py::object jobConstructFn, py::object resultEnergyFn, uint port)
 {
   return boost::shared_ptr<mcmc::WorkerInterface>(
       new mcmc::WorkerInterface(
@@ -26,7 +27,6 @@ boost::shared_ptr<mcmc::WorkerInterface>
 void workerInterfaceSubmit(mcmc::WorkerInterface &self, uint id, py::object x)
 {
   self.submit(id, numpy2eigen(x));
-  std::cout << "SUBMITTED " << id << std::endl;
 }
 
 py::tuple workerInterfaceRetrieve(mcmc::WorkerInterface &self)
@@ -41,5 +41,6 @@ void exportWorkerInterface()
     .def("__init__", py::make_constructor(workerInterfaceInit))
     .def("submit", workerInterfaceSubmit)
     .def("retrieve", workerInterfaceRetrieve)
+    .def("stop", &mcmc::WorkerInterface::stop)
   ;
 }

@@ -4,11 +4,12 @@ import stateline.logging as logging
 import numpy as np
 import pickle
 
+
 logging.initialise(-3, True, ".")
 
 
 def simple_job_construct_fn(x):
-    job_data = comms.JobData(0, "Hello", x)
+    job_data = comms.JobData(0, "Global Data", x)
     return [job_data]
 
 
@@ -22,7 +23,7 @@ def test_simple_job_construct_fn():
 
     assert len(job) == 1
     assert job[0].job_type == 0
-    assert job[0].global_data == "Hello"
+    assert job[0].global_data == "Global Data"
     assert (job[0].job_data == x).all()
 
 def test_simple_energy_result_fn():
@@ -38,7 +39,7 @@ def test_worker_interface_constructor():
                                             simple_energy_result_fn)
 
 
-def test_worker_interface_can_connect_worker():
+def test_worker_interface_submit_retrieve():
     worker_interface = mcmc.WorkerInterface(5555, "Global Spec",
                                             {0: "Job Spec"},
                                             simple_job_construct_fn,
@@ -58,7 +59,7 @@ def test_worker_interface_can_connect_worker():
     minion = comms.Minion(worker, 0)
     global_data, job_data = minion.next_job()
 
-    assert global_data == "Hello"
+    assert global_data == "Global Data"
     assert (job_data == x).all()
 
     # Submit a result
@@ -69,5 +70,3 @@ def test_worker_interface_can_connect_worker():
 
     assert batch_id == 12
     assert result == 555.0
-
-    # TODO close the connection

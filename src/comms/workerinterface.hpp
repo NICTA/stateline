@@ -21,10 +21,8 @@
 
 namespace stateline
 {
-
   namespace comms
   {
-
     template <typename JobInput, typename ResultOutput>
     class WorkerInterface
     {
@@ -36,12 +34,12 @@ namespace stateline
             const DelegatorSettings& settings)
 
           : jobInputFn_(jobInputFn),
-          resultOutputFn_(resultOutputFn),
-          delegator_(globalSpecData, perJobSpecData, settings),
-          requester_(delegator_)
-          {
-            delegator_.start();
-          }
+            resultOutputFn_(resultOutputFn),
+            delegator_(globalSpecData, perJobSpecData, settings),
+            requester_(delegator_)
+        {
+          delegator_.start();
+        }
 
         void submit(uint id, const Eigen::VectorXd& x)
         {
@@ -52,6 +50,11 @@ namespace stateline
         {
           auto result = requester_.batchRetrieve();
           return std::make_pair(result.first, resultOutputFn_(result.second));
+        }
+
+        void stop()
+        {
+          delegator_.stop();
         }
 
       private:

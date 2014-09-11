@@ -9,6 +9,8 @@
 #include "settings.hpp"
 #include "worker.hpp"
 #include "minion.hpp"
+#include "chainarray.hpp"
+#include "sampler.hpp"
 #include "app/logging.hpp"
 
 #if PY_MAJOR_VERSION == 2
@@ -62,6 +64,10 @@ BOOST_PYTHON_MODULE(_stateline)
   exportSettings();
   exportWorker();
   exportMinion();
+  exportChainSettings();
+  exportChainArray();
+  exportSampler();
+
   py::def("numpy_test", numpyTest);
   py::def("init_logging", initLogging);
 }

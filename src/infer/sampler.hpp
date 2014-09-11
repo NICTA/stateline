@@ -19,7 +19,7 @@ namespace stateline
   namespace mcmc
   {
     
-    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const mcmc::ChainArray& chains)>;
+    using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, const Eigen::VectorXd &sigma)>;
     
     
     //! A truncated Gaussian proposal function. It randomly varies each value in
@@ -32,7 +32,8 @@ namespace stateline
     //! \param max The maximum bound of theta 
     //! \returns The new proposed theta
     //!
-    Eigen::VectorXd truncatedGaussianProposal(uint id, const ChainArray& chains,
+    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma,
         const Eigen::VectorXd& min, const Eigen::VectorXd& max);
     
     class Sampler

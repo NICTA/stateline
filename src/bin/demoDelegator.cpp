@@ -172,7 +172,7 @@ int main(int ac, char *av[])
       sl::DelegatorSettings::Default(port));
      
   
-  auto proposalFn = std::bind(sl::mcmc::truncatedGaussianProposal, ph::_1, ph::_2,
+  auto proposalFn = std::bind(sl::mcmc::truncatedGaussianProposal, ph::_1, ph::_2, ph::_3,
                               Eigen::VectorXd::Constant(ndims, -10),
                               Eigen::VectorXd::Constant(ndims, 10));
   

@@ -47,6 +47,9 @@ namespace stateline
 
     void SocketRouter::add_socket(SocketID idx, std::unique_ptr<zmq::socket_t>& socket)
     {
+      int lingerTime = 0;
+      socket->setsockopt(ZMQ_LINGER, &lingerTime, sizeof(int));
+
       uint i = sockets_.size();
       indexMap_.insert(typename IndexBiMap::value_type(idx, i));
       sockets_.push_back(std::move(socket));

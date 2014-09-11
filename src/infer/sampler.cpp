@@ -52,20 +52,19 @@ namespace stateline
       return result;
     }
 
-    Eigen::VectorXd truncatedGaussianProposal(uint id, const ChainArray& chains,
+    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma,
         const Eigen::VectorXd& min, const Eigen::VectorXd& max)
     {
       // Random number generators
-      Eigen::VectorXd sigma = chains.sigma(id);
-      State state = chains.lastState(id);
       static std::random_device rd;
       static std::mt19937 generator(rd());
       static std::normal_distribution<> rand; // Standard normal
 
       // Vary each paramater according to a Gaussian distribution
-      Eigen::VectorXd proposal(state.sample.rows());
+      Eigen::VectorXd proposal(sample.rows());
       for (int i = 0; i < proposal.rows(); i++)
-        proposal(i) = state.sample(i) + rand(generator) * sigma(i);
+        proposal(i) = sample(i) + rand(generator) * sigma(i);
 
       return bouncyBounds(proposal, min, max);
     }
@@ -167,7 +166,7 @@ namespace stateline
 
     void Sampler::propose(uint id)
     {
-      propStates_[id] = propFn_(id, chains_);
+      propStates_[id] = propFn_(id, chains_.lastState(id).sample, chains_.sigma(id));
       workerInterface_.submit(id, propStates_[id]);
       numOutstandingJobs_++;
     }
