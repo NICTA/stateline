@@ -1,6 +1,11 @@
-SET(PYTHON_INCLUDE_DIR "/usr/include/python3.3m")
-SET(PYTHON_LIBRARY "/usr/lib64/libpython3.3m.so")
-FIND_PACKAGE(PythonLibs 3.3 REQUIRED)
+
+SET(PythonLibs_DIR "/usr/include/python3.4m")
+FIND_PACKAGE(PythonLibs 3.4)
+
+IF(NOT ${PYTHONLIBS_FOUND})
+  SET(PythonLibs_DIR "/usr/include/python3.3m")
+  FIND_PACKAGE(PythonLibs 3.3 REQUIRED)
+ENDIF(NOT ${PYTHONLIBS_FOUND})
 
 INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}" "${PYTHON_INCLUDE_PATH}")
 
