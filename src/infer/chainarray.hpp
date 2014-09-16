@@ -193,6 +193,7 @@ namespace stateline
         void init();
         uint lengthOnDisk(uint id) const;
         void setLengthOnDisk(uint id, uint length);
+        void setLastState(uint id, const State& state);
 
         State stateFromDisk(uint id, uint index) const;
         State stateFromCache(uint id, uint index) const;
