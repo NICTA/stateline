@@ -34,32 +34,34 @@ namespace stateline
             const DelegatorSettings& settings)
 
           : jobInputFn_(jobInputFn),
-            resultOutputFn_(resultOutputFn),
-            delegator_(globalSpecData, perJobSpecData, settings),
-            requester_(delegator_)
+            resultOutputFn_(resultOutputFn)
         {
+          delegator_ = new Delegator(globalSpecData, perJobSpecData, settings);
+          requester_ = new Requester(*delegator_);
+        }
+
+        ~WorkerInterface()
+        {
+          delete delegator_;
+          delete requester_;
         }
 
         void submit(uint id, const Eigen::VectorXd& x)
         {
-          requester_.batchSubmit(id, jobInputFn_(x));
+          requester_->batchSubmit(id, jobInputFn_(x));
         }
 
         std::pair<uint, double> retrieve()
         {
-          auto result = requester_.batchRetrieve();
+          auto result = requester_->batchRetrieve();
           return std::make_pair(result.first, resultOutputFn_(result.second));
-        }
-
-        void stop()
-        {
         }
 
       private:
         std::function<std::vector<JobData>(JobInput)> jobInputFn_;
         std::function<ResultOutput(const std::vector<ResultData>&)> resultOutputFn_;
-        Delegator delegator_;
-        Requester requester_;
+        Delegator* delegator_;
+        Requester* requester_;
     };
   }
 }

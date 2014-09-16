@@ -63,8 +63,6 @@ namespace stateline
         {
           return *context_;
         }
-
-
         //! Initialise a worker by giving it the problem specification.
         //! 
         //! \param m The HELLO message the new worker sent.

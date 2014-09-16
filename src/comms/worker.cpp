@@ -111,9 +111,10 @@ namespace stateline
       heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
 
     }
-    
+
     Worker::~Worker()
     {
+      running_ = false;
       delete context_;
       delete heartbeat_;
     }

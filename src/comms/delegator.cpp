@@ -95,8 +95,7 @@ namespace stateline
       VLOG(2) << "Starting the Routers";
       router_.start(msNetworkPoll_, running_);
     }
-    
-    
+
     Delegator::~Delegator()
     {
       running_ = false;
