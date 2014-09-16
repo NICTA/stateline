@@ -38,7 +38,6 @@ namespace stateline
             delegator_(globalSpecData, perJobSpecData, settings),
             requester_(delegator_)
         {
-          delegator_.start();
         }
 
         void submit(uint id, const Eigen::VectorXd& x)
@@ -54,7 +53,6 @@ namespace stateline
 
         void stop()
         {
-          delegator_.stop();
         }
 
       private:

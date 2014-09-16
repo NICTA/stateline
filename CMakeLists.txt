@@ -194,7 +194,7 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-SET(STATELINE_COMMON messages router transport ${ZMQ_LIBRARY} logging)
+SET(STATELINE_COMMON router messages transport ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT worker minion clientheartbeat)
 

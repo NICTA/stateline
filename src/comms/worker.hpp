@@ -50,18 +50,7 @@ namespace stateline
 
       //! Destructor. Safely stops all polling threads and cleans up.
       //!
-      ~Worker()
-      {
-        stop();
-      }
-
-      //! Stop the worker polling sockets
-      //!
-      void stop()
-      {
-        heartbeat_.stop();
-        router_.stop();
-      }
+      ~Worker();
 
       //! Return a ref to the context object owned by the worker.
       //! This allows a minion to use inproc sockets and connect.
@@ -70,7 +59,7 @@ namespace stateline
       //!
       zmq::context_t& zmqContext()
       {
-        return context_;
+        return *context_;
       }
 
       //! Return a reference to the problemspec so that the minions can
@@ -103,14 +92,16 @@ namespace stateline
 
     private:
       // Context for all local sockets
-      zmq::context_t context_;
+      zmq::context_t* context_;
       SocketRouter router_;
       std::string globalSpec_;
       std::set<uint> jobsEnabled_;
       std::map<uint, std::string> jobSpecs_;
 
       // Heartbeating System
-      ClientHeartbeat heartbeat_;
+      ClientHeartbeat* heartbeat_;
+
+      bool running_;
     };
 
     //! Forward a message to the delegator.

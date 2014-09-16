@@ -21,15 +21,17 @@ namespace stateline
         const std::map<JobID, std::string>& jobSpecData,
         const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
-          context_(1),
           commonSpecData_(commonSpecData),
-          heartbeat_(context_, settings.heartbeat)
+          running_(true)
     {
       namespace ph = std::placeholders;
+      
+      context_ = new zmq::context_t(1);
+      heartbeat_ = new ServerHeartbeat(*context_, settings.heartbeat);
 
-      std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(context_, ZMQ_ROUTER));
+      std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(*context_, ZMQ_ROUTER));
+      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
+      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_ROUTER));
 
       // Initialise the local sockets
       requester->bind(DELEGATOR_SOCKET_ADDR.c_str());
@@ -89,6 +91,17 @@ namespace stateline
       router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
 
       VLOG(3) << "Functionality assignment complete";
+      
+      VLOG(2) << "Starting the Routers";
+      router_.start(msNetworkPoll_, running_);
+    }
+    
+    
+    Delegator::~Delegator()
+    {
+      running_ = false;
+      delete context_;
+      delete heartbeat_;
     }
 
     void Delegator::sendWorkerProblemSpec(const Message& msgHelloFromWorker)

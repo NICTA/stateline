@@ -29,7 +29,7 @@ namespace stateline
     //! \param router A reference to the socket router.
     //! \param msTimeout The heartbeat timeout in milliseconds.
     //!
-    void monitorTimeout(hrc::time_point& lastReceivedTime, SocketRouter& router, uint msTimeout);
+    void monitorTimeout(hrc::time_point& lastReceivedTime, SocketRouter& router, uint msTimeout, bool& running);
 
     //! Update book-keeping on server heartbeats. Called when the socket receives a heartbeat from the server.
     //!
@@ -46,7 +46,8 @@ namespace stateline
     void sendHeartbeat(hrc::time_point& lastSendTime, SocketRouter& router, uint msFrequency);
 
     ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
-        : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout)
+        : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout),
+        running_(true)
     {
       // Create the router's socket
       std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context, ZMQ_PAIR));
@@ -57,10 +58,10 @@ namespace stateline
       auto onRcvHEARTBEAT = [&] (const Message &)
       { heartbeatArrived(lastReceivedTime_);};
       auto onRcvGOODBYE = [&] (const Message &)
-      { router_.stop();};
+      { running_ = false;};
 
       auto timeout = [&] ()
-      { monitorTimeout(lastReceivedTime_, router_, msTimeout_);};
+      { monitorTimeout(lastReceivedTime_, router_, msTimeout_, running_);};
       auto send = [&] ()
       { sendHeartbeat(lastSendTime_, router_, msFrequency_);};
 
@@ -70,23 +71,16 @@ namespace stateline
       router_(SocketID::HEARTBEAT).onPoll.connect(timeout);
       router_(SocketID::HEARTBEAT).onPoll.connect(send);
       router_(SocketID::HEARTBEAT).onFailedSend.connect(failedSend);
+      
+      // Start router 
+      lastSendTime_ = std::chrono::high_resolution_clock::now();
+      lastReceivedTime_ = std::chrono::high_resolution_clock::now();
+      router_.start(msPollingFrequency_, running_); // milliseconds between polling loops
     }
 
     ClientHeartbeat::~ClientHeartbeat()
     {
-      stop();
-    }
-
-    void ClientHeartbeat::start()
-    {
-      lastSendTime_ = std::chrono::high_resolution_clock::now();
-      lastReceivedTime_ = std::chrono::high_resolution_clock::now();
-      router_.start(msPollingFrequency_); // milliseconds between polling loops
-    }
-
-    void ClientHeartbeat::stop()
-    {
-      router_.stop();
+      running_ = false;
     }
 
     void failedSend(const Message &)
@@ -95,14 +89,14 @@ namespace stateline
       throw std::runtime_error("heartbeat thread send failed");
     }
 
-    void monitorTimeout(hrc::time_point& lastReceivedTime, SocketRouter& router, uint msTimeout)
+    void monitorTimeout(hrc::time_point& lastReceivedTime, SocketRouter& router, uint msTimeout, bool& running)
     {
       auto msElapsed = std::chrono::duration_cast < std::chrono::milliseconds > (hrc::now() - lastReceivedTime).count();
       if (msElapsed > msTimeout)
       {
         VLOG(1) << "Heartbeat system sending GOODBYE on behalf of server";
         router.send(SocketID::HEARTBEAT, Message(stateline::comms::GOODBYE));
-        router.stop();
+        running = false;
       }
     }
 

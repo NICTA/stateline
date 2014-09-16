@@ -60,10 +60,11 @@ TEST(Routing, polling)
   { okHELLO = m == hello;};
   router(SocketID::ALPHA).onRcvHELLO.connect(onRcvHELLO);
 
-  router.start(10); //msPerPoll
+  bool running = true;
+  router.start(10, running); //msPerPoll
   send(alphaSocket, hello);
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  router.stop();
+  running = false;
   ASSERT_TRUE(okHELLO);
 }
 
@@ -105,7 +106,8 @@ TEST(Routing, callbacks)
   router(SocketID::ALPHA).onRcvALLDONE.connect(fwdToBeta);
   router(SocketID::ALPHA).onRcvGOODBYE.connect(fwdToBeta);
 
-  router.start(10);//ms per poll
+  bool running = true;
+  router.start(10, running);//ms per poll
   send(alphaSocket, hello);
   Message rhello = receive(betaSocket);
   send(alphaSocket, heartbeat);
@@ -123,7 +125,7 @@ TEST(Routing, callbacks)
   send(alphaSocket, goodbye);
   Message rgoodbye = receive(betaSocket);
 
-  router.stop();
+  running = false;
   ASSERT_EQ(hello, rhello);
   ASSERT_EQ(heartbeat, rheartbeat);
   ASSERT_EQ(problemspec, rproblemspec);

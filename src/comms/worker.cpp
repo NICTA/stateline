@@ -36,12 +36,14 @@ namespace stateline
     }
 
     Worker::Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings)
-        : context_(1), heartbeat_(context_, settings.heartbeat)
+      : running_(true)
     {
       // Setup sockets 
-      std::unique_ptr<zmq::socket_t> minion(new zmq::socket_t(context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(context_, ZMQ_DEALER));
+      context_ = new zmq::context_t(1);
+      
+      std::unique_ptr<zmq::socket_t> minion(new zmq::socket_t(*context_, ZMQ_ROUTER));
+      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
+      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_DEALER));
       minion->bind(WORKER_SOCKET_ADDR.c_str());
       heartbeat->bind(CLIENT_HB_SOCKET_ADDR.c_str());
       auto networkSocketID = stateline::comms::randomSocketID();
@@ -103,8 +105,18 @@ namespace stateline
       LOG(INFO)<< "Problem Specification Initialised";
 
       // Start the router and heartbeating
-      router_.start(settings.msPollRate);
-      heartbeat_.start();
+      router_.start(settings.msPollRate, running_);
+      
+      // Start the heartbeat system
+      heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
+
     }
+    
+    Worker::~Worker()
+    {
+      delete context_;
+      delete heartbeat_;
+    }
+  
   }
 }

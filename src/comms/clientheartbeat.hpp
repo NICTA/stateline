@@ -40,14 +40,6 @@ namespace stateline
       //!
       ~ClientHeartbeat();
 
-      //! Start the heartbeat thread.
-      //!
-      void start();
-
-      //! Stop the heartbeat thread.
-      //!
-      void stop();
-
     private:
       const uint msFrequency_;
       const int msPollingFrequency_;
@@ -55,6 +47,7 @@ namespace stateline
       SocketRouter router_;
       hrc::time_point lastSendTime_;
       hrc::time_point lastReceivedTime_;
+      bool running_;
     };
   } // namespace comms
 } // namespace stateline

@@ -36,13 +36,12 @@ namespace stateline
     }
 
     SocketRouter::SocketRouter()
-        : running_(false)
     {
     }
 
     SocketRouter::~SocketRouter()
     {
-      SocketRouter::stop();
+      threadReturned_.wait();
     }
 
     void SocketRouter::add_socket(SocketID idx, std::unique_ptr<zmq::socket_t>& socket)
@@ -57,26 +56,16 @@ namespace stateline
       pollList_.push_back( { *(sockets_[i]), 0, ZMQ_POLLIN, 0 });
     }
 
-    void SocketRouter::start(int msPerPoll)
+    void SocketRouter::start(int msPerPoll, bool& running)
     {
       LOG(INFO)<< "starting router with timeout at " << msPerPoll << " ms";
-      running_ = true;
       // poll with timeout
-      threadReturned_ = std::async(std::launch::async, &SocketRouter::poll, this, msPerPoll);
+      threadReturned_ = std::async(std::launch::async, &SocketRouter::poll, this, msPerPoll, std::ref(running));
     }
 
     SocketHandler& SocketRouter::operator()(const SocketID& id)
     {
       return *handlers_[indexMap_.left.at(id)];
-    }
-
-    void SocketRouter::stop()
-    {
-      if (running_)
-      {
-        running_ = false;
-        threadReturned_.wait();
-      }
     }
 
     void SocketRouter::send(const SocketID& id, const Message& msg)
@@ -110,9 +99,9 @@ namespace stateline
     }
 
     // this is an int because -1 indicates no timeout
-    void SocketRouter::poll(int msWait)
+    void SocketRouter::poll(int msWait, bool& running)
     {
-      while (running_)
+      while (running)
       {
         // block until a message arrives
         zmq::poll(&(pollList_[0]), pollList_.size(), msWait);
@@ -132,11 +121,6 @@ namespace stateline
 
     void SocketRouter::receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx)
     {
-      if (!running_)
-      {
-        return;
-      }
-
       auto msg = stateline::comms::receive(socket);
       if (msg.subject != stateline::comms::HEARTBEAT)
         VLOG(3) << "Received " << msg << " from " << idx;

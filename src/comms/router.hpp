@@ -106,21 +106,13 @@ namespace stateline
         //!
         void add_socket(SocketID idx, std::unique_ptr<zmq::socket_t>& socket);
 
-        //! Start the router polling with blocking
-        //!
-        //! It is critical that the send and receive calls are only used from
-        //! functions connected to the signals once polling is started. This is
-        //! because the sockets themselves are not thread safe.
-        //!
-        void start();
-
         //! Start the router polling with a polling loop frequency
         //!
         //! It is critical that the send and receive calls are only used from
         //! functions connected to the signals once polling is started. This is
         //! because the sockets themselves are not thread safe.
         //!
-        void start(int msPerPoll);
+        void start(int msPerPoll, bool& running);
 
         //! Access the handler (ie the signal interface) for a particular socket.
         //!
@@ -128,10 +120,6 @@ namespace stateline
         //! \return A reference to the socket callback struct.
         //!
         SocketHandler& operator()(const SocketID& id);
-
-        //! Stop the router from polling.
-        //!
-        void stop();
 
         //! Send a message through a socket.
         //!
@@ -162,14 +150,13 @@ namespace stateline
         //! \param microsecondsWait The wait on each polling loop,
         //!                         with -1 indicating a blocking poll
         //!
-        void poll(int microsecondsWait);
+        void poll(int microsecondsWait, bool& running);
 
         //! Called when the socket receives a message.
         //!
         void receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx);
 
         // Member variables
-        std::atomic_bool running_;
         std::future<void> threadReturned_;
         std::vector<std::unique_ptr<SocketHandler>> handlers_;
         std::vector<std::unique_ptr<zmq::socket_t>> sockets_;

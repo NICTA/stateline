@@ -64,7 +64,8 @@ namespace stateline
     void sendHeartbeats(HBClients& clients, hrc::time_point& lastHbTime, SocketRouter& router, uint msFrequency);
 
     ServerHeartbeat::ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
-        : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout)
+        : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout),
+        running_(true)
     {
       // Create the router's socket
       std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context, ZMQ_PAIR));
@@ -91,25 +92,17 @@ namespace stateline
       router_(SocketID::HEARTBEAT).onPoll.connect(timeouts);
       router_(SocketID::HEARTBEAT).onPoll.connect(send);
       router_(SocketID::HEARTBEAT).onFailedSend.connect(failedSendServer);
+      
+      LOG(INFO)<< "Server heartbeat initialising";
+      lastSendTime_ = std::chrono::high_resolution_clock::now();
+      router_.start(msPollingFrequency_, running_); // milliseconds between polling loops
     }
 
     ServerHeartbeat::~ServerHeartbeat()
     {
-      stop();
+      running_ = false; // should finish the router thread
     }
-
-    void ServerHeartbeat::start()
-    {
-      LOG(INFO)<< "Server heartbeat initialising";
-      lastSendTime_ = std::chrono::high_resolution_clock::now();
-      router_.start(msPollingFrequency_); // milliseconds between polling loops
-    }
-
-    void ServerHeartbeat::stop()
-    {
-      router_.stop();
-    }
-
+    
     void insertClient(const Message& m, HBClients& clients, HBMap& lastHeartbeats)
     {
       clients.insert(m.address.back());

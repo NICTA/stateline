@@ -46,12 +46,10 @@ class Delegation: public testing::Test
       };
 
       pDelegator.reset(new Delegator(globalSpec, jobMsgs, settings));
-      pDelegator->start();
     }
 
     virtual void TearDown()
     {
-      pDelegator->stop();
     }
 
     ~Delegation()
@@ -75,9 +73,6 @@ TEST_F(Delegation, canSendAndReceiveSingleProblemSpec)
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   auto rep = receive(worker);
   send(worker, Message(HEARTBEAT));
-  delegator.stop();
-  send(worker, Message(HEARTBEAT));
-
   Message expected(PROBLEMSPEC, { "globalSpec", "2", "jobSpec1" });
   EXPECT_EQ(expected, rep);
 }
@@ -97,9 +92,6 @@ TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
   send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
   auto rep = receive(worker);
   send(worker, Message(HEARTBEAT));
-  delegator.stop();
-  send(worker, Message(HEARTBEAT));
-
   Message expected(PROBLEMSPEC,
       { "globalSpec", "1", "", "2", "jobSpec1", "5", "jobSpec2" });
   EXPECT_EQ(expected.data, rep.data);
@@ -133,8 +125,6 @@ TEST_F(Delegation, canSendAndReceiveJobRequest)
   // Send job request to requester
   send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
   auto rep = receive(worker); // job
-  delegator.stop();
-
   Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA" });
   EXPECT_EQ(expected, rep);
 }
@@ -164,8 +154,6 @@ TEST_F(Delegation, canSendAndReceiveJobRequestWithMultipleJobTypes)
   // Send job request to requester
   send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
   auto rep = receive(worker); // job
-  delegator.stop();
-
   Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA"});
   EXPECT_EQ(expected, rep);
 }
@@ -203,8 +191,6 @@ TEST_F(Delegation, canSendResultsToRequester)
 
   // Retrieve the result
   auto rep = receive(requester);
-  delegator.stop();
-
   Message expected(JOBSWAP, { serialise<std::uint32_t>(2), "Result" });
   EXPECT_EQ(expected, rep);
 }
@@ -238,8 +224,6 @@ TEST_F(Delegation, canRequestJobAfterJob)
   receive(requester);
   send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA2" }));
   auto rep = receive(worker); // job
-
-  delegator.stop();
   Message expected(
       { requesterID, "minionAddress"}, JOB,
       { serialise<std::uint32_t>(2), "JOBDATA2" });

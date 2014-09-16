@@ -46,14 +46,6 @@ namespace stateline
       //!
       ~ServerHeartbeat();
 
-      //! Start the heartbeat thread.
-      //!
-      void start();
-
-      //! Stop the heartbeat thread.
-      //!
-      void stop();
-
     private:
       const uint msFrequency_;
       const int msPollingFrequency_;
@@ -62,6 +54,7 @@ namespace stateline
       HBClients clients_;
       HBMap lastHeartbeats_;
       hrc::time_point lastSendTime_;
+      bool running_;
     };
 
   } // namespace comms

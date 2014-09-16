@@ -52,10 +52,7 @@ namespace stateline
 
         //! Safely stops all polling threads and cleans up.
         //!
-        ~Delegator()
-        {
-          stop();
-        }
+        ~Delegator();
 
         //! Return a reference to the context object owned by the delegator.
         //! this allows a requester to use inproc sockets and connect.
@@ -64,24 +61,9 @@ namespace stateline
         //!
         zmq::context_t& zmqContext()
         {
-          return context_;
+          return *context_;
         }
 
-        //! Start the delegator socket polling.
-        //!
-        void start()
-        {
-          router_.start(msNetworkPoll_);
-          heartbeat_.start();
-        }
-
-        //! Stop the delegator socket polling.
-        //!
-        void stop()
-        {
-          heartbeat_.stop();
-          router_.stop();
-        }
 
         //! Initialise a worker by giving it the problem specification.
         //! 
@@ -141,7 +123,7 @@ namespace stateline
         // Polling times
         int msNetworkPoll_;
         // Sockets
-        zmq::context_t context_;
+        zmq::context_t* context_;
         SocketRouter router_;
         // Cached for fast sending to each client
         std::string commonSpecData_;
@@ -153,7 +135,8 @@ namespace stateline
         std::map<JobID, std::deque<Address>> requestQueues_;
         std::map<JobID, JobID> jobIdMap_;
         // Heartbeating System
-        ServerHeartbeat heartbeat_;
+        ServerHeartbeat* heartbeat_;
+        bool running_;
     };
 
   } // namespace comms
