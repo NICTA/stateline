@@ -44,6 +44,7 @@ namespace stateline
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
+        ~Sampler();
       
         std::pair<uint, State> step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas);
 
@@ -77,6 +78,9 @@ namespace stateline
         // Whether a chain is locked. A locked chain will wait for any outstanding
         // job results and propagate the lock.
         std::vector<bool> locked_;
+
+        // if we haven't flushed when destructing, flush
+        bool haveFlushed_;
 
     };
   }

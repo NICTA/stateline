@@ -82,7 +82,8 @@ namespace stateline
         propStates_(nstacks_*nchains_),
         swapInterval_(swapInterval),
         numOutstandingJobs_(0),
-        locked_(nstacks_ * nchains_, false)
+        locked_(nstacks_ * nchains_, false),
+        haveFlushed_(true)
     {
       // Start all the chains from hottest to coldest
       for (uint i = 0; i < chains_.numTotalChains(); i++)
@@ -91,9 +92,16 @@ namespace stateline
         propose(c);
       }
     }
+
+    Sampler::~Sampler()
+    {
+      if (haveFlushed_ == false)
+        flush();
+    }
     
     std::pair<uint, State> Sampler::step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas)
     {
+      haveFlushed_ = false;
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
       uint id;
@@ -150,6 +158,7 @@ namespace stateline
 
     void Sampler::flush()
     {
+      haveFlushed_ = true;
       // Retrieve all outstanding job results.
       while (numOutstandingJobs_--)
       {
