@@ -36,12 +36,15 @@ namespace stateline
     }
 
     SocketRouter::SocketRouter()
+      : threadSockets_(nullptr)
     {
     }
 
     SocketRouter::~SocketRouter()
     {
+      VLOG(1) << "Waiting for polling thread to return";
       threadReturned_.wait();
+      VLOG(1) << "Waiting complete";
     }
 
     void SocketRouter::add_socket(SocketID idx, std::unique_ptr<zmq::socket_t>& socket)
@@ -53,7 +56,6 @@ namespace stateline
       indexMap_.insert(typename IndexBiMap::value_type(idx, i));
       sockets_.push_back(std::move(socket));
       handlers_.push_back(std::unique_ptr < SocketHandler > (new SocketHandler()));
-      pollList_.push_back( { *(sockets_[i]), 0, ZMQ_POLLIN, 0 });
     }
 
     void SocketRouter::start(int msPerPoll, bool& running)
@@ -70,6 +72,10 @@ namespace stateline
 
     void SocketRouter::send(const SocketID& id, const Message& msg)
     {
+      std::vector<std::unique_ptr<zmq::socket_t>>* sockets = &sockets_;
+      if (threadSockets_) // the poll thread now owns the sockets
+        sockets = threadSockets_;
+
       uint index = indexMap_.left.at(id);
       if (msg.subject != stateline::comms::HEARTBEAT)
         VLOG(3) << "Sending " << msg << " to " << id;
@@ -78,7 +84,7 @@ namespace stateline
 
       try
       {
-        stateline::comms::send(*(sockets_[index]), msg);
+        stateline::comms::send(*((*sockets)[index]), msg);
       } catch (zmq::error_t const& e)
       {
         // No route to host?
@@ -94,29 +100,46 @@ namespace stateline
 
     Message SocketRouter::receive(const SocketID& id)
     {
+      std::vector<std::unique_ptr<zmq::socket_t>>* sockets = &sockets_;
+      if (threadSockets_) // the poll thread now owns the sockets
+        sockets = threadSockets_;
       uint index = indexMap_.left.at(id);
-      return comms::receive(*(sockets_[index]));
+      return comms::receive(*((*sockets)[index]));
     }
 
     // this is an int because -1 indicates no timeout
     void SocketRouter::poll(int msWait, bool& running)
     {
+      // Move the sockets to local control
+      std::vector<std::unique_ptr<zmq::socket_t>> sockets;
+      std::vector<zmq::pollitem_t> pollList;
+      for (uint i=0; i< sockets_.size();i++)
+      {
+        sockets.push_back(std::unique_ptr<zmq::socket_t>(std::move(sockets_[i])));
+        pollList.push_back( { *(sockets[i]), 0, ZMQ_POLLIN, 0 });
+      }
+      // Sockets now stored in here
+      threadSockets_ = &sockets;
+      // Empty the old socket list
+      sockets_.clear();
+      
       while (running)
       {
         // block until a message arrives
-        zmq::poll(&(pollList_[0]), pollList_.size(), msWait);
+        zmq::poll(&(pollList[0]), pollList.size(), msWait);
         // figure out which socket it's from
-        for (uint i = 0; i < pollList_.size(); i++)
+        for (uint i = 0; i < pollList.size(); i++)
         {
-          bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
+          bool newMsg = pollList[i].revents & ZMQ_POLLIN;
           if (newMsg)
           {
             SocketID index = indexMap_.right.at(i);
-            receive(*(sockets_[i]), *(handlers_[i]), index);
+            receive(*(sockets[i]), *(handlers_[i]), index);
           }
           handlers_[i]->onPoll();
         }
       }
+      LOG(INFO) << "Poll thread has exited loop, must be shutting down";
     }
 
     void SocketRouter::receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx)

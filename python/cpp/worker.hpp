@@ -24,7 +24,6 @@ void exportWorker()
 {
   py::class_<comms::Worker, boost::noncopyable>("Worker", py::no_init)
     .def("__init__", py::make_constructor(&workerInit))
-    .def("stop", &comms::Worker::stop)
     .def("global_spec", &workerGlobalSpec)
     .def("job_spec", &workerJobSpec)
   ;

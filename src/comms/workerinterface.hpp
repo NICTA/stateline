@@ -14,6 +14,7 @@
 #include <functional>
 #include <vector>
 #include <map>
+#include <glog/logging.h>
 #include "comms/datatypes.hpp"
 #include "comms/settings.hpp"
 #include "comms/delegator.hpp"
@@ -42,8 +43,12 @@ namespace stateline
 
         ~WorkerInterface()
         {
-          delete delegator_;
+          VLOG(1) << "Worker interface deleting requester";
           delete requester_;
+          VLOG(1) << "Requester deleted";
+          VLOG(1) << "Worker interface deleting delegator";
+          delete delegator_;
+          VLOG(1) << "Delegator deleted";
         }
 
         void submit(uint id, const Eigen::VectorXd& x)

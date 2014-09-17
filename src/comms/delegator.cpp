@@ -99,8 +99,12 @@ namespace stateline
     Delegator::~Delegator()
     {
       running_ = false;
+      VLOG(1) << "Deleting context";
       delete context_;
+      VLOG(1) << "Context deleted";
+      VLOG(1) << "Deleting heartbeat";
       delete heartbeat_;
+      VLOG(1) << "heartbeat deleted";
     }
 
     void Delegator::sendWorkerProblemSpec(const Message& msgHelloFromWorker)

@@ -120,12 +120,21 @@ int main(int ac, char *av[])
   
    // Record the starting time of the MCMC
   auto startTime = ch::steady_clock::now();
+  bool errorcon = false; // only try to flush if we didn't error out
   while ((std::size_t)(ch::duration_cast<ch::seconds>(
           ch::steady_clock::now() - startTime).count()) < numSeconds && !sl::global::interruptedBySignal)
   {
     uint id;
     sl::mcmc::State state;
-    std::tie(id, state) = sampler.step(sigmas, betas);
+    try
+    {
+      std::tie(id, state) = sampler.step(sigmas, betas);
+    }
+    catch (...)
+    {
+      errorcon = true;
+      break;
+    }
     sigmaAdapter.update(id, state);
     betaAdapter.update(id, state);
     sigmas = sigmaAdapter.sigmas();
@@ -135,11 +144,11 @@ int main(int ac, char *av[])
     log.update(id, state);
     diagnostic.update(id, state);
   }
-
   // Finish off outstanding jobs
-  sampler.flush();
+  if (!errorcon)
+    sampler.flush();
 
-  std::cout << "convergence: " << diagnostic.rHat().transpose() << std::endl;
+  LOG(INFO) << "Convergence: " << diagnostic.rHat().transpose() << std::endl;
 
   // Output the coldest chains to CSV
   std::ofstream out("output_chain.csv");

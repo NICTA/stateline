@@ -41,6 +41,5 @@ void exportWorkerInterface()
     .def("__init__", py::make_constructor(workerInterfaceInit))
     .def("submit", workerInterfaceSubmit)
     .def("retrieve", workerInterfaceRetrieve)
-    .def("stop", &mcmc::WorkerInterface::stop)
   ;
 }

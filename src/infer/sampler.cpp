@@ -107,14 +107,7 @@ namespace stateline
       uint id;
       double energy;
       // Wait a for reply
-      try
-      {
-        std::tie(id, energy) = workerInterface_.retrieve();
-      }
-      catch (...)
-      {
-        VLOG(3) << "Comms error -- probably shutting down";
-      }
+      std::tie(id, energy) = workerInterface_.retrieve();
 
       numOutstandingJobs_--;
 
@@ -142,15 +135,7 @@ namespace stateline
       }
       else
       {
-        // This chain is not locked, so we can propose
-        try
-        {
-          propose(id);
-        }
-        catch (...)
-        {
-          VLOG(3) << "Comms error -- probably shutting down";
-        }
+        propose(id);
       }
 
       return {id, chains_.lastState(id)};

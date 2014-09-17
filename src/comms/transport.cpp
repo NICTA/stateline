@@ -8,13 +8,15 @@
 //! \license Affero General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
+#include <iomanip>
+#include <sstream>
+#include <random>
+
+#include <glog/logging.h>
 
 #include "comms/transport.hpp"
 #include "comms/serial.hpp"
 
-#include <iomanip>
-#include <sstream>
-#include <random>
 
 namespace stateline
 {
@@ -22,10 +24,19 @@ namespace stateline
   {
     std::string receiveString(zmq::socket_t & socket)
     {
-      //shamelessly taken from zmq guide examples, zhelpers.hpp
       zmq::message_t message;
-      socket.recv(&message);
-      return std::string(static_cast<char*>(message.data()), message.size());
+      std::string result = "";
+      try
+      {
+        socket.recv(&message);
+        result = std::string(static_cast<char*>(message.data()), message.size());
+      }
+      catch(const zmq::error_t& e) 
+      {
+        VLOG(1) << "ZMQ receive has thrown with type " << e.what();
+        throw;
+      }
+      return result;
     }
 
     bool sendString(zmq::socket_t & socket, const std::string & string)

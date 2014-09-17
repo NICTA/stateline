@@ -160,7 +160,7 @@ namespace stateline
         std::future<void> threadReturned_;
         std::vector<std::unique_ptr<SocketHandler>> handlers_;
         std::vector<std::unique_ptr<zmq::socket_t>> sockets_;
-        std::vector<zmq::pollitem_t> pollList_;
+        std::vector<std::unique_ptr<zmq::socket_t>>* threadSockets_; // view only for send
         IndexBiMap indexMap_;
     };
 
