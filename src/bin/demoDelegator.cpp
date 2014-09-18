@@ -116,7 +116,7 @@ int main(int ac, char *av[])
   sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
 
   // Create a logger
-  sl::mcmc::Logger log(nstacks, nchains, msRefresh, sigmas, acceptRates, betas, swapRates);
+  sl::mcmc::Logger log(nstacks, nchains, msRefresh);
   
    // Record the starting time of the MCMC
   auto startTime = ch::steady_clock::now();
@@ -137,11 +137,13 @@ int main(int ac, char *av[])
     }
     sigmaAdapter.update(id, state);
     betaAdapter.update(id, state);
+
     sigmas = sigmaAdapter.sigmas();
     acceptRates = sigmaAdapter.acceptRates();
     betas = betaAdapter.betas();
     swapRates = betaAdapter.swapRates();
-    log.update(id, state);
+
+    log.update(id, state, sigmas, acceptRates, betas, swapRates);
     diagnostic.update(id, state);
   }
   // Finish off outstanding jobs

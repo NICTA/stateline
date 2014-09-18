@@ -39,7 +39,7 @@ namespace stateline
       settings.sigmaFactor = 1.5;
       settings.adaptionLength = 100000;
       settings.nStepsPerAdapt = 2500;
-      settings.optimalAccept = 0.24;
+      settings.optimalAcceptRate = 0.24;
       settings.adaptRate = 0.2;
       settings.minAdaptFactor = 0.8;
       settings.maxAdaptFactor = 1.25;
@@ -49,11 +49,11 @@ namespace stateline
     SlidingWindowSigmaAdapter::SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, 
         const SlidingWindowSigmaSettings& settings)
       : nStacks_(nStacks),
-      nChains_(nChains),
-      sigmas_(nStacks*nChains),
-      acceptRates_(nStacks*nChains),
-      lengths_(nStacks*nChains),
-      s_(settings)
+        nChains_(nChains),
+        sigmas_(nStacks*nChains),
+        acceptRates_(nStacks*nChains),
+        lengths_(nStacks*nChains),
+        s_(settings)
     {
       for (uint i = 0; i < nStacks; i++)
         for (uint j = 0; j < nChains; j++)
@@ -106,7 +106,7 @@ namespace stateline
     {
       double acceptRate = acceptRates_[id];
       double oldSigma= sigmas_[id](0);
-      double factor = std::pow(acceptRate / s_.optimalAccept, s_.adaptRate);
+      double factor = std::pow(acceptRate / s_.optimalAcceptRate, s_.adaptRate);
       double boundFactor = std::min(std::max(factor, s_.minAdaptFactor), s_.maxAdaptFactor);
       double gamma = s_.adaptionLength/(double)(s_.adaptionLength+lengths_[id]);
       double newSigma = oldSigma * std::pow(boundFactor, gamma);
@@ -170,7 +170,7 @@ namespace stateline
         adaptBeta(id);
     }
 
-    std::vector<double> SlidingWindowBetaAdapter::betas()
+    std::vector<double> SlidingWindowBetaAdapter::betas() const
     {
       return betas_;
     }

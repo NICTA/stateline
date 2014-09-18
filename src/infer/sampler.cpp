@@ -52,9 +52,8 @@ namespace stateline
       return result;
     }
 
-    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
-        const Eigen::VectorXd &sigma,
-        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma)
     {
       // Random number generators
       static std::random_device rd;
@@ -66,7 +65,14 @@ namespace stateline
       for (int i = 0; i < proposal.rows(); i++)
         proposal(i) = sample(i) + rand(generator) * sigma(i);
 
-      return bouncyBounds(proposal, min, max);
+      return proposal;
+    }
+
+    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
+    {
+      return bouncyBounds(gaussianProposal(id, sample, sigma), min, max);
     }
 
 

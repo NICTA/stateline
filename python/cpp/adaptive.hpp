@@ -1,6 +1,6 @@
 #pragma once
 
-#include "comms/minion.hpp"
+#include "infer/adaptive.hpp"
 
 void exportSlidingWindowSigmaSettings()
 {
@@ -10,7 +10,7 @@ void exportSlidingWindowSigmaSettings()
     .def_readwrite("sigma_factor", &mcmc::SlidingWindowSigmaSettings::sigmaFactor)
     .def_readwrite("adaption_length", &mcmc::SlidingWindowSigmaSettings::adaptionLength)
     .def_readwrite("nsteps_per_adapt", &mcmc::SlidingWindowSigmaSettings::nStepsPerAdapt)
-    .def_readwrite("optimal_accept", &mcmc::SlidingWindowSigmaSettings::optimalAccept)
+    .def_readwrite("optimal_accept_rate", &mcmc::SlidingWindowSigmaSettings::optimalAcceptRate)
     .def_readwrite("adapt_rate", &mcmc::SlidingWindowSigmaSettings::adaptRate)
     .def_readwrite("min_adapt_factor", &mcmc::SlidingWindowSigmaSettings::minAdaptFactor)
     .def_readwrite("max_adapt_factor", &mcmc::SlidingWindowSigmaSettings::maxAdaptFactor)
@@ -21,12 +21,12 @@ void exportSlidingWindowBetaSettings()
 {
   py::class_<mcmc::SlidingWindowBetaSettings>("SlidingWindowBetaSettings")
     .def_readwrite("window_size", &mcmc::SlidingWindowBetaSettings::windowSize)
-    .def_readwrite("beta_factor", &mcmc::SlidingWindowBetaSettings::BetaFactor)
+    .def_readwrite("beta_factor", &mcmc::SlidingWindowBetaSettings::betaFactor)
     .def_readwrite("adaption_length", &mcmc::SlidingWindowBetaSettings::adaptionLength)
     .def_readwrite("nsteps_per_adapt", &mcmc::SlidingWindowBetaSettings::nStepsPerAdapt)
     .def_readwrite("optimal_swap_rate", &mcmc::SlidingWindowBetaSettings::optimalSwapRate)
     .def_readwrite("adapt_rate", &mcmc::SlidingWindowBetaSettings::adaptRate)
-    .def_readwrite("min_adapt_factor", &mcmc::SlidingWindowBetaSettings::adaptRate)
+    .def_readwrite("min_adapt_factor", &mcmc::SlidingWindowBetaSettings::minAdaptFactor)
     .def_readwrite("max_adapt_factor", &mcmc::SlidingWindowBetaSettings::maxAdaptFactor)
   ;
 }
@@ -43,7 +43,7 @@ py::object slidingWindowSigmaAdapterAcceptRates(const mcmc::SlidingWindowSigmaAd
 
 py::object slidingWindowBetaAdapterBetas(const mcmc::SlidingWindowBetaAdapter &adapter)
 {
-  return veigen2lnumpy(adapter.betas());
+  return vector2list(adapter.betas());
 }
 
 py::object slidingWindowBetaAdapterSwapRates(const mcmc::SlidingWindowBetaAdapter &adapter)
@@ -53,8 +53,8 @@ py::object slidingWindowBetaAdapterSwapRates(const mcmc::SlidingWindowBetaAdapte
 
 void exportSlidingWindowSigmaAdapter()
 {
-  py::class_<mcmc::SlidingWindowSigmaAdapter, boost::noncopyable>("Minion",
-      py::init<mcmc::SlidingWindowSigmaAdapter &, uint, uint, uint, mcmc::SlidingWindowSigmaSettings>())
+  py::class_<mcmc::SlidingWindowSigmaAdapter, boost::noncopyable>("SlidingWindowSigmaAdapter",
+      py::init<uint, uint, uint, mcmc::SlidingWindowSigmaSettings>())
     .def("update", &mcmc::SlidingWindowSigmaAdapter::update)
     .def("sigmas", slidingWindowSigmaAdapterSigmas)
     .def("accept_rates", slidingWindowSigmaAdapterAcceptRates)
@@ -63,8 +63,8 @@ void exportSlidingWindowSigmaAdapter()
 
 void exportSlidingWindowBetaAdapter()
 {
-  py::class_<mcmc::SlidingWindowBetaAdapter, boost::noncopyable>("Minion",
-      py::init<mcmc::SlidingWindowBetaAdapter &, uint, uint, uint, mcmc::SlidingWindowBetaSettings>())
+  py::class_<mcmc::SlidingWindowBetaAdapter, boost::noncopyable>("SlidingWindowBetaAdapter",
+      py::init<uint, uint, mcmc::SlidingWindowBetaSettings>())
     .def("update", &mcmc::SlidingWindowBetaAdapter::update)
     .def("betas", slidingWindowBetaAdapterBetas)
     .def("swap_rates", slidingWindowBetaAdapterSwapRates)

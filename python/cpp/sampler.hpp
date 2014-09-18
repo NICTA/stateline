@@ -28,8 +28,8 @@ py::tuple samplerStep(mcmc::Sampler &sampler, py::list sigmas, py::list betas)
 void exportSampler()
 {
   py::class_<mcmc::Sampler, boost::noncopyable>("Sampler", py::no_init)
-      .def("__init__", py::make_constructor(samplerInit))
-      .def("step", &samplerStep)
-      .def("flush", &mcmc::Sampler::flush)
+    .def("__init__", py::make_constructor(samplerInit))
+    .def("step", &samplerStep)
+    .def("flush", &mcmc::Sampler::flush)
   ;
 }

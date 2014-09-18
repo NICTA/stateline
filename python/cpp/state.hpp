@@ -22,6 +22,15 @@ py::object stateGetSigma(mcmc::State &self)
   return eigen2numpy(self.sigma);
 }
 
+void exportSwapType()
+{
+  py::enum_<mcmc::SwapType>("SwapType")
+    .value("NO_ATTEMPT", mcmc::SwapType::NoAttempt)
+    .value("ACCEPT", mcmc::SwapType::Accept)
+    .value("REJECT", mcmc::SwapType::Reject)
+  ;
+}
+
 void exportState()
 {
   py::class_<mcmc::State>("State")
@@ -32,5 +41,6 @@ void exportState()
     .def("set_sigma", stateSetSigma)
     .def_readwrite("beta", &mcmc::State::beta)
     .def_readwrite("accepted", &mcmc::State::accepted)
-    .def_readwrite("swap_type", &mcmc::State::swapType);
+    .def_readwrite("swap_type", &mcmc::State::swapType)
+  ;
 }

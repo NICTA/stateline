@@ -26,6 +26,7 @@ def test_simple_job_construct_fn():
     assert job[0].global_data == "Global Data"
     assert (job[0].job_data == x).all()
 
+
 def test_simple_energy_result_fn():
     results = [comms.ResultData(0, 666.0)]
     energy = simple_energy_result_fn(results)

@@ -26,16 +26,15 @@ namespace stateline
     class Logger
     {
       public:
-        Logger(uint nstacks, uint nchains, uint msRefresh, 
-            const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& acceptRates,
-            const std::vector<double>& betas, const std::vector<double>& swapRates);
+        Logger(uint nstacks, uint nchains, uint msRefresh);
 
-        void update(uint id, const State & s);
-
-        void print();
+        void update(uint id, const State & s,
+            const std::vector<Eigen::VectorXd>& sigmas,
+            const std::vector<double>& acceptRates,
+            const std::vector<double>& betas,
+            const std::vector<double>& swapRates);
 
       private:
-
         ch::steady_clock::time_point lastPrintTime_;
         uint msRefresh_;
         uint nstacks_;
@@ -46,10 +45,6 @@ namespace stateline
         std::vector<uint> nAcceptsGlobal_;
         std::vector<uint> nSwapsGlobal_;
         std::vector<uint> nSwapAttemptsGlobal_;
-        const std::vector<Eigen::VectorXd>& sigmas_;
-        const std::vector<double>& acceptRates_;
-        const std::vector<double>& betas_;
-        const std::vector<double>& swapRates_;
     };
   } // namespace mcmc
 } // namespace stateline

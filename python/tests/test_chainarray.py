@@ -4,9 +4,8 @@ import shutil
 
 
 def test_chainarray_new_chain():
-    shutil.rmtree('testChainDB')
-
-    chain = mcmc.ChainArray(1, 3, recover=False, db_path='testChainDB')
+    chain = mcmc.ChainArray(1, 3, recover=False, overwrite=True,
+                            db_path='testChainDB1')
 
     assert chain.nstacks == 1
     assert chain.nchains == 3
@@ -14,11 +13,13 @@ def test_chainarray_new_chain():
     assert chain.length(1) == 0
     assert chain.length(2) == 0
 
+    shutil.rmtree('testChainDB1')
+
 
 def test_chainarray_initialise():
-    shutil.rmtree('testChainDB')
+    chain = mcmc.ChainArray(1, 3, recover=False, overwrite=True,
+                            db_path='testChainDB2')
 
-    chain = mcmc.ChainArray(1, 3, recover=False, db_path='testChainDB')
     chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
     chain.initialise(1, [4, 5, 6], 2.0, [2], 777.0)
     chain.initialise(2, [7, 8, 9], 3.0, [3], 888.0)
@@ -43,11 +44,13 @@ def test_chainarray_initialise():
     assert chain.last_state(1).beta == 777.0
     assert chain.last_state(2).beta == 888.0
 
+    shutil.rmtree('testChainDB2')
+
 
 def test_chainarray_set_sigma():
-    shutil.rmtree('testChainDB')
+    chain = mcmc.ChainArray(1, 1, recover=False, overwrite=True,
+                            db_path='testChainDB3')
 
-    chain = mcmc.ChainArray(1, 1, recover=False, db_path='testChainDB')
     chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
 
     chain.set_sigma(0, [10])
@@ -55,14 +58,18 @@ def test_chainarray_set_sigma():
 
     assert chain.last_state(0).sigma == [10]
 
+    shutil.rmtree('testChainDB3')
+
 
 def test_chainarray_set_beta():
-    shutil.rmtree('testChainDB')
+    chain = mcmc.ChainArray(1, 1, recover=False, overwrite=True,
+                            db_path='testChainDB4')
 
-    chain = mcmc.ChainArray(1, 1, recover=False, db_path='testChainDB')
     chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
 
     chain.set_beta(0, 777.0)
     chain.append(0, [4, 5, 6], 1.0)
 
     assert chain.last_state(0).beta == 777.0
+
+    shutil.rmtree('testChainDB4')

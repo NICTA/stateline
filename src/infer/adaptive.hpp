@@ -38,7 +38,7 @@ namespace stateline
       uint nStepsPerAdapt;
 
       //! The accept rate being targeted by the adaption of sigma
-      double optimalAccept;
+      double optimalAcceptRate;
 
       //! The multiplicative rate at which adaption occurs
       double adaptRate;
@@ -122,7 +122,7 @@ namespace stateline
         
         void update(uint id, State s);
 
-        std::vector<double> betas();
+        std::vector<double> betas() const;
         
         std::vector<double> swapRates() const;
 

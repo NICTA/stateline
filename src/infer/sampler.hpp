@@ -21,6 +21,8 @@ namespace stateline
     
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, const Eigen::VectorXd &sigma)>;
     
+    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma);
     
     //! A truncated Gaussian proposal function. It randomly varies each value in
     //! the state according to a truncated Gaussian distribution. It also bounces of the

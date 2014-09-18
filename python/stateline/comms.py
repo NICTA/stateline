@@ -40,6 +40,7 @@ class ResultData(_sl.ResultData):
     def data(self):
         return pickle.loads(self._BASE.get_data(self))
 
+
 class Worker(_sl.Worker):
     """Class used to store distribute jobs to `Minion` instances.
 
