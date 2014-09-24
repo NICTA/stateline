@@ -43,7 +43,10 @@ namespace stateline
     SocketRouter::~SocketRouter()
     {
       VLOG(1) << "Waiting for polling thread to return";
-      threadReturned_.wait();
+      if (threadReturned_.valid())
+      {
+        threadReturned_.wait();
+      }
       VLOG(1) << "Waiting complete";
     }
 
