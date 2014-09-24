@@ -5,6 +5,7 @@ import numpy as np
 import triangle
 import signal
 import sys
+import time
 
 ctrlc = [False]
 
@@ -14,8 +15,9 @@ def signal_handler(signal, frame):
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
-    logging.initialise(-2, True, ".")
+    logging.initialise(0, True, ".")
 
+    run_time = 60 # time in seconds to run
     nstacks, nchains, ndims = 2, 10, 3
     means = [[-5, -5, -5], [5, 5, 5]]
 
@@ -44,7 +46,8 @@ def main():
     sampler = mcmc.Sampler(worker_interface, chains, mcmc.gaussian_proposal, 10)
     logger = mcmc.TableLogger(nstacks, nchains, 500)
 
-    for s in range(10000):
+    start_time = time.clock()
+    while time.clock() - start_time < run_time:
         i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
         sigma_adapter.update(i, state)
         beta_adapter.update(i, state)
