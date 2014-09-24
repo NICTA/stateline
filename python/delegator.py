@@ -3,9 +3,17 @@ import stateline.logging as logging
 import matplotlib.pyplot as pl
 import numpy as np
 import triangle
+import signal
+import sys
+
+ctrlc = [False]
+
+def signal_handler(signal, frame):
+    ctrlc[0] = True
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     logging.initialise(-2, True, ".")
 
     nstacks, nchains, ndims = 2, 10, 3
@@ -36,17 +44,18 @@ def main():
     sampler = mcmc.Sampler(worker_interface, chains, mcmc.gaussian_proposal, 10)
     logger = mcmc.TableLogger(nstacks, nchains, 500)
 
-    for s in range(100000):
+    for s in range(10000):
         i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
-
         sigma_adapter.update(i, state)
         beta_adapter.update(i, state)
         logger.update(i, state,
                       sigma_adapter.sigmas(), sigma_adapter.accept_rates(),
                       beta_adapter.betas(), beta_adapter.swap_rates())
-
+        if ctrlc[0] is True:
+            sampler.flush()
+            sys.exit()
+    
     sampler.flush()  # makes sure all outstanding jobs are finished
-
     # Visualise the result
     triangle.corner(chains.flat_samples())
     pl.show()
