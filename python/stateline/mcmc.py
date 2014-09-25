@@ -312,17 +312,17 @@ class TableLogger(_sl.TableLogger):
         super().update(i, state, sigmas, accept_rates, betas, swap_rates)
 
 
-class EPSRDiagnostic(_sl.EPSRDiagnostic):
-    """"""
+# class EPSRDiagnostic(_sl.EPSRDiagnostic):
+#     """"""
 
-    def __init__(self, nstacks, nchains, ndims, threshold=1.1):
-        super().__init__(nstacks, nchains, ndims, threshold)
+#     def __init__(self, nstacks, nchains, ndims, threshold=1.1):
+#         super().__init__(nstacks, nchains, ndims, threshold)
 
-    def update(self, i, state):
-        super().update(i, state)
+#     def update(self, i, state):
+#         super().update(i, state)
 
-    def r_hat(self):
-        return super().r_hat()
+#     def r_hat(self):
+#         return super().r_hat()
 
-    def has_converged(self):
-        return super().has_converged()
+#     def has_converged(self):
+#         return super().has_converged()
