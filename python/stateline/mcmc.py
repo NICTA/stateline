@@ -145,9 +145,12 @@ class ChainArray(_sl.ChainArray):
         return [State(s.get_sample(), s.energy, s.get_sigma(), s.beta,
                       s.accepted, s.swap_type) for s in super().states(i)]
 
-    def flat_samples(self):
-        return np.vstack([s.sample for i in range(0, self.nstacks)
-                          for s in self.states(i * self.nchains)])
+    def samples(self, i, burnin=0):
+        return np.array([s.sample for s in self.states(i)[burnin:]])
+
+    def flat_samples(self, burnin=0):
+        return np.vstack(self.samples(i * self.nchains, burnin)
+                         for i in range(self.nstacks))
 
     def sigma(self, i):
         return super().sigma(i)
@@ -185,8 +188,18 @@ class Sampler(_sl.Sampler):
         super().flush()
 
 
-def gaussian_proposal(i, state, sigma):
-    return _sl.gaussian_proposal(i, state, sigma)
+def gaussian_proposal(i, sample, sigma):
+    return _sl.gaussian_proposal(i, sample, sigma)
+
+
+def gaussian_cov_proposal(i, sample, cov):
+    ndim = np.sqrt(cov.shape[0])
+    cov = np.reshape(cov, (ndim, ndim))
+    #Jf i == 0:
+        #Jrint('proposal cov:', cov)
+        #print('proposed:', np.random.multivariate_normal(sample, cov))
+    return np.random.multivariate_normal(sample, cov)
+
 
 
 class SlidingWindowSigmaAdapter(_sl.SlidingWindowSigmaAdapter):
@@ -259,6 +272,38 @@ class SlidingWindowBetaAdapter(_sl.SlidingWindowBetaAdapter):
         return super().swap_rates()
 
 
+class SigmaCovarianceAdapter:
+    def __init__(self, ndims, sigma_adapter):
+        self._sigma_adapter = sigma_adapter
+        self._lengths = np.zeros(len(sigma_adapter.sigmas()), dtype=int)
+        self._covs = [np.eye(ndims) for _ in sigma_adapter.sigmas()]
+
+        self._a = [np.zeros((ndims, ndims)) for _ in sigma_adapter.sigmas()]
+        self._u = [np.zeros((ndims, 1)) for _ in sigma_adapter.sigmas()]
+
+    def update(self, i, state):
+        self._sigma_adapter.update(i, state)
+
+        n = float(self._lengths[i])
+        x = state.sample[np.newaxis].T
+
+        self._a[i] = self._a[i] * (n / (n + 1)) + (x * x.T) / (n + 1)
+        self._u[i] = self._u[i] * (n / (n + 1)) + x / (n + 1)
+
+        self._covs[i] = self._a[i] - (self._u[i] * self._u[i].T)# / (n + 1)
+        self._lengths[i] += 1
+
+    def sigmas(self):
+        return [np.ndarray.flatten(c * s[0])
+                for c, s in zip(self._covs, self._sigma_adapter.sigmas())]
+
+    def accept_rates(self):
+        return self._sigma_adapter.accept_rates()
+
+    def sample_cov(self, i):
+        return self._covs[i]
+
+
 class TableLogger(_sl.TableLogger):
     def __init__(self, nstacks, nchains, refresh):
         super().__init__(nstacks, nchains, refresh)
@@ -267,17 +312,17 @@ class TableLogger(_sl.TableLogger):
         super().update(i, state, sigmas, accept_rates, betas, swap_rates)
 
 
-#class EPSRDiagnostic(_sl.EPSRDiagnostic):
-    #""""""
+class EPSRDiagnostic(_sl.EPSRDiagnostic):
+    """"""
 
-    #def __init__(self):
-        #pass
+    def __init__(self, nstacks, nchains, ndims, threshold=1.1):
+        super().__init__(nstacks, nchains, ndims, threshold)
 
-    #def update(self, i, state):
-        #super().update(i, state)
+    def update(self, i, state):
+        super().update(i, state)
 
-    #def r_hat(self):
-        #return super().r_hat()
+    def r_hat(self):
+        return super().r_hat()
 
-    #def has_converged(self):
-        #return super().has_converged()
+    def has_converged(self):
+        return super().has_converged()

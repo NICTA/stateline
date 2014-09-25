@@ -17,18 +17,27 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     logging.initialise(0, True, ".")
 
-    run_time = 60 # time in seconds to run
+    run_time = 60  # time in seconds to run
     nstacks, nchains, ndims = 2, 10, 3
-    means = [[-5, -5, -5], [5, 5, 5]]
+    mean = [0, 0, 0]
+    cov = [10.0, 0.1, 0.1]
 
-    worker_interface = mcmc.WorkerInterface(5555, means)
+    worker_interface = mcmc.WorkerInterface(5555, (mean, cov))
+
+    proposal = mcmc.gaussian_proposal
 
     sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
                                                    steps_per_adapt=500,
-                                                   cold_sigma=10.0)
+                                                   cold_sigma=1.0)
 
     beta_adapter = mcmc.SlidingWindowBetaAdapter(nstacks, nchains,
-                                                 steps_per_adapt=500)
+                                                 steps_per_adapt=1000)
+
+    if len(sys.argv) == 2 and sys.argv[1] == 'cov':
+        proposal = mcmc.gaussian_cov_proposal
+
+        # Use a covariance adapter
+        sigma_adapter = mcmc.SigmaCovarianceAdapter(ndims, sigma_adapter)
 
     chains = mcmc.ChainArray(nstacks, nchains, recover=False, overwrite=True,
                              db_path='testChainDB')
@@ -43,23 +52,30 @@ def main():
         chains.initialise(i, sample, energy, sigma, beta)
 
     # Run the sampler
-    sampler = mcmc.Sampler(worker_interface, chains, mcmc.gaussian_proposal, 10)
+    sampler = mcmc.Sampler(worker_interface, chains, proposal, 10)
     logger = mcmc.TableLogger(nstacks, nchains, 500)
+    diagnostic = mcmc.EPSRDiagnostic(nstacks, nchains, ndims, 1.0)
 
     start_time = time.clock()
     while time.clock() - start_time < run_time:
         i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
         sigma_adapter.update(i, state)
         beta_adapter.update(i, state)
+
         logger.update(i, state,
                       sigma_adapter.sigmas(), sigma_adapter.accept_rates(),
                       beta_adapter.betas(), beta_adapter.swap_rates())
+        diagnostic.update(i, state)
+
         if ctrlc[0] is True:
             sampler.flush()
             sys.exit()
-    
+
     sampler.flush()  # makes sure all outstanding jobs are finished
-    # Visualise the result
+
+    print('sample covariance', np.cov(chains.flat_samples().T))
+
+    # Visualise the histograms
     triangle.corner(chains.flat_samples())
     pl.show()
 
