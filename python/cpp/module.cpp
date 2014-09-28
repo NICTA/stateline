@@ -11,6 +11,7 @@
 #include "proposal.hpp"
 #include "adaptive.hpp"
 #include "logging.hpp"
+#include "diagnostics.hpp"
 #include "app/logging.hpp"
 
 #if PY_MAJOR_VERSION == 2
@@ -45,6 +46,7 @@ BOOST_PYTHON_MODULE(_stateline)
   exportSlidingWindowSigmaAdapter();
   exportSlidingWindowBetaAdapter();
   exportTableLogger();
+  exportEPSRDiagnostic();
 
   py::def("init_logging", initLogging);
 }

@@ -54,7 +54,7 @@ def main():
     # Run the sampler
     sampler = mcmc.Sampler(worker_interface, chains, proposal, 10)
     logger = mcmc.TableLogger(nstacks, nchains, 500)
-    # diagnostic = mcmc.EPSRDiagnostic(nstacks, nchains, ndims, 1.0)
+    diagnostic = mcmc.EPSRDiagnostic(nstacks, nchains, ndims, 1.0)
 
     start_time = time.clock()
     while time.clock() - start_time < run_time:
@@ -65,7 +65,7 @@ def main():
         logger.update(i, state,
                       sigma_adapter.sigmas(), sigma_adapter.accept_rates(),
                       beta_adapter.betas(), beta_adapter.swap_rates())
-        # diagnostic.update(i, state)
+        diagnostic.update(i, state)
 
         if ctrlc[0] is True:
             sampler.flush()
