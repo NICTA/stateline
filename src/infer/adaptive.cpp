@@ -66,7 +66,7 @@ namespace stateline
       for (uint i = 0; i < nChains * nStacks; i++)
       {
         lengths_[i] = 1; // assuming we're not recovering
-        acceptRates_[i] = 1;
+        acceptRates_[i] = Eigen::VectorXd::Zero(1);
         acceptBuffers_.push_back(boost::circular_buffer<bool>(s_.adaptionLength));
         acceptBuffers_[i].push_back(true); // first state always accepts
       }
@@ -77,7 +77,7 @@ namespace stateline
       lengths_[chainID]+= 1;
       bool acc = state.accepted;
       uint oldSize = acceptBuffers_[chainID].size();
-      double oldRate = acceptRates_[chainID];
+      double oldRate = acceptRates_[chainID](0);
       bool isFull = acceptBuffers_[chainID].full();
       bool lastAcc = acceptBuffers_[chainID].front();
       // Now push on the new state
@@ -86,7 +86,7 @@ namespace stateline
       uint newSize = acceptBuffers_[chainID].size();
       double delta = ((int)acc - (int)(lastAcc&&isFull))/(double)newSize;
       double scale = oldSize/(double)newSize;
-      acceptRates_[chainID] = std::max(oldRate*scale + delta, 0.0);
+      acceptRates_[chainID](0) = std::max(oldRate*scale + delta, 0.0);
       if (lengths_[chainID] % s_.nStepsPerAdapt == 0)
         adaptSigma(chainID);
     }
@@ -96,7 +96,7 @@ namespace stateline
       return sigmas_;
     }
 
-    const std::vector<double> &SlidingWindowSigmaAdapter::acceptRates() const
+    const std::vector<Eigen::VectorXd> &SlidingWindowSigmaAdapter::acceptRates() const
     {
       return acceptRates_;
     }
@@ -104,7 +104,7 @@ namespace stateline
 
     void SlidingWindowSigmaAdapter::adaptSigma(uint id)
     {
-      double acceptRate = acceptRates_[id];
+      double acceptRate = acceptRates_[id](0);
       double oldSigma= sigmas_[id](0);
       double factor = std::pow(acceptRate / s_.optimalAcceptRate, s_.adaptRate);
       double boundFactor = std::min(std::max(factor, s_.minAdaptFactor), s_.maxAdaptFactor);
@@ -233,14 +233,18 @@ namespace stateline
 
       covs_[i] = a_[i] - (u_[i] * u_[i].transpose());// / (n + 1);
 
-      // Flatten the cov matrix to get a sigma vector
-      sigmas_[i] = adapter_.sigmas()[i][0] *
-        Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
+      // Ensure we don't get a zero covariance because of bad samples.
+      if ((covs_[i].array() > 1e-8).any())
+      {
+        // Flatten the cov matrix to get a sigma vector
+        sigmas_[i] = adapter_.sigmas()[i][0] *
+          Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
+      }
 
       lengths_[i]++;
     }
 
-    const std::vector<double> &SigmaCovarianceAdapter::acceptRates() const
+    const std::vector<Eigen::VectorXd> &SigmaCovarianceAdapter::acceptRates() const
     {
       return adapter_.acceptRates();
     }
@@ -253,6 +257,70 @@ namespace stateline
     const std::vector<Eigen::MatrixXd> &SigmaCovarianceAdapter::covs() const
     {
       return covs_;
+    }
+    
+    BlockSigmaAdapter::BlockSigmaAdapter(uint nStacks, uint nChains, uint nDims,
+        const std::vector<uint> &blocks, const SlidingWindowSigmaSettings &settings)
+      : blocks_(blocks.size()),
+        curBlocks_(nStacks * nChains),
+        maskedSigmas_(nStacks * nChains),
+        acceptRates_(nStacks * nChains)
+    {
+      // We will re-number all the blocks, so that blocks are number from
+      // 0 to N contiguously.
+      std::map<uint, uint> used;
+
+      for (uint i = 0; i < nDims; i++)
+      {
+        if (!used.count(blocks[i]))
+        {
+          // Encountered a new block number
+          used.insert(std::make_pair(blocks[i], used.size()));
+
+          // Create an adapter just for this block
+          adapters_.push_back(SlidingWindowSigmaAdapter(
+                nStacks, nChains, nDims, settings));
+        }
+
+        blocks_(i) = used[blocks[i]];
+      }
+
+      numBlocks_ = used.size();
+
+      for (uint i = 0; i < maskedSigmas_.size(); i++)
+      {
+        curBlocks_[i] = 0;
+        acceptRates_[i] = Eigen::VectorXd::Zero(numBlocks_);
+
+        maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
+          adapters_[0].sigmas()[i].array();
+      }
+    }
+
+    void BlockSigmaAdapter::update(uint i, const State &s)
+    {
+      adapters_[curBlocks_[i]].update(i, s);
+
+      // Change the mask to the next block
+      curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
+
+      // Mask out sigmas not in the current block
+      maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
+        adapters_[curBlocks_[i]].sigmas()[i].array();
+
+      // Set the acceptance rate for this block
+      acceptRates_[i](curBlocks_[i]) =
+        adapters_[curBlocks_[i]].acceptRates()[i](0);
+    }
+
+    const std::vector<Eigen::VectorXd> &BlockSigmaAdapter::acceptRates() const
+    {
+      return acceptRates_;
+    }
+
+    const std::vector<Eigen::VectorXd> &BlockSigmaAdapter::sigmas() const
+    {
+      return maskedSigmas_;
     }
 
   } // mcmc

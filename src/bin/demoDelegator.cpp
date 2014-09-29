@@ -68,7 +68,7 @@ int main(int ac, char *av[])
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
   // define initial parameters
   std::vector<Eigen::VectorXd> sigmas = sigmaAdapter.sigmas();
-  std::vector<double> acceptRates = sigmaAdapter.acceptRates();
+  std::vector<Eigen::VectorXd> acceptRates = sigmaAdapter.acceptRates();
   std::vector<double> betas = betaAdapter.betas();
   std::vector<double> swapRates = betaAdapter.swapRates();
 

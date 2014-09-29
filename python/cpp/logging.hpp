@@ -5,7 +5,7 @@
 void tableLoggerUpdate(mcmc::Logger &self, uint id, const mcmc::State &state,
     py::list sigmas, py::list acceptRates, py::list betas, py::list swapRates)
 {
-  self.update(id, state, lnumpy2veigen(sigmas), list2vector<double>(acceptRates),
+  self.update(id, state, lnumpy2veigen(sigmas), lnumpy2veigen(acceptRates),
       list2vector<double>(betas), list2vector<double>(swapRates));
 }
 

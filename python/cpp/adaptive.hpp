@@ -38,7 +38,7 @@ py::object slidingWindowSigmaAdapterSigmas(const mcmc::SlidingWindowSigmaAdapter
 
 py::object slidingWindowSigmaAdapterAcceptRates(const mcmc::SlidingWindowSigmaAdapter &adapter)
 {
-  return vector2list(adapter.acceptRates());
+  return veigen2lnumpy(adapter.acceptRates());
 }
 
 py::object slidingWindowBetaAdapterBetas(const mcmc::SlidingWindowBetaAdapter &adapter)
@@ -58,7 +58,7 @@ py::object sigmaCovarianceAdapterSigmas(const mcmc::SigmaCovarianceAdapter &adap
 
 py::object sigmaCovarianceAdapterAcceptRates(const mcmc::SigmaCovarianceAdapter &adapter)
 {
-  return vector2list(adapter.acceptRates());
+  return veigen2lnumpy(adapter.acceptRates());
 }
 
 py::object sigmaCovarianceAdapterSampleCov(const mcmc::SigmaCovarianceAdapter &adapter, uint i)
@@ -83,7 +83,7 @@ py::object blockSigmaAdapterSigmas(const mcmc::BlockSigmaAdapter &adapter)
 
 py::object blockSigmaAdapterAcceptRates(const mcmc::BlockSigmaAdapter &adapter)
 {
-  return vector2list(adapter.acceptRates());
+  return veigen2lnumpy(adapter.acceptRates());
 }
 
 void exportSlidingWindowSigmaAdapter()

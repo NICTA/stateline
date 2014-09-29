@@ -65,7 +65,7 @@ namespace stateline
 
         const std::vector<Eigen::VectorXd> &sigmas() const;
 
-        const std::vector<double> &acceptRates() const;
+        const std::vector<Eigen::VectorXd> &acceptRates() const;
 
       private:
 
@@ -75,7 +75,7 @@ namespace stateline
         uint nChains_;
         std::vector<boost::circular_buffer<bool>> acceptBuffers_;
         std::vector<Eigen::VectorXd> sigmas_;
-        std::vector<double> acceptRates_;
+        std::vector<Eigen::VectorXd> acceptRates_;
         std::vector<uint> lengths_;
         SlidingWindowSigmaSettings s_;
     };
@@ -148,7 +148,7 @@ namespace stateline
 
         void update(uint i, const State &s);
 
-        const std::vector<double> &acceptRates() const;
+        const std::vector<Eigen::VectorXd> &acceptRates() const;
 
         const std::vector<Eigen::VectorXd> &sigmas() const;
 
@@ -169,68 +169,20 @@ namespace stateline
       public:
         BlockSigmaAdapter(uint nStacks, uint nChains, uint nDims,
             const std::vector<uint> &blocks,
-            const SlidingWindowSigmaSettings &settings)
-          : blocks_(blocks.size()),
-            curBlocks_(nStacks * nChains),
-            maskedSigmas_(nStacks * nChains)
-        {
-          // We will re-number all the blocks, so that blocks are number from
-          // 0 to N contiguously.
-          std::map<uint, uint> used;
-          
-          for (uint i = 0; i < nDims; i++)
-          {
-            if (!used.count(blocks[i]))
-            {
-              // Encountered a new block number
-              used.insert(std::make_pair(blocks[i], used.size()));
+            const SlidingWindowSigmaSettings &settings);
 
-              // Create an adapter just for this block
-              adapters_.push_back(SlidingWindowSigmaAdapter(
-                    nStacks, nChains, nDims, settings));
-            }
+        void update(uint i, const State &s);
 
-            blocks_(i) = used[blocks[i]];
-          }
+        const std::vector<Eigen::VectorXd> &acceptRates() const;
 
-          for (uint i = 0; i < maskedSigmas_.size(); i++)
-          {
-            curBlocks_[i] = 0;
-
-            maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
-              adapters_[0].sigmas()[i].array();
-          }
-
-          numBlocks_ = used.size();
-        }
-
-        void update(uint i, const State &s)
-        {
-          adapters_[curBlocks_[i]].update(i, s);
-
-          // Change the mask to the next block
-          curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
-
-          // Mask out sigmas not in the current block
-          maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
-            adapters_[curBlocks_[i]].sigmas()[i].array();
-        }
-
-        const std::vector<double> &acceptRates() const
-        {
-          return adapters_[0].acceptRates();
-        }
-
-        const std::vector<Eigen::VectorXd> &sigmas() const
-        {
-          return maskedSigmas_;
-        }
+        const std::vector<Eigen::VectorXd> &sigmas() const;
 
       private:
         std::vector<SlidingWindowSigmaAdapter> adapters_;
         Eigen::ArrayXd blocks_;
         std::vector<uint> curBlocks_;
         std::vector<Eigen::VectorXd> maskedSigmas_;
+        std::vector<Eigen::VectorXd> acceptRates_;
         uint numBlocks_;
     };
     

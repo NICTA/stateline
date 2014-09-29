@@ -30,7 +30,7 @@ namespace stateline
 
         void update(uint id, const State & s,
             const std::vector<Eigen::VectorXd>& sigmas,
-            const std::vector<double>& acceptRates,
+            const std::vector<Eigen::VectorXd>& acceptRates,
             const std::vector<double>& betas,
             const std::vector<double>& swapRates);
 
