@@ -13,7 +13,6 @@ namespace stateline
 {
   namespace mcmc
   {
-
     Logger::Logger(uint nstacks, uint nchains, uint msRefresh)
           : msRefresh_(msRefresh),
             nstacks_(nstacks), 
@@ -49,20 +48,33 @@ namespace stateline
       {
         // Print to the screen
         lastPrintTime_ = ch::steady_clock::now();
-        std::stringstream s;
-        s << "\n\nID   Length   MinEngy     CurrEngy     Sigma   AcptRt     GlbAcptRt   Beta        SwapRt   GlbSwapRt\n";
-        s << "-----------------------------------------------------------------------------------------------------\n";
+
+        // Create a string stream that formats the data nicely in a table
+        std::stringstream ss;
+        ss.fill(' ');
+        ss.precision(5);
+        ss.setf(std::ios::showpoint | std::ios::fixed);
+
+        ss << "\n\n  ID    Length    MinEngy   CurrEngy      Sigma     AcptRt  GlbAcptRt       Beta     SwapRt  GlbSwapRt\n";
+        ss << "------------------------------------------------------------------------------------------------------\n";
         for (uint i = 0; i < lengths_.size(); i++)
         {
           if (i % nchains_ == 0 && i != 0)
-            s << '\n';
-          s << std::setprecision(6) << std::showpoint << i << " " << std::setw(9) << lengths_[i] << " " << std::setw(10)
-            << minEnergies_[i] << " " << std::setw(10) << energies_[i] << " " << std::setw(10) << sigmas[i](0) << " "
-            << std::setw(10) << acceptRates[i] << " " << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
-            << std::setw(10) << betas[i] << " " << std::setw(10) << swapRates[i] << " " << std::setw(10)
-            << nSwapsGlobal_[i] / (double) nSwapAttemptsGlobal_[i] << " \n";
+            ss << '\n';
+
+          ss << std::setw(4) << i << " "
+             << std::setw(9) << lengths_[i] << " "
+             << std::setw(10) << minEnergies_[i] << " "
+             << std::setw(10) << energies_[i] << " "
+             << std::setw(10) << sigmas[i](0) << " "
+             << std::setw(10) << acceptRates[i] << " "
+             << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
+             << std::setw(10) << betas[i] << " "
+             << std::setw(10) << swapRates[i] << " " << std::setw(10)
+             << nSwapsGlobal_[i] / (double) nSwapAttemptsGlobal_[i] << " \n";
         }
-        std::cout << s.str() << std::endl;
+
+        std::cout << ss.str() << std::endl;
       }
     }
   } // namespace mcmc
