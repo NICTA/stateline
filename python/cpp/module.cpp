@@ -45,6 +45,7 @@ BOOST_PYTHON_MODULE(_stateline)
   exportSlidingWindowBetaSettings();
   exportSlidingWindowSigmaAdapter();
   exportSlidingWindowBetaAdapter();
+  exportSigmaCovarianceAdapter();
   exportTableLogger();
   exportEPSRDiagnostic();
 

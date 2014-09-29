@@ -62,7 +62,7 @@ int main(int ac, char *av[])
   sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default();
   
   // Create an adaption system for sigma
-  sl::mcmc::SlidingWindowSigmaAdapter sigmaAdapter(nstacks,nchains, ndims,
+  sl::mcmc::SigmaCovarianceAdapter sigmaAdapter(nstacks, nchains, ndims,
       sigmaSettings);
   // Create an adaption system for beta
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
@@ -87,9 +87,7 @@ int main(int ac, char *av[])
       sl::DelegatorSettings::Default(port));
      
   
-  auto proposalFn = std::bind(sl::mcmc::truncatedGaussianProposal, ph::_1, ph::_2, ph::_3,
-                              Eigen::VectorXd::Constant(ndims, -10),
-                              Eigen::VectorXd::Constant(ndims, 10));
+  auto proposalFn = std::bind(sl::mcmc::gaussianCovProposal, ph::_1, ph::_2, ph::_3);
   
   // Recover the chain array?
   bool recover = vm["recover"].as<bool>();

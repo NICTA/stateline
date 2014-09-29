@@ -38,6 +38,10 @@ namespace stateline
         const Eigen::VectorXd &sigma,
         const Eigen::VectorXd& min, const Eigen::VectorXd& max);
     
+    // Assumes sigma is a flattened square covariance matrix
+    Eigen::VectorXd gaussianCovProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma);
+
     class Sampler
     {
       public:

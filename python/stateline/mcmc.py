@@ -195,11 +195,7 @@ def gaussian_proposal(i, sample, sigma):
 def gaussian_cov_proposal(i, sample, cov):
     ndim = np.sqrt(cov.shape[0])
     cov = np.reshape(cov, (ndim, ndim))
-    #Jf i == 0:
-        #Jrint('proposal cov:', cov)
-        #print('proposed:', np.random.multivariate_normal(sample, cov))
     return np.random.multivariate_normal(sample, cov)
-
 
 
 class SlidingWindowSigmaAdapter(_sl.SlidingWindowSigmaAdapter):
@@ -272,24 +268,73 @@ class SlidingWindowBetaAdapter(_sl.SlidingWindowBetaAdapter):
         return super().swap_rates()
 
 
-class SigmaCovarianceAdapter:
-    def __init__(self, ndims, sigma_adapter):
-        self._sigma_adapter = sigma_adapter
-        self._lengths = np.zeros(len(sigma_adapter.sigmas()), dtype=int)
-        self._covs = [np.eye(ndims) for _ in sigma_adapter.sigmas()]
+class SigmaCovarianceAdapter(_sl.SigmaCovarianceAdapter):
+    def __init__(self, nstacks, nchains, ndims,
+                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
+                 adapt_length=100000, steps_per_adapt=2500,
+                 optimal_accept_rate=0.24, adapt_rate=0.2,
+                 min_adapt_factor=0.8, max_adapt_factor=1.25):
+        """Initialise an adapter that estimates the covariance of the samples.
 
-        self._a = [np.zeros((ndims, ndims)) for _ in sigma_adapter.sigmas()]
-        self._u = [np.zeros((ndims, 1)) for _ in sigma_adapter.sigmas()]
+        Parameters
+        ----------
+        nstacks : int
+        nchains : int
+        ndims : int
+        window_size : int
+            ...
+        """
+        settings = _sl.SlidingWindowSigmaSettings()
+        settings.window_size = window_size
+        settings.cold_sigma = cold_sigma
+        settings.sigma_factor = sigma_factor
+        settings.adaption_length = adapt_length
+        settings.nsteps_per_adapt = steps_per_adapt
+        settings.optimal_accept_rate = optimal_accept_rate
+        settings.adapt_rate = adapt_rate
+        settings.min_adapt_factor = min_adapt_factor
+        settings.max_adapt_factor = max_adapt_factor
+
+        super().__init__(nstacks, nchains, ndims, settings)
+
+    def update(self, i, state):
+        super().update(i, state)
+
+    def sigmas(self):
+        return super().sigmas()
+
+    def accept_rates(self):
+        return super().accept_rates()
+
+    def sample_cov(self, i):
+        cov = super().sample_cov(i)
+        n = int(np.sqrt(cov.shape[0]))
+        return np.reshape(cov, (n, n))
+
+
+class SigmaCovarianceAdapter2:
+    def __init__(self, nstacks, nchains, ndims,
+                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
+                 adapt_length=100000, steps_per_adapt=2500,
+                 optimal_accept_rate=0.24, adapt_rate=0.2,
+                 min_adapt_factor=0.8, max_adapt_factor=1.25):
+        self._sigma_adapter = SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
+                                                        window_size, cold_sigma,
+                                                        sigma_factor, adapt_length,
+                                                        steps_per_adapt, optimal_accept_rate,
+                                                        adapt_rate, min_adapt_factor, max_adapt_factor)
+        self._lengths = np.zeros(len(self._sigma_adapter.sigmas()), dtype=int)
+        self._covs = [np.eye(ndims) for _ in self._sigma_adapter.sigmas()]
+        self._a = [np.zeros((ndims, ndims)) for _ in self._sigma_adapter.sigmas()]
+        self._u = [np.zeros((ndims, 1)) for _ in self._sigma_adapter.sigmas()]
 
     def update(self, i, state):
         self._sigma_adapter.update(i, state)
-
         n = float(self._lengths[i])
         x = state.sample[np.newaxis].T
 
         self._a[i] = self._a[i] * (n / (n + 1)) + (x * x.T) / (n + 1)
         self._u[i] = self._u[i] * (n / (n + 1)) + x / (n + 1)
-
         self._covs[i] = self._a[i] - (self._u[i] * self._u[i].T)# / (n + 1)
         self._lengths[i] += 1
 
@@ -302,7 +347,6 @@ class SigmaCovarianceAdapter:
 
     def sample_cov(self, i):
         return self._covs[i]
-
 
 class TableLogger(_sl.TableLogger):
     def __init__(self, nstacks, nchains, refresh):

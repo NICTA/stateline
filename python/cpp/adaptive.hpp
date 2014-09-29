@@ -51,6 +51,22 @@ py::object slidingWindowBetaAdapterSwapRates(const mcmc::SlidingWindowBetaAdapte
   return vector2list(adapter.swapRates());
 }
 
+py::object sigmaCovarianceAdapterSigmas(const mcmc::SigmaCovarianceAdapter &adapter)
+{
+  return veigen2lnumpy(adapter.sigmas());
+}
+
+py::object sigmaCovarianceAdapterAcceptRates(const mcmc::SigmaCovarianceAdapter &adapter)
+{
+  return vector2list(adapter.acceptRates());
+}
+
+py::object sigmaCovarianceAdapterSampleCov(const mcmc::SigmaCovarianceAdapter &adapter, uint i)
+{
+  Eigen::MatrixXd cov = adapter.covs()[i];
+  return eigen2numpy(Eigen::Map<Eigen::VectorXd>(cov.data(), cov.size()));
+}
+
 void exportSlidingWindowSigmaAdapter()
 {
   py::class_<mcmc::SlidingWindowSigmaAdapter, boost::noncopyable>("SlidingWindowSigmaAdapter",
@@ -68,5 +84,16 @@ void exportSlidingWindowBetaAdapter()
     .def("update", &mcmc::SlidingWindowBetaAdapter::update)
     .def("betas", slidingWindowBetaAdapterBetas)
     .def("swap_rates", slidingWindowBetaAdapterSwapRates)
+  ;
+}
+
+void exportSigmaCovarianceAdapter()
+{
+  py::class_<mcmc::SigmaCovarianceAdapter, boost::noncopyable>("SigmaCovarianceAdapter",
+      py::init<uint, uint, uint, mcmc::SlidingWindowSigmaSettings>())
+    .def("update", &mcmc::SigmaCovarianceAdapter::update)
+    .def("sigmas", sigmaCovarianceAdapterSigmas)
+    .def("accept_rates", sigmaCovarianceAdapterAcceptRates)
+    .def("sample_cov", sigmaCovarianceAdapterSampleCov)
   ;
 }

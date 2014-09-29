@@ -75,6 +75,26 @@ namespace stateline
       return bouncyBounds(gaussianProposal(id, sample, sigma), min, max);
     }
 
+    Eigen::VectorXd gaussianCovProposal(uint id, const Eigen::VectorXd& sample,
+        const Eigen::VectorXd &sigma)
+    {
+      // Random number generators
+      static std::random_device rd;
+      static std::mt19937 generator(rd());
+      static std::normal_distribution<> rand; // Standard normal
+
+      // Reshape sigma into a square covariance matrix
+      uint n = (uint)sqrt(sigma.size());
+      const Eigen::MatrixXd cov = Eigen::Map<const Eigen::MatrixXd>(sigma.data(), n, n);
+
+      Eigen::VectorXd randn(n);
+      for (uint i = 0; i < n; i++)
+        randn(i) = rand(generator);
+
+      Eigen::MatrixXd sigL = cov.llt().matrixL();
+      Eigen::MatrixXd proposal = sample + sigL * randn;
+      return proposal;
+    }
 
     Sampler::Sampler(WorkerInterface& workerInterface, 
                      ChainArray& chainArray,

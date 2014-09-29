@@ -20,24 +20,25 @@ def main():
     run_time = 60  # time in seconds to run
     nstacks, nchains, ndims = 2, 10, 3
     mean = [0, 0, 0]
-    cov = [10.0, 0.1, 0.1]
+    cov = [10.0, 1, 1]
 
     worker_interface = mcmc.WorkerInterface(5555, (mean, cov))
 
-    proposal = mcmc.gaussian_proposal
-
-    sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
-                                                   steps_per_adapt=500,
-                                                   cold_sigma=1.0)
+    if len(sys.argv) == 1:
+        proposal = mcmc.gaussian_proposal
+        sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
+                                                       steps_per_adapt=500,
+                                                       cold_sigma=1.0)
+    elif len(sys.argv) == 2 and sys.argv[1] == 'cov':
+        proposal = mcmc.gaussian_cov_proposal
+        sigma_adapter = mcmc.SigmaCovarianceAdapter(nstacks, nchains, ndims,
+                                                    steps_per_adapt=500,
+                                                    cold_sigma=1.0)
+    elif len(sys.argv) == 2 and sys.argv[1] == 'block':
+        pass
 
     beta_adapter = mcmc.SlidingWindowBetaAdapter(nstacks, nchains,
                                                  steps_per_adapt=1000)
-
-    if len(sys.argv) == 2 and sys.argv[1] == 'cov':
-        proposal = mcmc.gaussian_cov_proposal
-
-        # Use a covariance adapter
-        sigma_adapter = mcmc.SigmaCovarianceAdapter(ndims, sigma_adapter)
 
     chains = mcmc.ChainArray(nstacks, nchains, recover=False, overwrite=True,
                              db_path='testChainDB')
@@ -73,10 +74,14 @@ def main():
 
     sampler.flush()  # makes sure all outstanding jobs are finished
 
-    print('sample covariance', np.cov(chains.flat_samples().T))
+    # Get the samples with burn in
+    samples = chains.flat_samples(burnin=1000)
+
+    print('estimated cov: ', sigma_adapter.sample_cov(0))
+    print('sample covariance', np.cov(samples.T, bias=1))
 
     # Visualise the histograms
-    triangle.corner(chains.flat_samples())
+    triangle.corner(samples)
     pl.show()
 
 

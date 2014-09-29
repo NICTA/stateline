@@ -4,7 +4,7 @@ import numpy as np
 
 
 def logpdf(x, mu, cov):
-    return 0.5 * np.sum(np.square((x - mu) / cov))
+    return 0.5 * np.sum(np.square(x - mu) / cov)
 
 
 def main():

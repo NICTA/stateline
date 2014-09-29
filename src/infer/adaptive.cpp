@@ -91,12 +91,12 @@ namespace stateline
         adaptSigma(chainID);
     }
 
-    std::vector<Eigen::VectorXd> SlidingWindowSigmaAdapter::sigmas() const
+    const std::vector<Eigen::VectorXd> &SlidingWindowSigmaAdapter::sigmas() const
     {
       return sigmas_;
     }
 
-    std::vector<double> SlidingWindowSigmaAdapter::acceptRates() const
+    const std::vector<double> &SlidingWindowSigmaAdapter::acceptRates() const
     {
       return acceptRates_;
     }
@@ -170,12 +170,12 @@ namespace stateline
         adaptBeta(id);
     }
 
-    std::vector<double> SlidingWindowBetaAdapter::betas() const
+    const std::vector<double> &SlidingWindowBetaAdapter::betas() const
     {
       return betas_;
     }
 
-    std::vector<double> SlidingWindowBetaAdapter::swapRates() const
+    const std::vector<double> &SlidingWindowBetaAdapter::swapRates() const
     {
       return swapRates_;
     }
@@ -203,6 +203,56 @@ namespace stateline
       {
         betas_[i] = betas_[i] * std::pow(factor, gamma);
       }
+    }
+
+    SigmaCovarianceAdapter::SigmaCovarianceAdapter(uint nStacks, uint nChains, uint nDims,
+        const SlidingWindowSigmaSettings &settings)
+      : adapter_(nStacks, nChains, nDims, settings),
+      lengths_(nStacks * nChains, 0),
+      covs_(nStacks * nChains, Eigen::MatrixXd::Identity(nDims, nDims)),
+      a_(nStacks * nChains, Eigen::MatrixXd::Zero(nDims, nDims)),
+      u_(nStacks * nChains, Eigen::VectorXd::Zero(nDims)),
+      sigmas_(nStacks * nChains)
+    {
+      for (uint i = 0; i < sigmas_.size(); i++)
+      {
+        sigmas_[i] = adapter_.sigmas()[i][0] *
+          Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
+      }
+    }
+
+    void SigmaCovarianceAdapter::update(uint i, const State &s)
+    {
+      adapter_.update(i, s);
+
+      double n = (double)lengths_[i];
+      Eigen::VectorXd x = s.sample;
+
+      a_[i] = a_[i] * (n / (n + 1)) + (x * x.transpose()) / (n + 1);
+      u_[i] = u_[i] * (n / (n + 1)) + x / (n + 1);
+
+      covs_[i] = a_[i] - (u_[i] * u_[i].transpose());// / (n + 1);
+
+      // Flatten the cov matrix to get a sigma vector
+      sigmas_[i] = adapter_.sigmas()[i][0] *
+        Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
+
+      lengths_[i]++;
+    }
+
+    const std::vector<double> &SigmaCovarianceAdapter::acceptRates() const
+    {
+      return adapter_.acceptRates();
+    }
+
+    const std::vector<Eigen::VectorXd> &SigmaCovarianceAdapter::sigmas() const
+    {
+      return sigmas_;
+    }
+
+    const std::vector<Eigen::MatrixXd> &SigmaCovarianceAdapter::covs() const
+    {
+      return covs_;
     }
 
   } // mcmc

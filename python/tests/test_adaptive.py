@@ -68,8 +68,7 @@ def test_sliding_window_beta_adapter_swap_rates():
 
 
 def test_covariance_adapter_sample_covariance():
-    sigma_adapt = mcmc.SlidingWindowSigmaAdapter(1, 1, 2)
-    sigma_adapt = mcmc.SigmaCovarianceAdapter(2, sigma_adapt)
+    sigma_adapt = mcmc.SigmaCovarianceAdapter(1, 1, 2)
 
     samples = np.array([[-2.1, 3], [-1, 1.1], [4.3, 0.12], [0.1, -0.6]])
     for sample in samples:
@@ -81,8 +80,7 @@ def test_covariance_adapter_sample_covariance():
 
 
 def test_covariance_adapter_sigmas():
-    sigma_adapt = mcmc.SlidingWindowSigmaAdapter(1, 1, 2, cold_sigma=2.0)
-    sigma_adapt = mcmc.SigmaCovarianceAdapter(2, sigma_adapt)
+    sigma_adapt = mcmc.SigmaCovarianceAdapter(1, 1, 2, cold_sigma=2.0)
 
     samples = np.array([[-2.1, 3], [-1, 1.1], [4.3, 0.12], [0.1, -0.6]])
     for sample in samples:

@@ -63,9 +63,9 @@ namespace stateline
 
         void update(uint chainID, const State& state);
 
-        std::vector<Eigen::VectorXd> sigmas() const;
+        const std::vector<Eigen::VectorXd> &sigmas() const;
 
-        std::vector<double> acceptRates() const;
+        const std::vector<double> &acceptRates() const;
 
       private:
 
@@ -117,14 +117,14 @@ namespace stateline
     {
       public:
         
-        SlidingWindowBetaAdapter( uint nStacks, uint nChains, 
+        SlidingWindowBetaAdapter(uint nStacks, uint nChains, 
             const SlidingWindowBetaSettings& settings);
         
         void update(uint id, State s);
 
-        std::vector<double> betas() const;
+        const std::vector<double> &betas() const;
         
-        std::vector<double> swapRates() const;
+        const std::vector<double> &swapRates() const;
 
       private:
         
@@ -139,6 +139,29 @@ namespace stateline
         SlidingWindowBetaSettings s_;
     };
 
+
+    class SigmaCovarianceAdapter
+    {
+      public:
+        SigmaCovarianceAdapter(uint nStacks, uint nChains, uint nDims,
+            const SlidingWindowSigmaSettings &settings);
+
+        void update(uint i, const State &s);
+
+        const std::vector<double> &acceptRates() const;
+
+        const std::vector<Eigen::VectorXd> &sigmas() const;
+
+        const std::vector<Eigen::MatrixXd> &covs() const;
+
+      private:
+        SlidingWindowSigmaAdapter adapter_;
+        std::vector<uint> lengths_;
+        std::vector<Eigen::MatrixXd> covs_;
+        std::vector<Eigen::MatrixXd> a_;
+        std::vector<Eigen::VectorXd> u_;
+        std::vector<Eigen::VectorXd> sigmas_;
+    };
     
   }
 }
