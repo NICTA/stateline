@@ -47,7 +47,7 @@ namespace stateline
     template <>
     double logpdf(const DiagNormal &d, const Eigen::VectorXd &x)
     {
-      return -0.5 * (x - mean(d)).cwiseQuotient(d.diag()).squaredNorm();
+      return -0.5 * ((x - mean(d)) * (x - mean(d))).cwiseQuotient(d.diag()).sum();
     }
   }
 }
