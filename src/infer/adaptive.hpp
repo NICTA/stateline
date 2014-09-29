@@ -162,6 +162,77 @@ namespace stateline
         std::vector<Eigen::VectorXd> u_;
         std::vector<Eigen::VectorXd> sigmas_;
     };
+
+    
+    class BlockSigmaAdapter
+    {
+      public:
+        BlockSigmaAdapter(uint nStacks, uint nChains, uint nDims,
+            const std::vector<uint> &blocks,
+            const SlidingWindowSigmaSettings &settings)
+          : blocks_(blocks.size()),
+            curBlocks_(nStacks * nChains),
+            maskedSigmas_(nStacks * nChains)
+        {
+          // We will re-number all the blocks, so that blocks are number from
+          // 0 to N contiguously.
+          std::map<uint, uint> used;
+          
+          for (uint i = 0; i < nDims; i++)
+          {
+            if (!used.count(blocks[i]))
+            {
+              // Encountered a new block number
+              used.insert(std::make_pair(blocks[i], used.size()));
+
+              // Create an adapter just for this block
+              adapters_.push_back(SlidingWindowSigmaAdapter(
+                    nStacks, nChains, nDims, settings));
+            }
+
+            blocks_(i) = used[blocks[i]];
+          }
+
+          for (uint i = 0; i < maskedSigmas_.size(); i++)
+          {
+            curBlocks_[i] = 0;
+
+            maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
+              adapters_[0].sigmas()[i].array();
+          }
+
+          numBlocks_ = used.size();
+        }
+
+        void update(uint i, const State &s)
+        {
+          adapters_[curBlocks_[i]].update(i, s);
+
+          // Change the mask to the next block
+          curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
+
+          // Mask out sigmas not in the current block
+          maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
+            adapters_[curBlocks_[i]].sigmas()[i].array();
+        }
+
+        const std::vector<double> &acceptRates() const
+        {
+          return adapters_[0].acceptRates();
+        }
+
+        const std::vector<Eigen::VectorXd> &sigmas() const
+        {
+          return maskedSigmas_;
+        }
+
+      private:
+        std::vector<SlidingWindowSigmaAdapter> adapters_;
+        Eigen::ArrayXd blocks_;
+        std::vector<uint> curBlocks_;
+        std::vector<Eigen::VectorXd> maskedSigmas_;
+        uint numBlocks_;
+    };
     
   }
 }

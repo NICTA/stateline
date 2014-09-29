@@ -67,6 +67,25 @@ py::object sigmaCovarianceAdapterSampleCov(const mcmc::SigmaCovarianceAdapter &a
   return eigen2numpy(Eigen::Map<Eigen::VectorXd>(cov.data(), cov.size()));
 }
 
+boost::shared_ptr<mcmc::BlockSigmaAdapter>
+  blockSigmaAdapterInit(uint nStacks, uint nChains, uint nDims,
+      const py::list &blocks, const mcmc::SlidingWindowSigmaSettings &settings)
+{
+  return boost::shared_ptr<mcmc::BlockSigmaAdapter>(
+      new mcmc::BlockSigmaAdapter(nStacks, nChains, nDims,
+        list2vector<uint>(blocks), settings));
+}
+
+py::object blockSigmaAdapterSigmas(const mcmc::BlockSigmaAdapter &adapter)
+{
+  return veigen2lnumpy(adapter.sigmas());
+}
+
+py::object blockSigmaAdapterAcceptRates(const mcmc::BlockSigmaAdapter &adapter)
+{
+  return vector2list(adapter.acceptRates());
+}
+
 void exportSlidingWindowSigmaAdapter()
 {
   py::class_<mcmc::SlidingWindowSigmaAdapter, boost::noncopyable>("SlidingWindowSigmaAdapter",
@@ -95,5 +114,15 @@ void exportSigmaCovarianceAdapter()
     .def("sigmas", sigmaCovarianceAdapterSigmas)
     .def("accept_rates", sigmaCovarianceAdapterAcceptRates)
     .def("sample_cov", sigmaCovarianceAdapterSampleCov)
+  ;
+}
+
+void exportBlockSigmaAdapter()
+{
+  py::class_<mcmc::BlockSigmaAdapter, boost::noncopyable>("BlockSigmaAdapter", py::no_init)
+    .def("__init__", py::make_constructor(blockSigmaAdapterInit))
+    .def("update", &mcmc::BlockSigmaAdapter::update)
+    .def("sigmas", blockSigmaAdapterSigmas)
+    .def("accept_rates", blockSigmaAdapterAcceptRates)
   ;
 }

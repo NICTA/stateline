@@ -312,6 +312,48 @@ class SigmaCovarianceAdapter(_sl.SigmaCovarianceAdapter):
         return np.reshape(cov, (n, n))
 
 
+class BlockSigmaAdapter(_sl.BlockSigmaAdapter):
+    def __init__(self, nstacks, nchains, ndims, blocks,
+                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
+                 adapt_length=100000, steps_per_adapt=2500,
+                 optimal_accept_rate=0.24, adapt_rate=0.2,
+                 min_adapt_factor=0.8, max_adapt_factor=1.25):
+        """Initialise a block-wise sigma adapter.
+
+        Parameters
+        ----------
+        nstacks : int
+        nchains : int
+        ndims : int
+        blocks : iterable [ndims] ,
+        window_size : int
+            ...
+        """
+        assert len(blocks) == ndims
+
+        settings = _sl.SlidingWindowSigmaSettings()
+        settings.window_size = window_size
+        settings.cold_sigma = cold_sigma
+        settings.sigma_factor = sigma_factor
+        settings.adaption_length = adapt_length
+        settings.nsteps_per_adapt = steps_per_adapt
+        settings.optimal_accept_rate = optimal_accept_rate
+        settings.adapt_rate = adapt_rate
+        settings.min_adapt_factor = min_adapt_factor
+        settings.max_adapt_factor = max_adapt_factor
+
+        super().__init__(nstacks, nchains, ndims, blocks, settings)
+
+    def update(self, i, state):
+        super().update(i, state)
+
+    def sigmas(self):
+        return super().sigmas()
+
+    def accept_rates(self):
+        return super().accept_rates()
+
+
 class TableLogger(_sl.TableLogger):
     def __init__(self, nstacks, nchains, refresh):
         super().__init__(nstacks, nchains, refresh)

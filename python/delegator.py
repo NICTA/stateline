@@ -27,15 +27,16 @@ def main():
     if len(sys.argv) == 1:
         proposal = mcmc.gaussian_proposal
         sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
-                                                       steps_per_adapt=500,
-                                                       cold_sigma=1.0)
+                                                       steps_per_adapt=500)
     elif len(sys.argv) == 2 and sys.argv[1] == 'cov':
         proposal = mcmc.gaussian_cov_proposal
         sigma_adapter = mcmc.SigmaCovarianceAdapter(nstacks, nchains, ndims,
-                                                    steps_per_adapt=500,
-                                                    cold_sigma=1.0)
+                                                    steps_per_adapt=500)
     elif len(sys.argv) == 2 and sys.argv[1] == 'block':
-        pass
+        proposal = mcmc.gaussian_proposal
+        sigma_adapter = mcmc.BlockSigmaAdapter(nstacks, nchains, ndims,
+                                               [0, 1, 2],
+                                               steps_per_adapt=500)
 
     beta_adapter = mcmc.SlidingWindowBetaAdapter(nstacks, nchains,
                                                  steps_per_adapt=1000)
@@ -75,9 +76,8 @@ def main():
     sampler.flush()  # makes sure all outstanding jobs are finished
 
     # Get the samples with burn in
-    samples = chains.flat_samples(burnin=1000)
+    samples = chains.flat_samples(burnin=int(chains.length(0) / 3))
 
-    print('estimated cov: ', sigma_adapter.sample_cov(0))
     print('sample covariance', np.cov(samples.T, bias=1))
 
     # Visualise the histograms

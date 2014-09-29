@@ -89,3 +89,25 @@ def test_covariance_adapter_sigmas():
 
     assert np.allclose(np.ndarray.flatten(np.cov(samples.T, bias=1) * 2.0),
                        sigma_adapt.sigmas()[0])
+
+
+def test_block_adapter_sigmas():
+    sigma_adapt = mcmc.BlockSigmaAdapter(1, 2, 8, [1, 1, 1, 2, 6, 2, 8, 1])
+
+    # The number of zeros in each of the sigma vectors should change as we update
+    state = mcmc.State([0, 0, 0, 0, 0, 0, 0, 0], 0, [0], 1.0, True,
+                       mcmc.SwapType.NO_ATTEMPT)
+
+    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 4  # block 1
+    print(sigma_adapt.sigmas()[0])
+    sigma_adapt.update(0, state)
+    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 2  # block 2
+    assert np.count_nonzero(sigma_adapt.sigmas()[1]) == 4  # block 1
+    sigma_adapt.update(0, state)
+    sigma_adapt.update(1, state)
+    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 1  # block 6
+    assert np.count_nonzero(sigma_adapt.sigmas()[1]) == 2  # block 2
+    sigma_adapt.update(0, state)
+    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 1  # block 8
+    sigma_adapt.update(0, state)
+    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 4  # back to block 1
