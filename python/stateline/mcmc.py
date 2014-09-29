@@ -312,42 +312,6 @@ class SigmaCovarianceAdapter(_sl.SigmaCovarianceAdapter):
         return np.reshape(cov, (n, n))
 
 
-class SigmaCovarianceAdapter2:
-    def __init__(self, nstacks, nchains, ndims,
-                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
-                 adapt_length=100000, steps_per_adapt=2500,
-                 optimal_accept_rate=0.24, adapt_rate=0.2,
-                 min_adapt_factor=0.8, max_adapt_factor=1.25):
-        self._sigma_adapter = SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
-                                                        window_size, cold_sigma,
-                                                        sigma_factor, adapt_length,
-                                                        steps_per_adapt, optimal_accept_rate,
-                                                        adapt_rate, min_adapt_factor, max_adapt_factor)
-        self._lengths = np.zeros(len(self._sigma_adapter.sigmas()), dtype=int)
-        self._covs = [np.eye(ndims) for _ in self._sigma_adapter.sigmas()]
-        self._a = [np.zeros((ndims, ndims)) for _ in self._sigma_adapter.sigmas()]
-        self._u = [np.zeros((ndims, 1)) for _ in self._sigma_adapter.sigmas()]
-
-    def update(self, i, state):
-        self._sigma_adapter.update(i, state)
-        n = float(self._lengths[i])
-        x = state.sample[np.newaxis].T
-
-        self._a[i] = self._a[i] * (n / (n + 1)) + (x * x.T) / (n + 1)
-        self._u[i] = self._u[i] * (n / (n + 1)) + x / (n + 1)
-        self._covs[i] = self._a[i] - (self._u[i] * self._u[i].T)# / (n + 1)
-        self._lengths[i] += 1
-
-    def sigmas(self):
-        return [np.ndarray.flatten(c * s[0])
-                for c, s in zip(self._covs, self._sigma_adapter.sigmas())]
-
-    def accept_rates(self):
-        return self._sigma_adapter.accept_rates()
-
-    def sample_cov(self, i):
-        return self._covs[i]
-
 class TableLogger(_sl.TableLogger):
     def __init__(self, nstacks, nchains, refresh):
         super().__init__(nstacks, nchains, refresh)
