@@ -9,6 +9,7 @@
 //!
 
 #include "infer/adaptive.hpp"
+#include <iostream>
 
 namespace stateline
 {
@@ -66,7 +67,7 @@ namespace stateline
       for (uint i = 0; i < nChains * nStacks; i++)
       {
         lengths_[i] = 1; // assuming we're not recovering
-        acceptRates_[i] = Eigen::VectorXd::Zero(1);
+        acceptRates_[i] = Eigen::VectorXd::Ones(1);
         acceptBuffers_.push_back(boost::circular_buffer<bool>(s_.adaptionLength));
         acceptBuffers_[i].push_back(true); // first state always accepts
       }
@@ -264,7 +265,8 @@ namespace stateline
       : blocks_(blocks.size()),
         curBlocks_(nStacks * nChains),
         maskedSigmas_(nStacks * nChains),
-        acceptRates_(nStacks * nChains)
+        acceptRates_(nStacks * nChains),
+        isEmpty_(nStacks * nChains, true)
     {
       // We will re-number all the blocks, so that blocks are number from
       // 0 to N contiguously.
@@ -299,18 +301,32 @@ namespace stateline
 
     void BlockSigmaAdapter::update(uint i, const State &s)
     {
-      adapters_[curBlocks_[i]].update(i, s);
+      // Ignore the first sample
+      if (isEmpty_[i])
+      {
+        isEmpty_[i] = false;
+      }
+      else
+      {
+        adapters_[curBlocks_[i]].update(i, s);
 
-      // Change the mask to the next block
-      curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
+        // Set the acceptance rate for this block
+        acceptRates_[i](curBlocks_[i]) =
+          adapters_[curBlocks_[i]].acceptRates()[i](0);
 
-      // Mask out sigmas not in the current block
-      maskedSigmas_[i] = (blocks_ == curBlocks_[i]).cast<double>() *
-        adapters_[curBlocks_[i]].sigmas()[i].array();
+        //std::cout << "updated adapter : " << curBlocks_[i] << std::endl;
 
-      // Set the acceptance rate for this block
-      acceptRates_[i](curBlocks_[i]) =
-        adapters_[curBlocks_[i]].acceptRates()[i](0);
+        // We are now waiting on the next block
+        curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
+      }
+
+      uint next = (curBlocks_[i] + 1) % numBlocks_;
+
+      // Mask out sigmas not in the next block
+      maskedSigmas_[i] = (blocks_ == next).cast<double>() *
+        adapters_[next].sigmas()[i].array();
+
+      //std::cout << "new masked sigmas : " << maskedSigmas_[i] << std::endl;
     }
 
     const std::vector<Eigen::VectorXd> &BlockSigmaAdapter::acceptRates() const

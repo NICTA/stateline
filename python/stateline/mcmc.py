@@ -342,7 +342,7 @@ class BlockSigmaAdapter(_sl.BlockSigmaAdapter):
         settings.min_adapt_factor = min_adapt_factor
         settings.max_adapt_factor = max_adapt_factor
 
-        super().__init__(nstacks, nchains, ndims, blocks, settings)
+        super().__init__(nstacks, nchains, ndims, list(blocks), settings)
 
     def update(self, i, state):
         super().update(i, state)

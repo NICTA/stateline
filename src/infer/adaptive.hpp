@@ -183,6 +183,7 @@ namespace stateline
         std::vector<uint> curBlocks_;
         std::vector<Eigen::VectorXd> maskedSigmas_;
         std::vector<Eigen::VectorXd> acceptRates_;
+        std::vector<bool> isEmpty_;
         uint numBlocks_;
     };
     

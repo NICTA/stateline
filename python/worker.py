@@ -3,7 +3,7 @@ import stateline.comms as comms
 import numpy as np
 
 
-def logpdf(x, mu, cov):
+def nlogpdf(x, mu, cov):
     return 0.5 * np.sum(np.square(x - mu) / cov)
 
 
@@ -14,7 +14,7 @@ def main():
     # Get the mean and cov of the distribution
     mean, cov = worker.global_spec
 
-    comms.run_minion(worker, lambda x: logpdf(x, mean, cov))
+    comms.run_minion(worker, lambda x: nlogpdf(x, mean, cov))
 
 if __name__ == "__main__":
     main()
