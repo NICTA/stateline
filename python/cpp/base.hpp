@@ -70,18 +70,21 @@ py::dict map2dict(const std::map<Key, Value> &map)
 
 py::object string2bytes(const std::string &str)
 {
-  return py::object(py::handle<>(py::borrowed(PyBytes_FromStringAndSize(str.c_str(), str.length()))));
+  //return py::object(py::handle<>(py::borrowed(PyBytes_FromStringAndSize(str.c_str(), str.length()))));
+  return py::object(py::handle<>(PyBytes_FromStringAndSize(str.c_str(), str.length())));
 }
 
 py::object eigen2numpy(const Eigen::VectorXd &vec)
 {
   npy_intp size = vec.size();
 
-  double *data = new double[vec.size()];
+  PyArrayObject *array = (PyArrayObject *)PyArray_SimpleNew(1, &size, NPY_DOUBLE);
+
   for (uint i=0; i<vec.size(); i++)
-    data[i] = vec(i);
-  PyObject *array = PyArray_SimpleNewFromData(1, &size, NPY_DOUBLE, data);
-  return py::numeric::array(py::handle<>(py::borrowed(array)));
+    ((double *)PyArray_DATA(array))[i] = vec(i);
+
+  //return py::numeric::array(py::handle<>(py::borrowed(array)));
+  return py::numeric::array(py::handle<>((PyObject *)array));
 }
 
 py::object veigen2lnumpy(const std::vector<Eigen::VectorXd> &vvec)
