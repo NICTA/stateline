@@ -18,25 +18,28 @@ def main():
     logging.initialise(0, True, ".")
 
     run_time = 60  # time in seconds to run
-    nstacks, nchains, ndims = 2, 10, 3
-    mean = [0, 0, 0]
-    cov = [10.0, 1, 1]
+    nstacks, nchains, ndims = 1, 5, 5
+    mean = [0, 0, 0, 0, 0]
+    cov = [10.0, 1, 1, 1, 1]
 
     worker_interface = mcmc.WorkerInterface(5555, (mean, cov))
 
     if len(sys.argv) == 1:
         proposal = mcmc.gaussian_proposal
         sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
-                                                       steps_per_adapt=500)
+                                                       steps_per_adapt=100,
+                                                       window_size=100)
     elif len(sys.argv) == 2 and sys.argv[1] == 'cov':
         proposal = mcmc.gaussian_cov_proposal
         sigma_adapter = mcmc.SigmaCovarianceAdapter(nstacks, nchains, ndims,
-                                                    steps_per_adapt=500)
+                                                    steps_per_adapt=100,
+                                                    window_size=100)
     elif len(sys.argv) == 2 and sys.argv[1] == 'block':
         proposal = mcmc.gaussian_proposal
         sigma_adapter = mcmc.BlockSigmaAdapter(nstacks, nchains, ndims,
-                                               [0, 1, 2],
-                                               steps_per_adapt=500)
+                                               list(range(ndims)),
+                                               steps_per_adapt=100,
+                                               window_size=100)
 
     beta_adapter = mcmc.SlidingWindowBetaAdapter(nstacks, nchains,
                                                  steps_per_adapt=1000)
@@ -57,10 +60,12 @@ def main():
     sampler = mcmc.Sampler(worker_interface, chains, proposal, 10)
     logger = mcmc.TableLogger(nstacks, nchains, 500)
     diagnostic = mcmc.EPSRDiagnostic(nstacks, nchains, ndims, 1.0)
+    covs = []
 
     start_time = time.clock()
     while time.clock() - start_time < run_time:
         i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
+
         sigma_adapter.update(i, state)
         beta_adapter.update(i, state)
 
@@ -77,8 +82,6 @@ def main():
 
     # Get the samples with burn in
     samples = chains.flat_samples(burnin=int(chains.length(0) / 3))
-
-    print('sample covariance', np.cov(samples.T, bias=1))
 
     # Visualise the histograms
     triangle.corner(samples)
