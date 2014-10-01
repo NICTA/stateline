@@ -9,11 +9,11 @@ import subprocess
 
 ctrlc = [False]
 
-nsteps = 100000
-burnin = 100000
-nstacks, nchains, ndims = 1, 5, 5
-mean = [0, 0, 0, 0, 0]
-cov = [10.0, 1, 1, 1, 1]
+nsteps = 200000
+burnin = 50000
+nstacks, nchains, ndims = 1, 5, 10
+mean = [0.0] * ndims
+cov = [10.0] + [1.0] * (ndims - 1)
 
 
 def signal_handler(signal, frame):
@@ -43,8 +43,7 @@ def run_mcmc(proposal, sigma_adapter):
 
     # Run the sampler
     sampler = mcmc.Sampler(worker_interface, chains, proposal, 10)
-    logger = mcmc.TableLogger(nstacks, nchains, 500)
-    diagnostic = mcmc.EPSRDiagnostic(nstacks, nchains, ndims, 1.0)
+    logger = mcmc.TableLogger(nstacks, nchains, 1000)
     covs = []
 
     while chains.length(0) < burnin + nsteps:
@@ -56,7 +55,6 @@ def run_mcmc(proposal, sigma_adapter):
         logger.update(i, state,
                       sigma_adapter.sigmas(), sigma_adapter.accept_rates(),
                       beta_adapter.betas(), beta_adapter.swap_rates())
-        diagnostic.update(i, state)
 
         if ctrlc[0] is True:
             sampler.flush()
@@ -71,7 +69,11 @@ def run_mcmc(proposal, sigma_adapter):
     sampler.flush()  # makes sure all outstanding jobs are finished
     pl.plot(range(len(covs)), covs)
 
+
 def main():
+    import gc
+    import objgraph
+
     signal.signal(signal.SIGINT, signal_handler)
     logging.initialise(0, True, ".")
 
@@ -81,6 +83,7 @@ def main():
              mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, ndims,
                                             steps_per_adapt=500,
                                             window_size=1000))
+    gc.collect()
 
     print('Running covariance adapter...')
     p.wait(); p = subprocess.Popen(['python', 'worker.py'])
@@ -88,18 +91,26 @@ def main():
              mcmc.SigmaCovarianceAdapter(nstacks, nchains, ndims,
                                          steps_per_adapt=500,
                                          window_size=1000))
+    gc.collect()
 
     print('Running block adapter...')
     p.wait(); p = subprocess.Popen(['python', 'worker.py'])
     run_mcmc(mcmc.gaussian_proposal,
              mcmc.BlockSigmaAdapter(nstacks, nchains, ndims,
                                     range(ndims),
-                                    steps_per_adapt=500,
+                                    steps_per_adapt=int(500 / ndims),
                                     window_size=1000))
+    gc.collect()
+
     print('Cleaning up...')
     p.wait()
 
     print('Plotting...')
+    pl.legend(('scalar', 'covariance', 'block'))
+    pl.axhline(y=10.0, color='black', linestyle='--')
+    pl.title('Sample variance using three different adaptive algorithms.')
+    pl.xlabel('Samples (thousands)')
+    pl.ylabel('Sample variance of first dimension')
     pl.show()
 
 if __name__ == "__main__":
