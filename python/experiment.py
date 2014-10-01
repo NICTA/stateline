@@ -52,7 +52,6 @@ def run_mcmc(proposal, sigma_adapter):
 
         sigma_adapter.update(i, state)
         beta_adapter.update(i, state)
-        cov_adapter.update(i, state)
 
         logger.update(i, state,
                       sigma_adapter.sigmas(), sigma_adapter.accept_rates(),
@@ -63,8 +62,11 @@ def run_mcmc(proposal, sigma_adapter):
             sampler.flush()
             sys.exit()
 
-        if chains.length(0) % 1000 == 0 and i == 0 and chains.length(0) > burnin:
-            covs.append(cov_adapter.sample_cov(0)[0, 0])
+        if chains.length(0) > burnin:
+            cov_adapter.update(i, state)
+
+            if chains.length(0) % 1000 == 0 and i == 0: 
+                covs.append(cov_adapter.sample_cov(0)[0, 0])
 
     sampler.flush()  # makes sure all outstanding jobs are finished
     pl.plot(range(len(covs)), covs)
