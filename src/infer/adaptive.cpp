@@ -135,7 +135,7 @@ namespace stateline
         for (uint j = 0; j < nChains; j++)
         {
           uint id = i * nChains + j;
-          double beta = 1.0 * std::pow(s_.betaFactor, j);
+          double beta = 1.0 / std::pow(s_.betaFactor, j);
           betas_[id] = beta;
         }
 
