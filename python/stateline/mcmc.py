@@ -117,7 +117,7 @@ class ChainArray(_sl.ChainArray):
         settings = _sl.ChainSettings()
         settings.recover_from_disk = recover
         settings.database_path = db_path
-        settings.database_cache_length = cache_length
+        settings.chain_cache_length = cache_length
         settings.database_cache_size_mb = cache_size
 
         super().__init__(nstacks, nchains, settings)
