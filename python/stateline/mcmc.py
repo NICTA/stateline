@@ -376,3 +376,16 @@ class EPSRDiagnostic(_sl.EPSRDiagnostic):
 
     def has_converged(self):
         return super().has_converged()
+
+def init(chains, ndims, worker_interface, sigmas, betas, prior=None):
+    if prior is None:
+        prior = lambda i: np.random.randn(ndims)
+
+    samples = [prior(i) for i in range(chains.nstacks * chains.nchains)]
+
+    for i in range(chains.nstacks * chains.nchains):
+        worker_interface.submit(i, samples[i])
+    
+    for _ in range(chains.nchains):
+        i, energy = worker_interface.retrieve()
+        chains.initialise(i, samples[i], energy, sigmas[i], betas[i])

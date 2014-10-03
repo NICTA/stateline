@@ -3,18 +3,18 @@ import stateline.comms as comms
 import numpy as np
 
 
-def nlogpdf(x, mu, cov):
-    return 0.5 * np.sum(np.square(x - mu) / cov)
-
+def nlogpdf(x, cov):
+    x = x[np.newaxis].T
+    return 0.5 * float((x.T.dot(np.linalg.pinv(cov))).dot(x))
 
 def main():
     logging.initialise(-1, True, ".")
     worker = comms.Worker("localhost:5555")
 
-    # Get the mean and cov of the distribution
-    mean, cov = worker.global_spec
+    # Get the cov of the distribution
+    cov = worker.global_spec
 
-    comms.run_minion(worker, lambda x: nlogpdf(x, mean, cov))
+    comms.run_minion(worker, lambda x: nlogpdf(x, cov))
 
 if __name__ == "__main__":
     main()

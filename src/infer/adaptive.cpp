@@ -211,13 +211,13 @@ namespace stateline
       : adapter_(nStacks, nChains, nDims, settings),
       lengths_(nStacks * nChains, 0),
       covs_(nStacks * nChains, Eigen::MatrixXd::Identity(nDims, nDims)),
-      a_(nStacks * nChains, Eigen::MatrixXd::Zero(nDims, nDims)),
+      a_(nStacks * nChains, Eigen::MatrixXd::Identity(nDims, nDims)),
       u_(nStacks * nChains, Eigen::VectorXd::Zero(nDims)),
       sigmas_(nStacks * nChains)
     {
       for (uint i = 0; i < sigmas_.size(); i++)
       {
-        sigmas_[i] = adapter_.sigmas()[i][0] *
+        sigmas_[i] = adapter_.sigmas()[i][0] * adapter_.sigmas()[i][0] *
           Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
       }
     }
@@ -226,7 +226,8 @@ namespace stateline
     {
       adapter_.update(i, s);
 
-      double n = (double)lengths_[i];
+      // 10 is theoretically optimal
+      double n = (double)lengths_[i] + 500;
       Eigen::VectorXd x = s.sample;
 
       a_[i] = a_[i] * (n / (n + 1)) + (x * x.transpose()) / (n + 1);
@@ -234,13 +235,9 @@ namespace stateline
 
       covs_[i] = a_[i] - (u_[i] * u_[i].transpose());// / (n + 1);
 
-      // Ensure we don't get a zero covariance because of bad samples.
-      if ((covs_[i].array() > 1e-8).any())
-      {
-        // Flatten the cov matrix to get a sigma vector
-        sigmas_[i] = adapter_.sigmas()[i][0] *
-          Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
-      }
+      // Flatten the cov matrix to get a sigma vector
+      sigmas_[i] = adapter_.sigmas()[i][0] * adapter_.sigmas()[i][0] *
+        Eigen::Map<Eigen::VectorXd>(covs_[i].data(), covs_[i].size());
 
       lengths_[i]++;
     }
@@ -314,8 +311,6 @@ namespace stateline
         acceptRates_[i](curBlocks_[i]) =
           adapters_[curBlocks_[i]].acceptRates()[i](0);
 
-        //std::cout << "updated adapter : " << curBlocks_[i] << std::endl;
-
         // We are now waiting on the next block
         curBlocks_[i] = (curBlocks_[i] + 1) % numBlocks_;
       }
@@ -325,8 +320,6 @@ namespace stateline
       // Mask out sigmas not in the next block
       maskedSigmas_[i] = (blocks_ == next).cast<double>() *
         adapters_[next].sigmas()[i].array();
-
-      //std::cout << "new masked sigmas : " << maskedSigmas_[i] << std::endl;
     }
 
     const std::vector<Eigen::VectorXd> &BlockSigmaAdapter::acceptRates() const
