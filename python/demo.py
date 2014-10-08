@@ -39,7 +39,7 @@ def random_nd_rotation(dimension, theta_max):
 nstacks, nchains = 1, 5
 
 # We want to sample from a high-dimensional normal distribution
-ndims = 20
+ndims = 10
 
 # Generate a stretched covariance matrix
 true_cov = np.identity(ndims)
@@ -48,16 +48,16 @@ rotation = random_nd_rotation(ndims, np.pi / 2)
 true_cov = np.dot(np.dot(rotation, true_cov), rotation.T)
 
 # Number of samples to collect
-nsamples = 10000
+nsamples = 2000
 
 # Number of samples to burn-in
-nburnin = 30000
+nburnin = 10000
+
+# Maximum lag
+maxlags = 200
 
 # Number of random trials to perform for each adaption method
 ntrials = 1
-
-# Number of samples to average for the distance calculation
-window_size = 200
 
 ###############################################################################
 # Running the experiment
@@ -66,7 +66,7 @@ ctrlc = False
 def signal_handler(signal, frame):
     ctrlc = True
 
-def run_mcmc(proposal, sigma_adapter, label, colour):
+def run_mcmc(proposal, sigma_adapter, ax):
     # Start the worker interface
     worker_interface = mcmc.WorkerInterface(5555, true_cov)
 
@@ -82,11 +82,6 @@ def run_mcmc(proposal, sigma_adapter, label, colour):
     sampler = mcmc.Sampler(worker_interface, chains, proposal, swap_interval=10)
     logger = mcmc.TableLogger(nstacks, nchains, 1000)
 
-    # Record the distance between each sample
-    dists, cur_dist = [], 0
-    window = deque()
-    prev_sample = chains.last_state(0).sample
-
     while chains.length(0) < nburnin + nsamples:
         i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
 
@@ -101,25 +96,21 @@ def run_mcmc(proposal, sigma_adapter, label, colour):
             sampler.flush()
             sys.exit()
 
-        if i == 0 and chains.length(0) > nburnin:
-            window.append(np.linalg.norm(state.sample - prev_sample))
-            cur_dist += window[-1]
-            if len(window) > window_size:
-                cur_dist -= window.popleft()
-            dists.append(cur_dist * 1.0 / window_size)
-            prev_sample = state.sample
-
     sampler.flush()  # makes sure all outstanding jobs are finished
 
-    # Plot the distance traveled for this run
-    pl.plot(dists[window_size:], label=label, c=colour)
+    # Plot the autocorrelation
+    samples = chains.flat_samples(burnin=nburnin)
+    for i in range(ndims):
+        ax.acorr(samples[:, i], maxlags=maxlags, normed=True, lw=2, alpha=0.5)
 
-    return np.cov(chains.samples(0)[-nburnin:].T, bias=1)
+    return np.cov(chains.samples(0, burnin=nburnin).T, bias=1)
 
 
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     logging.initialise(0, True, ".")
+
+    f, (ax_scalar, ax_cov, ax_block) = pl.subplots(3, sharex=True, sharey=True)
 
     for i in range(ntrials):
         print('Running sliding window adapter ({0}/{1})...'.format(i + 1, ntrials))
@@ -130,7 +121,7 @@ def main():
                                                              window_size=1000,
                                                              adapt_rate=0.1,
                                                              cold_sigma=0.53),
-                              'scalar', 'blue')
+                              ax_scalar)
 
     for i in range(ntrials):
         print('Running covariance adapter ({0}/{1})...'.format(i + 1, ntrials))
@@ -141,7 +132,7 @@ def main():
                                                        window_size=1000,
                                                        adapt_rate=0.1,
                                                        cold_sigma=0.58),
-                              'cov', 'red')
+                              ax_cov)
 
     for i in range(ntrials):
         print('Running block adapter ({0}/{1})...'.format(i + 1, ntrials))
@@ -153,19 +144,17 @@ def main():
                                                     window_size=1000,
                                                     adapt_rate=0.1,
                                                     cold_sigma=5.0),
-                              'block', 'green')
+                              ax_block)
 
     print('Cleaning up...')
     p.wait()
 
-    print('Plotting distance...')
-    pl.title('Average distance between samples over time using three different adaptive methods')
-    pl.legend([mlines.Line2D([], [], color='blue'),
-               mlines.Line2D([], [], color='red'),
-               mlines.Line2D([], [], color='green')],
-               ['scalar', 'cov', 'block'])
-    pl.xlabel('Samples')
-    pl.ylabel('Average distance over {0} samples'.format(window_size))
+    print('Plotting autocorrelation...')
+    pl.suptitle('Autocorrelation of samples using three different adaptive methods')
+    ax_scalar.set_title('Scalar Adapter')
+    ax_cov.set_title('Covariance Adapter')
+    ax_block.set_title('Block Adapter')
+    ax_block.set_ylabel('Lag')
     pl.show()
 
     print('Plotting covariance matrix comparison...')
