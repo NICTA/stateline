@@ -9,7 +9,8 @@ import sys
 import subprocess
 from collections import deque
 
-def subplane_rotation(dimension, index_1, index_2, theta):
+def subplane_rotation(dimension, i1, i2, theta):
+    R = np.eye(dimension)
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
     R[i1,i1] = cos_theta
