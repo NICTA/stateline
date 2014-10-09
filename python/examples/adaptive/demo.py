@@ -10,10 +10,6 @@ import subprocess
 from collections import deque
 
 def subplane_rotation(dimension, index_1, index_2, theta):
-    assert not (index_1 == index_2)
-    i1 = min(index_1,index_2)
-    i2 = max(index_1, index_2)
-    R = np.eye(dimension)
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
     R[i1,i1] = cos_theta
