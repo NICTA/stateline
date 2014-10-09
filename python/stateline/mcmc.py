@@ -17,13 +17,13 @@ class State(_sl.State):
 
     Attributes
     ----------
-    sample : array-like
+    sample : array-like [n]
         The sample from the target distribution which this state represents.
         This is a 1d-array whose length corresponds to the dimensionality of
         the target distribution.
     energy : float
         The negative log likelihood of this sample.
-    sigma : array-like
+    sigma : array-like [m]
         The step size vector of the chain when this state was evaluated.
     beta : float
         The inverse temperature of the chain when this state was evaluated.
@@ -31,7 +31,7 @@ class State(_sl.State):
         If this is True, then this state was an accepted proposed state.
         Otherwise, this state is the same as the previous state in the chain
         because it was rejected.
-    swap_type : int
+    swap_type : instance of SwapType
         The type of swap performed on this state.
     """
 
@@ -62,10 +62,32 @@ class State(_sl.State):
 
 
 class WorkerInterface(_sl.WorkerInterface):
-    """"""
+    """Class used to submit MCMC jobs and retrieve results from workers."""
 
     def __init__(self, port, global_spec=None, job_specs=None,
                  job_construct_fn=None, result_energy_fn=None):
+        """Create a new interface to the worker.
+
+        Parameters
+        ----------
+        port : int
+            The port to the run the server on. All workers will connect on this
+            port.
+        global_spec : object, optional
+            A picklable object to send to all workers in the beginning. Defaults
+            to None.
+        job_specs : dict, optional
+            A dictionary of picklable objects to send to workers for a specific
+            type of job. Each key is a job type ID and each corresponding object
+            is sent to workers with that job type. Defaults to no job specs.
+        job_construct_fn : callable, optional
+            A function that takes a 1D numpy parameter array and converts it
+            into a list of JobData objects representing jobs to be evaluated.
+        result_energy_fn : callable, optional
+            A function that takes a list of JobResult objects and converts it
+            into a scalar, representing the energy of the parameter vector that
+            constructed those JobResult objects.
+        """
         p_global_spec = pickle.dumps(global_spec)
 
         if job_specs is None:
@@ -83,9 +105,11 @@ class WorkerInterface(_sl.WorkerInterface):
         # We need to wrap the result energy function because it is passed a
         # list of raw C++ wrapper of ResultData, instead of the python class.
         def wrapped_result_energy_fn(results):
-            # TODO better way to do this?
             x = [comms.ResultData(r.job_type, pickle.loads(r.get_data())) for r in results]
-            return result_energy_fn(x)
+            try:
+                return float(result_energy_fn(x))
+            except (TypeError, ValueError):
+                raise TypeError('The energy function must return a float')
 
         super().__init__(p_global_spec, p_job_specs,
                          job_construct_fn, wrapped_result_energy_fn, port)
@@ -105,12 +129,59 @@ class WorkerInterface(_sl.WorkerInterface):
         super().submit(i, np.asarray(x, dtype=float))
 
     def retrieve(self):
+        """Retrieve the energy of an evaluated sample.
+
+        This method retrieves the energy of sample that has been submitted
+        asynchronously and has not been retrieved yet.
+
+        Returns
+        -------
+        i : int
+            The ID of the chain that this sample is from.
+        x : float
+            The energy of the sample.
+        """
         return super().retrieve()
 
 
 class ChainArray(_sl.ChainArray):
-    def __init__(self, nstacks, nchains, recover=False, overwrite=False,
-                 db_path="chainDB", cache_length=1000, cache_size=10):
+    """Store an MCMC chain persistently.
+
+    Attributes
+    ----------
+    nstacks : int
+        The number of stacks in the chain array.
+    nchains : int
+        The number of chains per stack.
+    ntotal : int
+        The total number of chains in all stacks.
+    """
+    def __init__(self, nstacks, nchains, db_path="chainDB", recover=False,
+                 overwrite=False, cache_length=1000, cache_size=10):
+        """Create a new chain array.
+
+        Parameters
+        ----------
+        nstacks : int
+            The number of stacks in the chain array.
+        nchains : int
+            The number of chains per stack.
+        db_path : string
+            The path to the database used to store the chain array.
+        recover : bool, optional
+            If set to True, the contents of the chainarray are recovered from
+            the database specified by `db_path`. If set to False, a new database
+            is created if none exists. Defaults to False.
+        overwrite : bool, optional
+            If set to True, the file specified by `db_path` is removed. Defaults
+            to False.
+        cache_length : int, optional
+            The maximum number of samples in each chain which are stored in
+            memory. If the number of samples exceeds this value, the chain
+            is flushed to disk. Defaults to 1000.
+        cache_size : int, optional
+            The database cache size in MB. Defaults to 10MB.
+        """
         if overwrite:
             shutil.rmtree(db_path, ignore_errors=True)
 
@@ -133,43 +204,131 @@ class ChainArray(_sl.ChainArray):
     def nchains(self):
         return self._nchains
 
+    @property
+    def ntotal(self):
+        return self._nstacks * self._nchains
+
     def initialise(self, i, sample, energy, sigma, beta):
-        super().initialise(i,
-                           np.asarray(sample, dtype=float), energy,
+        """Initialise a chain with initial conditions.
+
+        Parameters
+        ----------
+        i : int
+            The ID of the chain to intialise.
+        sample : array-like [n]
+            The first sample to be added to the chain.
+        energy : float
+            The energy of `sample`.
+        sigma : array-like [m]
+            A vector representing the parameters of the proposal function.
+        beta : float
+            The inverse temperature of the chain.
+        """
+        assert 0 <= i < self.ntotal
+        super().initialise(i, np.asarray(sample, dtype=float), energy,
                            np.asarray(sigma, dtype=float), beta)
 
     def length(self, i):
+        """Get the length of a chain.
+
+        Parameters
+        ----------
+        i : int
+            The ID of the chain.
+
+        Returns
+        -------
+        length : int
+            The length of the chain.
+        """
+        assert 0 <= i < self.ntotal
         return super().length(i)
 
-    def states(self, i):
+    def states(self, s, burnin=0):
+        """Get the all the states of the coldest chain of a stack.
+
+        Parameters
+        ----------
+        s : int
+            The ID of the stack.
+        burnin : int, optional
+            The number of states to discard from the beginning. Defaults to 0.
+
+        Returns
+        -------
+        states : list of State objects.
+            The states in the chain.
+        """
+        assert 0 <= s < self.nstacks
+        assert burnin >= 0
         return [State(s.get_sample(), s.energy, s.get_sigma(), s.beta,
-                      s.accepted, s.swap_type) for s in super().states(i)]
+                      s.accepted, s.swap_type)
+                for s in super().states(s * self.nchains)[burnin:]]
 
-    def samples(self, i, burnin=0):
-        return np.array([s.sample for s in self.states(i)[burnin:]])
+    def samples(self, s, burnin=0):
+        """Get the all the samples in the coldest chain of a stack.
 
-    def flat_samples(self, burnin=0):
-        return np.vstack(self.samples(i * self.nchains, burnin)
-                         for i in range(self.nstacks))
+        Parameters
+        ----------
+        i : int
+            The ID of the chain.
+        burnin : int, optional
+            The number of samples to discard from the beginning. Defaults to 0.
+
+        Returns
+        -------
+        samples : 2D numpy array [nsamples x ndims]
+            The samples in the chain. Each row is a sample.
+        """
+        assert 0 <= s < self.nstacks
+        assert burnin >= 0
+        return np.array([s.get_sample()
+                         for s in super().states(s * self.nchains)[burnin:]])
+
+    def cold_samples(self, burnin=0):
+        """Get the samples in the coldest chains of all the stacks.
+
+        Parameters
+        ----------
+        burnin : int, optional
+            The number of samples to discard from the beginning. Defaults to 0.
+
+        Returns
+        -------
+        samples : iterable of 2D numpy arrays [nsamples x ndims]
+            List of the samples in the chains. Each row is a sample.
+        """
+        assert burnin >= 0
+        return (self.samples(s, burnin) for s in range(self.nstacks))
 
     def sigma(self, i):
+        """Get the sigma of a chain."""
+        assert 0 <= i < self.ntotal
         return super().sigma(i)
 
     def set_sigma(self, i, value):
+        """Set the sigma of a chain."""
+        assert 0 <= i < self.ntotal
         super().set_sigma(i, np.asarray(value, dtype=float))
 
     def beta(self, i):
+        """Get the beta of a chain."""
+        assert 0 <= i < self.ntotal
         return super().beta(i)
 
     def set_beta(self, i, value):
+        """Set the beta of a chain."""
+        assert 0 <= i < self.ntotal
         super().set_beta(i, value)
 
     def last_state(self, i):
+        """Get the last state of a chain."""
         state = super().last_state(i)
         return State(state.get_sample(), state.energy, state.get_sigma(),
                      state.beta, state.accepted, state.swap_type)
 
     def append(self, i, sample, energy):
+        """Append a new state into a chain."""
         super().append(i, np.asarray(sample, dtype=float), energy)
 
 
@@ -377,15 +536,16 @@ class EPSRDiagnostic(_sl.EPSRDiagnostic):
     def has_converged(self):
         return super().has_converged()
 
+
 def init(chains, ndims, worker_interface, sigmas, betas, prior=None):
     if prior is None:
-        prior = lambda i: np.random.randn(ndims)
+        prior = lambda _: np.random.randn(ndims)
 
     samples = [prior(i) for i in range(chains.nstacks * chains.nchains)]
 
-    for i in range(chains.nstacks * chains.nchains):
+    for i in range(chains.ntotal):
         worker_interface.submit(i, samples[i])
     
-    for _ in range(chains.nchains):
+    for _ in range(chains.ntotal):
         i, energy = worker_interface.retrieve()
         chains.initialise(i, samples[i], energy, sigmas[i], betas[i])

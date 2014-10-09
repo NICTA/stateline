@@ -1,15 +1,13 @@
-"""This module contains communications and networking classes."""
+"""This module contains communications and networking wrappers."""
 
 import _stateline as _sl
 import pickle
 
 
 class JobData(_sl.JobData):
-    _BASE = _sl.JobData
-
     def __init__(self, job_type, global_data, job_data):
-        self._BASE.__init__(self, job_type,
-                            pickle.dumps(global_data), pickle.dumps(job_data))
+        super().__init__(job_type, pickle.dumps(global_data),
+                         pickle.dumps(job_data))
         self._job_type = job_type
 
     @property
@@ -281,7 +279,7 @@ class Minion(_sl.Minion):
         self._BASE.submit_result(self, ResultData(self.job_type, result))
 
 
-def run_minion(worker, func, job_type=0, use_global=False):
+def run_minion(worker, func, job_type=0, unpack=False):
     """Create a Minion to run a work function.
 
     Parameters
@@ -295,15 +293,14 @@ def run_minion(worker, func, job_type=0, use_global=False):
         of the job. The output is passed to `Minion`.`submit()`.
     job_type : int, optional
         The type of job these new Minions should handle. Defaults to 0.
-    use_global : boolean, optional
-        If this is True, then the global data of each job is also passed to
-        the work function (calls func(global_data, job_data)). Otherwise,
-        only the job data is passed to the work function. Defaults to False.
+    unpack : boolean, optional
+        If this is True, then the job data is unpacked as arguments to `func`.
+        Defaults to False.
     """
-    if use_global is True:
+    if unpack:
         m = Minion(worker, job_type)
-        for global_data, job_data in m.jobs():
-            m.submit(func(global_data, job_data))
+        for _, job_data in m.jobs():
+            m.submit(func(*job_data))
     else:
         m = Minion(worker, job_type)
         for _, job_data in m.jobs():
