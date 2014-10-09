@@ -21,7 +21,7 @@ xmax = 10  # The maximum x coordinate of the generated data points
 N = 30  # Number of data points to generate
 noise = 1.0  # Standard deviation of noise
 nstacks, nchains = 20, 2  # Dimensions of the chain array
-nsamples = 2000  # Number of samples to collect (including burnin)
+nsamples = 1000  # Number of samples to collect (excluding burnin)
 nburn = 1000  # Number of samples to discard from the beginning
 
 # ------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ print('Waiting for workers...')
 # Create a worker interface to communicate with workers
 workers = mcmc.WorkerInterface(5555, (data_x, data_y, noise))
 
-# Use a gaussian proposal and sliding window adapter
+# Use a covariance gaussian proposal and covariance adapter
 proposal = mcmc.gaussian_cov_proposal
 sigma_adapter = mcmc.SigmaCovarianceAdapter(nstacks, nchains, 2,
                                             steps_per_adapt=10)
@@ -74,7 +74,7 @@ sampler = mcmc.Sampler(workers, chains, proposal, swap_interval=10)
 
 # Run the sampler until we've collected enough samples
 print('Running for sampler for {} samples...'.format(nsamples * chains.nstacks))
-while chains.length(0) < nsamples:
+while chains.length(0) < nsamples + nburn:
     i, state = sampler.step(sigma_adapter.sigmas(), beta_adapter.betas())
 
     sigma_adapter.update(i, state)
