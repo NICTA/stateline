@@ -263,7 +263,7 @@ namespace stateline
         // Recover beta and sigma
         VLOG(1) << "Recovering chain " << id << " from disk.";
         beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
-        sigma_[id] = detail::unarchiveString<Eigen::VectorXd>(detail::getFromDb<detail::SIGMA>(db_, id));
+        beta_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id);
       }
     }
 
@@ -310,7 +310,7 @@ namespace stateline
     }
 
     void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, 
-        double energy, const Eigen::VectorXd& sigma, double beta)
+        double energy, double sigma, double beta)
     {
       setSigma(id, sigma);
       setBeta(id, beta);
@@ -318,7 +318,7 @@ namespace stateline
 
       // Now update the disk
       leveldb::WriteBatch batch;
-      detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
+      detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
       detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
       db_.put(batch);
     }
@@ -350,7 +350,7 @@ namespace stateline
         detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, id, 0, 1);
       }
       // Update sigma and beta
-      detail::putToBatch<detail::SIGMA>(batch, id, 0, detail::archiveString(sigma_[id]));
+      detail::putToBatch<detail::SIGMA>(batch, id, 0, sigma_[id]);
       detail::putToBatch<detail::BETA>(batch, id, 0, beta_[id]);
 
       // Write the batch
@@ -446,12 +446,12 @@ namespace stateline
       return swapped ? SwapType::Accept : SwapType::Reject;
     }
 
-    Eigen::VectorXd ChainArray::sigma(uint id) const
+    double ChainArray::sigma(uint id) const
     {
       return sigma_[id];
     }
 
-    void ChainArray::setSigma(uint id, const Eigen::VectorXd& sigma)
+    void ChainArray::setSigma(uint id, double sigma)
     {
       sigma_[id] = sigma;
     }

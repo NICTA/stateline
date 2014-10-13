@@ -93,9 +93,9 @@ namespace stateline
         //!
         //! \param id The id of the chain (see \ref id).
         //! \param sample the new state to append
-        //! \param sigma the proposal vector for the chain
+        //! \param sigma the proposal width for the chain
         //! \param beta the temperature of the new chain
-        void initialise(uint id, const Eigen::VectorXd& sample, double energy, const Eigen::VectorXd& sigma, double beta);
+        void initialise(uint id, const Eigen::VectorXd& sample, double energy, double sigma, double beta);
 
         //! Forcibly flush the cache for a particular chain to disk.
         //!
@@ -138,14 +138,14 @@ namespace stateline
         //! \param id The id of the second chain (see \ref id).
         //! \return The proposal width of the chain.
         //!
-        Eigen::VectorXd sigma(uint id) const;
+        double sigma(uint id) const;
 
         //! Set the proposal width of a specific chain.
         //!
         //! \param id The id of the second chain (see \ref id).
         //! \param sigma The new proposal width value.
         //!
-        void setSigma(uint id, const Eigen::VectorXd& sigma);
+        void setSigma(uint id, double sigma);
 
         //! Get the inverse temperature of a specific chain.
         //!
@@ -209,7 +209,7 @@ namespace stateline
         uint nchains_;
         uint cacheLength_;
         std::vector<double> beta_;
-        std::vector<Eigen::VectorXd> sigma_;
+        std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
     };
 

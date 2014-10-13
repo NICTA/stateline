@@ -62,13 +62,12 @@ int main(int ac, char *av[])
   sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default();
   
   // Create an adaption system for sigma
-  sl::mcmc::SigmaCovarianceAdapter sigmaAdapter(nstacks, nchains, ndims,
-      sigmaSettings);
+  sl::mcmc::SlidingWindowSigmaAdapter sigmaAdapter(nstacks, nchains, ndims, sigmaSettings);
   // Create an adaption system for beta
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
   // define initial parameters
-  std::vector<Eigen::VectorXd> sigmas = sigmaAdapter.sigmas();
-  std::vector<Eigen::VectorXd> acceptRates = sigmaAdapter.acceptRates();
+  std::vector<double> sigmas = sigmaAdapter.sigmas();
+  std::vector<double> acceptRates = sigmaAdapter.acceptRates();
   std::vector<double> betas = betaAdapter.betas();
   std::vector<double> swapRates = betaAdapter.swapRates();
 
@@ -85,9 +84,12 @@ int main(int ac, char *av[])
       sl::mcmc::singleJobConstruct,
       sl::mcmc::singleJobEnergy,
       sl::DelegatorSettings::Default(port));
-     
+
+  // We'll estimate sample covariance to make a better proposal distribution
+  sl::mcmc::CovarianceEstimator covEstimator(nstacks, nchains, ndims);
+  std::vector<Eigen::MatrixXd> covariances = covEstimator.covariances();
   
-  auto proposalFn = std::bind(sl::mcmc::gaussianCovProposal, ph::_1, ph::_2, ph::_3);
+  sl::mcmc::ProposalFunction proposalFn = std::bind(sl::mcmc::gaussianCovProposal, ph::_1, ph::_2, ph::_3, std::cref(covariances));
   
   // Recover the chain array?
   bool recover = vm["recover"].as<bool>();
@@ -135,6 +137,8 @@ int main(int ac, char *av[])
     }
     sigmaAdapter.update(id, state);
     betaAdapter.update(id, state);
+    covEstimator.update(id, state.sample);
+    covariances = covEstimator.covariances();
 
     sigmas = sigmaAdapter.sigmas();
     acceptRates = sigmaAdapter.acceptRates();

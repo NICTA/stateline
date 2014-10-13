@@ -22,9 +22,9 @@ class ChainArrayTest : public testing::Test
   public:
     uint nChains = 3;
     uint nStacks = 2;
-    Eigen::VectorXd sigma;
+    double sigma;
     double beta;
-    std::vector<Eigen::VectorXd> sigmas;
+    std::vector<double> sigmas;
     std::vector<double> betas;
     uint cacheLength = 2;
     std::string path = "./AUTOGENtestChainArray";
@@ -38,7 +38,7 @@ class ChainArrayTest : public testing::Test
       settings.recoverFromDisk = false;
       boost::filesystem::remove_all(path);
 
-      sigma = Eigen::VectorXd::Ones(1);
+      sigma = 1.0;
       beta = 1.0;
 
       for (uint i = 0; i < nChains * nStacks; i++)
@@ -74,12 +74,12 @@ TEST_F(ChainArrayTest, canInitialiseChain)
   chains.initialise(0, m, 666.0, sigma, beta);
 
   ASSERT_EQ(1U, chains.length(0));
-  EXPECT_TRUE(chains.sigma(0).isApprox(sigma));
+  EXPECT_DOUBLE_EQ(chains.sigma(0), sigma);
   EXPECT_DOUBLE_EQ(beta, chains.beta(0));
   
   EXPECT_DOUBLE_EQ(666.0, chains.lastState(0).energy);
   EXPECT_TRUE(chains.lastState(0).sample.isApprox(m));
-  EXPECT_TRUE(chains.lastState(0).sigma.isApprox(sigma));
+  EXPECT_DOUBLE_EQ(chains.lastState(0).sigma, sigma);
   EXPECT_DOUBLE_EQ(beta, chains.lastState(0).beta);
   EXPECT_EQ(true, chains.lastState(0).accepted);
   EXPECT_EQ(SwapType::NoAttempt, chains.lastState(0).swapType);
@@ -97,8 +97,8 @@ TEST_F(ChainArrayTest, canSwapChains)
   m2 << -1.0, -2.0, -3.0, -4.0, -5.0;
 
   // Give the two chains different sigma and beta
-  Eigen::VectorXd sigma1 = Eigen::VectorXd::Ones(1) * 0.1;
-  Eigen::VectorXd sigma2 = Eigen::VectorXd::Ones(1) * 0.2;
+  double sigma1 = 0.1;
+  double sigma2 = 0.2;
 
   // Append to two separate chains and then swap them
   chains.initialise(0, m1, 666.0, sigma1, 0.1);
@@ -111,7 +111,7 @@ TEST_F(ChainArrayTest, canSwapChains)
   // Chain 0 should be m2
   EXPECT_DOUBLE_EQ(667.0, chains.lastState(0).energy);
   EXPECT_TRUE(chains.lastState(0).sample.isApprox(m2));
-  EXPECT_TRUE(chains.lastState(0).sigma.isApprox(sigma2));
+  EXPECT_DOUBLE_EQ(chains.lastState(0).sigma, sigma2);
   EXPECT_DOUBLE_EQ(0.11, chains.lastState(0).beta);
   EXPECT_EQ(true, chains.lastState(0).accepted);
   EXPECT_EQ(SwapType::Accept, chains.lastState(0).swapType);
@@ -119,7 +119,7 @@ TEST_F(ChainArrayTest, canSwapChains)
   // Chain 1 should be m1
   EXPECT_DOUBLE_EQ(666.0, chains.lastState(1).energy);
   EXPECT_TRUE(chains.lastState(1).sample.isApprox(m1));
-  EXPECT_TRUE(chains.lastState(1).sigma.isApprox(sigma1));
+  EXPECT_DOUBLE_EQ(chains.lastState(1).sigma, sigma1);
   EXPECT_DOUBLE_EQ(0.1, chains.lastState(1).beta);
   EXPECT_EQ(true, chains.lastState(1).accepted);
   EXPECT_EQ(SwapType::NoAttempt, chains.lastState(1).swapType);
@@ -153,7 +153,7 @@ TEST_F(ChainArrayTest, canRecoverChain)
   ASSERT_EQ(2U, recovered.length(0));
   EXPECT_DOUBLE_EQ(333.0, recovered.lastState(0).energy);
   EXPECT_TRUE(recovered.lastState(0).sample.isApprox(m2));
-  EXPECT_TRUE(recovered.lastState(0).sigma.isApprox(sigma));
+  EXPECT_DOUBLE_EQ(recovered.lastState(0).sigma, sigma);
   EXPECT_DOUBLE_EQ(1.0, recovered.beta(0));
   EXPECT_EQ(true, recovered.lastState(0).accepted);
   EXPECT_EQ(SwapType::NoAttempt, recovered.lastState(0).swapType);
@@ -192,7 +192,7 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
 
         // Randomly set the beta and sigma
         chains.setBeta(i, dist(gen));
-        chains.setSigma(i, Eigen::VectorXd::Random(5));
+        chains.setSigma(i, dist(gen));
       }
     }
     // Save the state of the chain so we can verify the recovered version
@@ -219,7 +219,7 @@ TEST_F(ChainArrayTest, canRecoverMultipleChains)
     {
       EXPECT_TRUE(states[i][j].sample.isApprox(recovered.state(i, j).sample));
       EXPECT_EQ(states[i][j].energy, recovered.state(i, j).energy);
-      EXPECT_TRUE(states[i][j].sigma.isApprox(recovered.state(i, j).sigma));
+      EXPECT_EQ(states[i][j].sigma, recovered.state(i, j).sigma);
       EXPECT_EQ(states[i][j].beta, recovered.state(i, j).beta);
       EXPECT_EQ(states[i][j].accepted, recovered.state(i, j).accepted);
       EXPECT_EQ(states[i][j].swapType, recovered.state(i, j).swapType);

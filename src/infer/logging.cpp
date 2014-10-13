@@ -31,8 +31,8 @@ namespace stateline
     }
 
     void Logger::update(uint id, const State& s,
-        const std::vector<Eigen::VectorXd>& sigmas,
-        const std::vector<Eigen::VectorXd>& acceptRates,
+        const std::vector<double>& sigmas,
+        const std::vector<double>& acceptRates,
         const std::vector<double>& betas,
         const std::vector<double>& swapRates)
     {
@@ -66,8 +66,8 @@ namespace stateline
              << std::setw(9) << lengths_[i] << " "
              << std::setw(10) << minEnergies_[i] << " "
              << std::setw(10) << energies_[i] << " "
-             << std::setw(10) << sigmas[i](0) << " "
-             << std::setw(10) << acceptRates[i](0) << " "
+             << std::setw(10) << sigmas[i] << " "
+             << std::setw(10) << acceptRates[i] << " "
              << std::setw(10) << nAcceptsGlobal_[i] / (double) lengths_[i] << " "
              << std::setw(10) << betas[i] << " "
              << std::setw(10) << swapRates[i] << " " << std::setw(10)

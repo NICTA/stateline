@@ -63,9 +63,9 @@ namespace stateline
 
         void update(uint chainID, const State& state);
 
-        const std::vector<Eigen::VectorXd> &sigmas() const;
+        const std::vector<double> &sigmas() const;
 
-        const std::vector<Eigen::VectorXd> &acceptRates() const;
+        const std::vector<double> &acceptRates() const;
 
       private:
 
@@ -74,8 +74,8 @@ namespace stateline
         uint nStacks_;
         uint nChains_;
         std::vector<boost::circular_buffer<bool>> acceptBuffers_;
-        std::vector<Eigen::VectorXd> sigmas_;
-        std::vector<Eigen::VectorXd> acceptRates_;
+        std::vector<double> sigmas_;
+        std::vector<double> acceptRates_;
         std::vector<uint> lengths_;
         SlidingWindowSigmaSettings s_;
     };
@@ -140,51 +140,18 @@ namespace stateline
     };
 
 
-    class SigmaCovarianceAdapter
+    class CovarianceEstimator
     {
       public:
-        SigmaCovarianceAdapter(uint nStacks, uint nChains, uint nDims,
-            const SlidingWindowSigmaSettings &settings);
-
-        void update(uint i, const State &s);
-
-        const std::vector<Eigen::VectorXd> &acceptRates() const;
-
-        const std::vector<Eigen::VectorXd> &sigmas() const;
-
-        const std::vector<Eigen::MatrixXd> &covs() const;
+        CovarianceEstimator(uint nStacks, uint nChains, uint nDims);
+        void update(uint i, const Eigen::VectorXd& sample);
+        const std::vector<Eigen::MatrixXd> &covariances() const;
 
       private:
-        SlidingWindowSigmaAdapter adapter_;
         std::vector<uint> lengths_;
         std::vector<Eigen::MatrixXd> covs_;
         std::vector<Eigen::MatrixXd> a_;
         std::vector<Eigen::VectorXd> u_;
-        std::vector<Eigen::VectorXd> sigmas_;
-    };
-
-    
-    class BlockSigmaAdapter
-    {
-      public:
-        BlockSigmaAdapter(uint nStacks, uint nChains, uint nDims,
-            const std::vector<uint> &blocks,
-            const SlidingWindowSigmaSettings &settings);
-
-        void update(uint i, const State &s);
-
-        const std::vector<Eigen::VectorXd> &acceptRates() const;
-
-        const std::vector<Eigen::VectorXd> &sigmas() const;
-
-      private:
-        std::vector<SlidingWindowSigmaAdapter> adapters_;
-        Eigen::ArrayXd blocks_;
-        std::vector<uint> curBlocks_;
-        std::vector<Eigen::VectorXd> maskedSigmas_;
-        std::vector<Eigen::VectorXd> acceptRates_;
-        std::vector<bool> isEmpty_;
-        uint numBlocks_;
     };
     
   }

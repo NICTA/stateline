@@ -52,8 +52,7 @@ namespace stateline
       return result;
     }
 
-    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample,
-        const Eigen::VectorXd &sigma)
+    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma)
     {
       // Random number generators
       static std::random_device rd;
@@ -63,20 +62,20 @@ namespace stateline
       // Vary each paramater according to a Gaussian distribution
       Eigen::VectorXd proposal(sample.rows());
       for (int i = 0; i < proposal.rows(); i++)
-        proposal(i) = sample(i) + rand(generator) * sigma(i);
+        proposal(i) = sample(i) + rand(generator) * sigma;
 
       return proposal;
     }
 
     Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
-        const Eigen::VectorXd &sigma,
+        double sigma,
         const Eigen::VectorXd& min, const Eigen::VectorXd& max)
     {
       return bouncyBounds(gaussianProposal(id, sample, sigma), min, max);
     }
 
     Eigen::VectorXd gaussianCovProposal(uint id, const Eigen::VectorXd& sample,
-        const Eigen::VectorXd &sigma)
+        double sigma, const std::vector<Eigen::MatrixXd>& covariances)
     {
       // Random number generators
       static std::random_device rd;
@@ -84,15 +83,14 @@ namespace stateline
       static std::normal_distribution<> rand; // Standard normal
 
       // Reshape sigma into a square covariance matrix
-      uint n = (uint)sqrt(sigma.size());
-      const Eigen::MatrixXd cov = Eigen::Map<const Eigen::MatrixXd>(sigma.data(), n, n);
+      uint n = sample.size();
 
       Eigen::VectorXd randn(n);
       for (uint i = 0; i < n; i++)
         randn(i) = rand(generator);
 
-      Eigen::MatrixXd sigL = cov.llt().matrixL();
-      Eigen::MatrixXd proposal = sample + sigL * randn;
+      Eigen::MatrixXd sigL = covariances[id].llt().matrixL();
+      Eigen::MatrixXd proposal = sample + sigL * randn * sigma * sigma;
       return proposal;
     }
 
@@ -125,7 +123,7 @@ namespace stateline
         flush();
     }
     
-    std::pair<uint, State> Sampler::step(const std::vector<Eigen::VectorXd>& sigmas, const std::vector<double>& betas)
+    std::pair<uint, State> Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas)
     {
       haveFlushed_ = false;
       // Listen for replies. As soon as a new state comes back,
