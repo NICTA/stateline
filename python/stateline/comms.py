@@ -5,6 +5,19 @@ import pickle
 
 
 class JobData(_sl.JobData):
+    """Class used to store information about a particular job.
+
+    Attributes
+    ----------
+    job_type : int
+        An integer representing the type of job this is.
+    global_data : object
+        A picklable object representing the data sent to all workers. 
+    job_data : object
+        A picklable object representing the data sent to all workers who handle
+        this job type.
+    """
+
     def __init__(self, job_type, global_data, job_data):
         super().__init__(job_type, pickle.dumps(global_data),
                          pickle.dumps(job_data))
@@ -16,27 +29,35 @@ class JobData(_sl.JobData):
 
     @property
     def global_data(self):
-        return pickle.loads(self._BASE.get_global_data(self))
+        return pickle.loads(super().get_global_data())
 
     @property
     def job_data(self):
-        return pickle.loads(self._BASE.get_job_data(self))
+        return pickle.loads(super().get_job_data())
 
 
 class ResultData(_sl.ResultData):
-    _BASE = _sl.ResultData
+    """Class used to store the result of a job.
+
+    Attributes
+    ----------
+    job_type : int
+        An integer representing the type of job this result is for.
+    data : object
+        A picklable object representing the result of a job.
+    """
 
     def __init__(self, job_type, data):
-        self._BASE.__init__(self, job_type, pickle.dumps(data))
+        super().__init__(job_type, pickle.dumps(data))
         self._job_type = job_type
 
     @property
     def job_type(self):
-        return self._BASE.job_type
+        return self._job_type
 
     @property
     def data(self):
-        return pickle.loads(self._BASE.get_data(self))
+        return pickle.loads(super().get_data())
 
 
 class Worker(_sl.Worker):
@@ -68,8 +89,6 @@ class Worker(_sl.Worker):
     {0: "Spec for job 0", 1: None, 2: "Spec for job 2"}
     """
 
-    _BASE = _sl.Worker
-
     def __init__(self, addr, job_types=None, poll_rate=100):
         """Create a new worker.
 
@@ -97,16 +116,16 @@ class Worker(_sl.Worker):
             # Default to accept only job type 0
             job_types = [0]
 
-        self._BASE.__init__(self, job_types, wkr_s)
+        super().__init__(job_types, wkr_s)
 
         # Set python friendly properties
         self._addr = addr
         self._poll_rate = poll_rate
         self._job_types = job_types
-        self._global_spec = pickle.loads(self._BASE.global_spec(self))
+        self._global_spec = pickle.loads(super().global_spec())
         self._job_specs = dict()
         for job_type in job_types:
-            spec = self._BASE.job_spec(self, job_type)
+            spec = super().job_spec(job_type)
             if len(spec) == 0:
                 # Empty spec means that the delegator did not have a spec for
                 # this job type
@@ -189,8 +208,6 @@ class Minion(_sl.Minion):
     >>> minion3 = Minion(worker, 3)
     """
 
-    _BASE = _sl.Minion
-
     def __init__(self, worker, job_type=0):
         """Create a new minion.
 
@@ -202,7 +219,7 @@ class Minion(_sl.Minion):
             The type of job that this minion can submit results for. By default,
             the minion can only submit results for job type 0.
         """
-        self._BASE.__init__(self, worker, job_type)
+        super().__init__(worker, job_type)
         self._worker = worker
         self._job_type = job_type
         self._got_job = False
@@ -233,7 +250,7 @@ class Minion(_sl.Minion):
             raise RuntimeError('Minion must submit result before asking for a'
                                'new job.')
 
-        raw = self._BASE.next_job(self)
+        raw = super().next_job()
         self._got_job = True
 
         # Unpack the raw JobData struct (we can ignore job type because minions
@@ -276,7 +293,7 @@ class Minion(_sl.Minion):
         self._got_job = False
 
         # Submit the result
-        self._BASE.submit_result(self, ResultData(self.job_type, result))
+        super().submit_result(ResultData(self.job_type, result))
 
 
 def run_minion(worker, func, job_type=0, unpack=False):
