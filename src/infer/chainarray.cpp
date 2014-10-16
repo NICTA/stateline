@@ -398,9 +398,9 @@ namespace stateline
       uint len = length(id);
 
       std::vector<State> v;
-      v.reserve((len - nburn) / nthin + 1);
+      v.reserve((len - nburn) / (nthin + 1) + 1);
 
-      for (uint i = nburn; i < len; i += nthin)
+      for (uint i = nburn; i < len; i += nthin + 1)
       {
         v.push_back(state(id, i));
       }
