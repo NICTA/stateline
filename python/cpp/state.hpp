@@ -12,16 +12,6 @@ py::object stateGetSample(mcmc::State &self)
   return eigen2numpy(self.sample);
 }
 
-void stateSetSigma(mcmc::State &self, py::object sigma)
-{
-  self.sigma = numpy2eigen(sigma);
-}
-
-py::object stateGetSigma(mcmc::State &self)
-{
-  return eigen2numpy(self.sigma);
-}
-
 void exportSwapType()
 {
   py::enum_<mcmc::SwapType>("SwapType")
@@ -37,8 +27,7 @@ void exportState()
     .def("get_sample", stateGetSample)
     .def("set_sample", stateSetSample)
     .def_readwrite("energy", &mcmc::State::energy)
-    .def("get_sigma", stateGetSigma)
-    .def("set_sigma", stateSetSigma)
+    .def_readwrite("sigma", &mcmc::State::sigma)
     .def_readwrite("beta", &mcmc::State::beta)
     .def_readwrite("accepted", &mcmc::State::accepted)
     .def_readwrite("swap_type", &mcmc::State::swapType)

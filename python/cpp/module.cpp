@@ -41,12 +41,12 @@ BOOST_PYTHON_MODULE(_stateline)
   exportChainArray();
   exportSampler();
   exportGaussianProposal();
+  exportGaussianCovProposal();
   exportSlidingWindowSigmaSettings();
   exportSlidingWindowBetaSettings();
   exportSlidingWindowSigmaAdapter();
   exportSlidingWindowBetaAdapter();
-  exportSigmaCovarianceAdapter();
-  exportBlockSigmaAdapter();
+  exportCovarianceEstimator();
   exportTableLogger();
   exportEPSRDiagnostic();
 

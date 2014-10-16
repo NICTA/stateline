@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 
 
-logging.initialise(-3, True, ".")
+logging.no_logging()
 
 
 def simple_job_construct_fn(x):

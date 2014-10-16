@@ -20,9 +20,9 @@ def test_chainarray_initialise():
     chain = mcmc.ChainArray(1, 3, recover=False, overwrite=True,
                             db_path='testChainDB2')
 
-    chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
-    chain.initialise(1, [4, 5, 6], 2.0, [2], 777.0)
-    chain.initialise(2, [7, 8, 9], 3.0, [3], 888.0)
+    chain.initialise(0, [1, 2, 3], 1.0, 1, 666.0)
+    chain.initialise(1, [4, 5, 6], 2.0, 2, 777.0)
+    chain.initialise(2, [7, 8, 9], 3.0, 3, 888.0)
 
     assert chain.length(0) == 1
     assert chain.length(1) == 1
@@ -36,9 +36,9 @@ def test_chainarray_initialise():
     assert chain.last_state(1).energy == 2.0
     assert chain.last_state(2).energy == 3.0
 
-    assert (chain.last_state(0).sigma == np.array([1])).all()
-    assert (chain.last_state(1).sigma == np.array([2])).all()
-    assert (chain.last_state(2).sigma == np.array([3])).all()
+    assert chain.last_state(0).sigma == 1
+    assert chain.last_state(1).sigma == 2
+    assert chain.last_state(2).sigma == 3
 
     assert chain.last_state(0).beta == 666.0
     assert chain.last_state(1).beta == 777.0
@@ -51,12 +51,12 @@ def test_chainarray_set_sigma():
     chain = mcmc.ChainArray(1, 1, recover=False, overwrite=True,
                             db_path='testChainDB3')
 
-    chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
+    chain.initialise(0, [1, 2, 3], 1.0, 1, 666.0)
 
-    chain.set_sigma(0, [10])
+    chain.set_sigma(0, 10)
     chain.append(0, [4, 5, 6], 1.0)
 
-    assert chain.last_state(0).sigma == [10]
+    assert chain.last_state(0).sigma == 10
 
     shutil.rmtree('testChainDB3')
 
@@ -65,7 +65,7 @@ def test_chainarray_set_beta():
     chain = mcmc.ChainArray(1, 1, recover=False, overwrite=True,
                             db_path='testChainDB4')
 
-    chain.initialise(0, [1, 2, 3], 1.0, [1], 666.0)
+    chain.initialise(0, [1, 2, 3], 1.0, 1, 666.0)
 
     chain.set_beta(0, 777.0)
     chain.append(0, [4, 5, 6], 1.0)

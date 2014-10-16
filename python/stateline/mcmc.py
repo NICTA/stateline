@@ -23,8 +23,8 @@ class State(_sl.State):
         the target distribution.
     energy : float
         The negative log likelihood of this sample.
-    sigma : array-like [m]
-        The step size vector of the chain when this state was evaluated.
+    sigma : float
+        The step size of the chain when this state was evaluated.
     beta : float
         The inverse temperature of the chain when this state was evaluated.
     accepted : boolean
@@ -51,14 +51,6 @@ class State(_sl.State):
     @sample.setter
     def sample(self, val):
         super().set_sample(np.asarray(val, dtype=float))
-
-    @property
-    def sigma(self):
-        return super().get_sigma()
-
-    @sigma.setter
-    def sigma(self, val):
-        super().set_sigma(np.asarray(val, dtype=float))
 
 
 class WorkerInterface(_sl.WorkerInterface):
@@ -156,6 +148,7 @@ class ChainArray(_sl.ChainArray):
     ntotal : int
         The total number of chains in all stacks.
     """
+
     def __init__(self, nstacks, nchains, db_path="chainDB", recover=False,
                  overwrite=False, cache_length=1000, cache_size=10):
         """Create a new chain array.
@@ -219,14 +212,14 @@ class ChainArray(_sl.ChainArray):
             The first sample to be added to the chain.
         energy : float
             The energy of `sample`.
-        sigma : array-like [m]
-            A vector representing the parameters of the proposal function.
+        sigma : float
+            The initial step size of the chain.
         beta : float
-            The inverse temperature of the chain.
+            The initial inverse temperature of the chain.
         """
         assert 0 <= i < self.ntotal
         super().initialise(i, np.asarray(sample, dtype=float), energy,
-                           np.asarray(sigma, dtype=float), beta)
+                           sigma, beta)
 
     def length(self, i):
         """Get the length of a chain.
@@ -261,19 +254,22 @@ class ChainArray(_sl.ChainArray):
         """
         assert 0 <= s < self.nstacks
         assert burnin >= 0
-        return [State(s.get_sample(), s.energy, s.get_sigma(), s.beta,
+        return [State(s.get_sample(), s.energy, s.sigma, s.beta,
                       s.accepted, s.swap_type)
                 for s in super().states(s * self.nchains)[burnin:]]
 
-    def samples(self, s, burnin=0):
+    def samples(self, s, nburn=0, nthin=0):
         """Get the all the samples in the coldest chain of a stack.
 
         Parameters
         ----------
         i : int
             The ID of the chain.
-        burnin : int, optional
+        nburn : int, optional
             The number of samples to discard from the beginning. Defaults to 0.
+        nthin : int, optional
+            The number of samples to discard for every sample used.
+            Defaults to 0.
 
         Returns
         -------
@@ -281,25 +277,30 @@ class ChainArray(_sl.ChainArray):
             The samples in the chain. Each row is a sample.
         """
         assert 0 <= s < self.nstacks
-        assert burnin >= 0
+        assert nburn >= 0
+        assert nthin >= 0
         return np.array([s.get_sample()
-                         for s in super().states(s * self.nchains)[burnin:]])
+                         for s in super().states(s * self.nchains, nburn, nthin)])
 
-    def cold_samples(self, burnin=0):
+    def cold_samples(self, nburn=0, nthin=0):
         """Get the samples in the coldest chains of all the stacks.
 
         Parameters
         ----------
-        burnin : int, optional
+        nburn : int, optional
             The number of samples to discard from the beginning. Defaults to 0.
+        nthin : int, optional
+            The number of samples to discard for every sample used.
+            Defaults to 0.
 
         Returns
         -------
         samples : iterable of 2D numpy arrays [nsamples x ndims]
             List of the samples in the chains. Each row is a sample.
         """
-        assert burnin >= 0
-        return (self.samples(s, burnin) for s in range(self.nstacks))
+        assert nburn >= 0
+        assert nthin >= 0
+        return (self.samples(s, nburn, nthin) for s in range(self.nstacks))
 
     def sigma(self, i):
         """Get the sigma of a chain."""
@@ -309,7 +310,7 @@ class ChainArray(_sl.ChainArray):
     def set_sigma(self, i, value):
         """Set the sigma of a chain."""
         assert 0 <= i < self.ntotal
-        super().set_sigma(i, np.asarray(value, dtype=float))
+        super().set_sigma(i, value)
 
     def beta(self, i):
         """Get the beta of a chain."""
@@ -324,7 +325,7 @@ class ChainArray(_sl.ChainArray):
     def last_state(self, i):
         """Get the last state of a chain."""
         state = super().last_state(i)
-        return State(state.get_sample(), state.energy, state.get_sigma(),
+        return State(state.get_sample(), state.energy, state.sigma,
                      state.beta, state.accepted, state.swap_type)
 
     def append(self, i, sample, energy):
@@ -340,7 +341,7 @@ class Sampler(_sl.Sampler):
 
     def step(self, sigmas, betas):
         i, state = super().step(sigmas, betas)
-        return i, State(state.get_sample(), state.energy, state.get_sigma(),
+        return i, State(state.get_sample(), state.energy, state.sigma,
                         state.beta, state.accepted, state.swap_type)
 
     def flush(self):
@@ -351,10 +352,18 @@ def gaussian_proposal(i, sample, sigma):
     return _sl.gaussian_proposal(i, sample, sigma)
 
 
-def gaussian_cov_proposal(i, sample, cov):
-    ndim = np.sqrt(cov.shape[0])
-    cov = np.reshape(cov, (ndim, ndim))
-    return np.random.multivariate_normal(sample, cov)
+class GaussianCovProposal(_sl.GaussianCovProposal):
+    def __init__(self, nstacks, nchains, ndims):
+        super().__init__(nstacks, nchains, ndims)
+
+    def update(self, i, sample):
+        super().update(i, sample)
+
+    def propose(self, i, sample, sigma):
+        return super().propose(i, sample, sigma)
+
+    def __call__(self, i, sample, sigma):
+        return self.propose(i, sample, sigma)
 
 
 class SlidingWindowSigmaAdapter(_sl.SlidingWindowSigmaAdapter):
@@ -427,90 +436,17 @@ class SlidingWindowBetaAdapter(_sl.SlidingWindowBetaAdapter):
         return super().swap_rates()
 
 
-class SigmaCovarianceAdapter(_sl.SigmaCovarianceAdapter):
-    def __init__(self, nstacks, nchains, ndims,
-                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
-                 adapt_length=100000, steps_per_adapt=2500,
-                 optimal_accept_rate=0.24, adapt_rate=0.2,
-                 min_adapt_factor=0.8, max_adapt_factor=1.25):
-        """Initialise an adapter that estimates the covariance of the samples.
+class CovarianceEstimator(_sl.CovarianceEstimator):
+    """"""
 
-        Parameters
-        ----------
-        nstacks : int
-        nchains : int
-        ndims : int
-        window_size : int
-            ...
-        """
-        settings = _sl.SlidingWindowSigmaSettings()
-        settings.window_size = window_size
-        settings.cold_sigma = cold_sigma
-        settings.sigma_factor = sigma_factor
-        settings.adaption_length = adapt_length
-        settings.nsteps_per_adapt = steps_per_adapt
-        settings.optimal_accept_rate = optimal_accept_rate
-        settings.adapt_rate = adapt_rate
-        settings.min_adapt_factor = min_adapt_factor
-        settings.max_adapt_factor = max_adapt_factor
+    def __init__(self, nstacks, nchains, ndims):
+        super().__init__(nstacks, nchains, ndims)
 
-        super().__init__(nstacks, nchains, ndims, settings)
+    def update(self, i, sample):
+        super().update(i, sample)
 
-    def update(self, i, state):
-        super().update(i, state)
-
-    def sigmas(self):
-        return super().sigmas()
-
-    def accept_rates(self):
-        return super().accept_rates()
-
-    def sample_cov(self, i):
-        cov = super().sample_cov(i)
-        n = int(np.sqrt(cov.shape[0]))
-        return np.reshape(cov, (n, n))
-
-
-class BlockSigmaAdapter(_sl.BlockSigmaAdapter):
-    def __init__(self, nstacks, nchains, ndims, blocks,
-                 window_size=10000, cold_sigma=1.0, sigma_factor=1.5,
-                 adapt_length=100000, steps_per_adapt=2500,
-                 optimal_accept_rate=0.24, adapt_rate=0.2,
-                 min_adapt_factor=0.8, max_adapt_factor=1.25):
-        """Initialise a block-wise sigma adapter.
-
-        Parameters
-        ----------
-        nstacks : int
-        nchains : int
-        ndims : int
-        blocks : iterable [ndims] ,
-        window_size : int
-            ...
-        """
-        assert len(blocks) == ndims
-
-        settings = _sl.SlidingWindowSigmaSettings()
-        settings.window_size = window_size
-        settings.cold_sigma = cold_sigma
-        settings.sigma_factor = sigma_factor
-        settings.adaption_length = adapt_length
-        settings.nsteps_per_adapt = steps_per_adapt
-        settings.optimal_accept_rate = optimal_accept_rate
-        settings.adapt_rate = adapt_rate
-        settings.min_adapt_factor = min_adapt_factor
-        settings.max_adapt_factor = max_adapt_factor
-
-        super().__init__(nstacks, nchains, ndims, list(blocks), settings)
-
-    def update(self, i, state):
-        super().update(i, state)
-
-    def sigmas(self):
-        return super().sigmas()
-
-    def accept_rates(self):
-        return super().accept_rates()
+    def cov(self, i):
+        return super().cov(i)
 
 
 class TableLogger(_sl.TableLogger):

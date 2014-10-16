@@ -10,9 +10,9 @@ boost::shared_ptr<mcmc::Sampler>
       new mcmc::Sampler(
         interface,
         chain,
-        [propFn](uint id, const Eigen::VectorXd &sample, const Eigen::VectorXd &sigma)
+        [propFn](uint id, const Eigen::VectorXd &sample, double sigma)
         {
-          return numpy2eigen(propFn(id, eigen2numpy(sample), eigen2numpy(sigma)));
+          return numpy2eigen(propFn(id, eigen2numpy(sample), sigma));
         },
         swapInterval
       )
@@ -21,7 +21,7 @@ boost::shared_ptr<mcmc::Sampler>
 
 py::tuple samplerStep(mcmc::Sampler &sampler, py::list sigmas, py::list betas)
 {
-  auto result = sampler.step(lnumpy2veigen(sigmas), list2vector<double>(betas));
+  auto result = sampler.step(list2vector<double>(sigmas), list2vector<double>(betas));
   return py::make_tuple(result.first, result.second);
 }
 

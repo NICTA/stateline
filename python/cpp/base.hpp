@@ -79,11 +79,16 @@ py::object eigen2numpy(const Eigen::VectorXd &vec)
   npy_intp size = vec.size();
 
   PyArrayObject *array = (PyArrayObject *)PyArray_SimpleNew(1, &size, NPY_DOUBLE);
+  memcpy(PyArray_DATA(array), vec.data(), size * sizeof(double));
+  return py::numeric::array(py::handle<>((PyObject *)array));
+}
 
-  for (uint i=0; i<vec.size(); i++)
-    ((double *)PyArray_DATA(array))[i] = vec(i);
+py::object eigen2d2numpy(const Eigen::MatrixXd &mat)
+{
+  npy_intp shape[] = { mat.rows(), mat.cols() };
 
-  //return py::numeric::array(py::handle<>(py::borrowed(array)));
+  PyArrayObject *array = (PyArrayObject *)PyArray_SimpleNew(2, shape, NPY_DOUBLE);
+  memcpy(PyArray_DATA(array), mat.data(), mat.size() * sizeof(double));
   return py::numeric::array(py::handle<>((PyObject *)array));
 }
 
@@ -104,8 +109,20 @@ Eigen::VectorXd numpy2eigen(py::object x)
 
   long int size = *PyArray_SHAPE(ptr);
   Eigen::VectorXd result(size);
-  for (uint i=0; i<size;i++)
-    result(i) = ((double*)PyArray_DATA(ptr))[i];
+  memcpy(result.data(), PyArray_DATA(ptr), size * sizeof(double));
+  return result;
+}
+
+Eigen::MatrixXd numpy2eigen2d(py::object x)
+{
+  PyArrayObject *ptr = (PyArrayObject *)x.ptr();
+
+  if (!PyArray_ISFLOAT(ptr))
+    throw std::invalid_argument("PyObject is not an array of floats/doubles!");
+
+  long int *shape = PyArray_SHAPE(ptr);
+  Eigen::MatrixXd result(shape[0], shape[1]);
+  memcpy(result.data(), PyArray_DATA(ptr), result.size() * sizeof(double));
   return result;
 }
 

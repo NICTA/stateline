@@ -20,13 +20,13 @@ def test_sliding_window_sigma_adapter_accept_rates():
     sigma_adapt = mcmc.SlidingWindowSigmaAdapter(1, 1, 1)
 
     # Update the adapter with some states
-    sigma_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.NO_ATTEMPT))
+    sigma_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.NO_ATTEMPT))
     assert sigma_adapt.accept_rates() == [1.0]
 
-    sigma_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.NO_ATTEMPT))
+    sigma_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.NO_ATTEMPT))
     assert sigma_adapt.accept_rates() == [1.0]
 
-    sigma_adapt.update(0, mcmc.State([0], 0, [0], 1.0, False, mcmc.SwapType.NO_ATTEMPT))
+    sigma_adapt.update(0, mcmc.State([0], 0, 0, 1.0, False, mcmc.SwapType.NO_ATTEMPT))
     assert sigma_adapt.accept_rates() == [0.75]
 
 
@@ -35,10 +35,10 @@ def test_sliding_window_beta_adapter_initial_beta():
 
     expected_betas = [
         np.array([1.0]),
-        np.array([2.0]),
-        np.array([4.0]),
-        np.array([8.0]),
-        np.array([16.0])
+        np.array([0.5]),
+        np.array([0.25]),
+        np.array([0.125]),
+        np.array([0.0625])
     ]
 
     assert beta_adapt.betas() == expected_betas
@@ -48,66 +48,20 @@ def test_sliding_window_beta_adapter_swap_rates():
     beta_adapt = mcmc.SlidingWindowBetaAdapter(1, 1)
 
     # Update the adapter with some states
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.NO_ATTEMPT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.NO_ATTEMPT))
     assert beta_adapt.swap_rates() == [0.0]
 
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.REJECT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.REJECT))
     assert beta_adapt.swap_rates() == [0.0]
 
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.REJECT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.REJECT))
     assert beta_adapt.swap_rates() == [0.0]
 
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, False, mcmc.SwapType.ACCEPT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, False, mcmc.SwapType.ACCEPT))
     assert beta_adapt.swap_rates() == [0.25]
 
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, True, mcmc.SwapType.NO_ATTEMPT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, True, mcmc.SwapType.NO_ATTEMPT))
     assert beta_adapt.swap_rates() == [0.25]
 
-    beta_adapt.update(0, mcmc.State([0], 0, [0], 1.0, False, mcmc.SwapType.ACCEPT))
+    beta_adapt.update(0, mcmc.State([0], 0, 0, 1.0, False, mcmc.SwapType.ACCEPT))
     assert beta_adapt.swap_rates() == [0.4]
-
-
-def test_covariance_adapter_sample_covariance():
-    sigma_adapt = mcmc.SigmaCovarianceAdapter(1, 1, 2)
-
-    samples = np.array([[-2.1, 3], [-1, 1.1], [4.3, 0.12], [0.1, -0.6]])
-    for sample in samples:
-        sigma_adapt.update(0, mcmc.State(sample, 0, [0], 1.0,
-                                         True, mcmc.SwapType.NO_ATTEMPT))
-
-    assert np.allclose(np.cov(samples.T, bias=1),
-                       sigma_adapt.sample_cov(0))
-
-
-def test_covariance_adapter_sigmas():
-    sigma_adapt = mcmc.SigmaCovarianceAdapter(1, 1, 2, cold_sigma=2.0)
-
-    samples = np.array([[-2.1, 3], [-1, 1.1], [4.3, 0.12], [0.1, -0.6]])
-    for sample in samples:
-        sigma_adapt.update(0, mcmc.State(sample, 0, [0], 1.0,
-                                         True, mcmc.SwapType.NO_ATTEMPT))
-
-    assert np.allclose(np.ndarray.flatten(np.cov(samples.T, bias=1) * 2.0),
-                       sigma_adapt.sigmas()[0])
-
-
-def test_block_adapter_sigmas():
-    sigma_adapt = mcmc.BlockSigmaAdapter(1, 2, 8, [1, 1, 1, 2, 6, 2, 8, 1])
-
-    # The number of zeros in each of the sigma vectors should change as we update
-    state = mcmc.State([0, 0, 0, 0, 0, 0, 0, 0], 0, [0], 1.0, True,
-                       mcmc.SwapType.NO_ATTEMPT)
-
-    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 4  # block 1
-    print(sigma_adapt.sigmas()[0])
-    sigma_adapt.update(0, state)
-    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 2  # block 2
-    assert np.count_nonzero(sigma_adapt.sigmas()[1]) == 4  # block 1
-    sigma_adapt.update(0, state)
-    sigma_adapt.update(1, state)
-    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 1  # block 6
-    assert np.count_nonzero(sigma_adapt.sigmas()[1]) == 2  # block 2
-    sigma_adapt.update(0, state)
-    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 1  # block 8
-    sigma_adapt.update(0, state)
-    assert np.count_nonzero(sigma_adapt.sigmas()[0]) == 4  # back to block 1
