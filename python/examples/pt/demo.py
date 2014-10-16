@@ -10,7 +10,7 @@ import stateline.logging as logging
 import numpy as np
 import matplotlib.pyplot as pl
 
-logging.nolog()
+logging.no_logging()
 
 # ------------------------------------------------------------------------------
 # Settings for the demo

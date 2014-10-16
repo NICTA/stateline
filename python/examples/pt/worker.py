@@ -4,7 +4,7 @@ import numpy as np
 
 
 def main():
-    logging.nolog()
+    logging.no_logging()
     worker = comms.Worker("localhost:5555")
 
     # Get the variance of each peak
