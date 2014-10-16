@@ -1,7 +1,11 @@
 //!
-//! Simple demo using Stateline to sample from a multidimensional Gaussian mixture.
+//! A demo using Stateline to sample from a Gaussian mixture.
+//!
+//! This file aims to be a tutorial on setting up a MCMC simulation using
+//! the C++ worker API of Stateline.
 //!
 //! \file demoWorker.cpp
+//! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
 //! \licence Affero General Public License version 3 or later
@@ -17,11 +21,13 @@
 #include <boost/program_options.hpp>
 
 #include "app/logging.hpp"
+#include "app/commandline.hpp"
 #include "app/worker.hpp"
 #include "stats/mixture.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;
+namespace ph = std::placeholders;
 
 po::options_description commandLineOptions()
 {
@@ -34,53 +40,59 @@ po::options_description commandLineOptions()
 
 int main(int ac, char *av[])
 {
-  // Parse the command line 
-  po::variables_map vm;
-  try
-  {
-    po::store(po::parse_command_line(ac, av, commandLineOptions()), vm);
-    po::notify(vm);
-  } catch (const std::exception& ex)
-  {
-    std::cout << "Error: Unrecognised commandline arguments\n\n" << commandLineOptions() << "\n";
-    exit(EXIT_FAILURE);
-  }
-  // Initialise logging
+  // --------------------------------------------------------------------------
+  // Initialise command line options and logging
+  // --------------------------------------------------------------------------
+  po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
   sl::initLogging("client", 0, true, "");
 
-  // Initialise workers
+  // --------------------------------------------------------------------------
+  // Initialise the worker
+  // --------------------------------------------------------------------------
   std::string address = vm["address"].as<std::string>();
   sl::WorkerSettings settings = sl::WorkerSettings::Default(address);
-  
-  // Create a worker to communicate with the server
-  sl::comms::Worker worker({ 0 }, settings);
 
-  // The job spec contains the parameters of the distribution that we are
+  // In Stateline, a worker can handle multiple job types. Since the server
+  // only sends out one job type, we can just set it to the default job type
+  // of 0. In cases where there are more than one job type, the vector should
+  // contain the job types that this worker wants to handle.
+  std::vector<uint> jobTypes = { 0 };
+  sl::comms::Worker worker(jobTypes, settings);
+
+  // --------------------------------------------------------------------------
+  // Initialise the distribution to sample from
+  // --------------------------------------------------------------------------
+
+  // The global spec contains the parameters of the distribution that we are
   // dealing with, namely, the means of the components in the Gaussian mixture.
-  auto means = sl::unserialise<Eigen::MatrixXd>(worker.globalSpec());
+  Eigen::MatrixXd means = sl::unserialise<Eigen::MatrixXd>(worker.globalSpec());
 
-  // Create the distribution that we are sampling from.
+  // Create the distribution that we are sampling from. Stateline offers APIs
+  // to some common distributions.
   std::vector<sl::stats::Normal> components;
   for (Eigen::VectorXd::Index i = 0; i < means.rows(); i++)
     components.push_back(sl::stats::Normal(means.row(i))); // Add a component
 
+  // This is the target distribution
   sl::stats::GaussianMixture distribution(components);
 
-  // Get the PDF function of the distribution
-  auto logl = [&](const Eigen::VectorXd &x)
-  {
-    return -sl::stats::logpdf(distribution, x);
-  };
+  // Create the negative log likelihood function of the distribution.
+  auto nll = std::bind(sl::stats::nlogpdf<sl::stats::GaussianMixture>,
+      distribution, ph::_1);
 
-  // Launch a minion to do work
+  // --------------------------------------------------------------------------
+  // Launch minions to perform work
+  // --------------------------------------------------------------------------
+  const int nthreads = 2;
+
   std::vector<std::future<void>> threads;
-  for (int i = 0; i < 1; i++)
+  for (int i = 0; i < nthreads; i++)
   {
-    threads.push_back(std::move(sl::runMinionThreaded(worker, logl)));
+    threads.push_back(std::move(sl::runMinionThreaded(worker, nll)));
   }
 
   // Wait for all the threads to finish
-  for (int i = 0; i < 1; i++)
+  for (int i = 0; i < nthreads; i++)
   {
     threads[i].wait();
   }

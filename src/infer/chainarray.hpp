@@ -121,9 +121,11 @@ namespace stateline
         //! Return all states from a chain.
         //!
         //! \param id The id of the chain (see \ref id).
+        //! \param nburn The number of samples to discard in the beginning.
+        //! \param nthin The number of samples to discard for every sample used.
         //! \return The most recent state in the chain.
         //!
-        std::vector<State> states(uint id) const;
+        std::vector<State> states(uint id, uint nburn=0, uint nthin=0) const;
 
         //! Attempt to swap the states in two different chains.
         //!

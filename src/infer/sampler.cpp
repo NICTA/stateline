@@ -11,6 +11,8 @@
 
 #include "infer/sampler.hpp"
 
+#include <iostream>
+
 namespace stateline
 {
   namespace mcmc
@@ -74,24 +76,27 @@ namespace stateline
       return bouncyBounds(gaussianProposal(id, sample, sigma), min, max);
     }
 
-    Eigen::VectorXd gaussianCovProposal(uint id, const Eigen::VectorXd& sample,
-        double sigma, const std::vector<Eigen::MatrixXd>& covariances)
+    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint nDims)
+      : gen_(std::random_device()()), sigL_(nStacks * nChains)
     {
-      // Random number generators
-      static std::random_device rd;
-      static std::mt19937 generator(rd());
-      static std::normal_distribution<> rand; // Standard normal
+      for (uint i = 0; i < nStacks * nChains; i++)
+        update(i, Eigen::MatrixXd::Identity(nDims, nDims)); 
+    }
 
-      // Reshape sigma into a square covariance matrix
+    Eigen::VectorXd GaussianCovProposal::propose(uint id, const Eigen::VectorXd &sample, double sigma)
+    {
       uint n = sample.size();
 
       Eigen::VectorXd randn(n);
       for (uint i = 0; i < n; i++)
-        randn(i) = rand(generator);
+        randn(i) = rand_(gen_);
 
-      Eigen::MatrixXd sigL = covariances[id].llt().matrixL();
-      Eigen::MatrixXd proposal = sample + sigL * randn * sigma * sigma;
-      return proposal;
+      return sample + sigL_[id] * randn * sigma * sigma;
+    }
+
+    void GaussianCovProposal::update(uint id, const Eigen::MatrixXd &cov)
+    {
+      sigL_[id] = cov.llt().matrixL();
     }
 
     Sampler::Sampler(WorkerInterface& workerInterface, 

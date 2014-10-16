@@ -1,7 +1,11 @@
 //!
-//! Simple demo using Stateline to sample from a multidimensional Gaussian mixture.
+//! A demo using Stateline to sample from a Gaussian mixture.
 //!
-//! \file demoSimpleMcmc.cpp
+//! This file aims to be a tutorial on setting up a MCMC simulation using
+//! the C++ server API of Stateline.
+//!
+//! \file demoDelegator.cpp
+//! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
 //! \licence Affero General Public License version 3 or later
@@ -9,13 +13,11 @@
 //!
 
 #include <iostream>
-#include <limits>
 #include <functional>
 #include <fstream>
 #include <boost/program_options.hpp>
 
 #include <chrono>
-#include <thread>
 
 #include "infer/sampler.hpp"
 #include "infer/adaptive.hpp"
@@ -26,6 +28,7 @@
 #include "app/signal.hpp"
 #include "app/commandline.hpp"
 
+// Alias namespaces for conciseness
 namespace sl = stateline;
 namespace ph = std::placeholders;
 namespace po = boost::program_options;
@@ -45,129 +48,250 @@ po::options_description commandLineOptions()
 
 int main(int ac, char *av[])
 {
-  sl::init::initialiseSignalHandler();
-  // Initialise logging
+  // --------------------------------------------------------------------------
+  // Settings for the demo
+  // --------------------------------------------------------------------------
+
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
+
+  // The number of Gaussian mixture components.
+  const int ncomponents = 3;
+
+  // How far apart the components are from each other
+  const double spacing = 4.0;
+
+  // The number of dimensions in the problem.
+  const int ndims = 2;
+
+  // The number of stacks to run.
+  const int nstacks = 2;
+
+  // The number of chains per stack.
+  const int nchains = 5;
+
+  // The number of seconds to run MCMC for.
+  const int nsecs = vm["time"].as<uint>();
+
+  // The number of steps between each swap attempt.
+  const int swapInterval = 10;
+
+  // The refresh rate of the tabular logging output in milliseconds.
+  const int msRefresh = 1000;
+
+  // --------------------------------------------------------------------------
+  // Initialise the distribution we are sampling from
+  // --------------------------------------------------------------------------
+  Eigen::MatrixXd means = Eigen::MatrixXd::Random(ncomponents, ndims) * spacing;
+ 
+  // --------------------------------------------------------------------------
+  // Initialise logging and signal handling
+  // --------------------------------------------------------------------------
+
+  // This allows the user to interrupt the MCMC using Ctrl-C.
+  sl::init::initialiseSignalHandler();
+
+  // Initialise the logging settings
   sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
 
-  const std::size_t ncomponents = 2;
-  const std::size_t ndims = 3;
-  const std::size_t nchains = 10;
-  const std::size_t nstacks = 2;
-  const std::size_t numSeconds = vm["time"].as<uint>();
-  const std::size_t swapInterval = 10;
-  uint msRefresh = 500;
+  // --------------------------------------------------------------------------
+  // Initialise the sigma and beta settings
+  // --------------------------------------------------------------------------
 
+  // Stateline focuses on Metropolis-Hastings samplers, which involve a
+  // proposal function that generates the next state in the MCMC chain.
+  // The term 'sigma' is used liberally as a measure of 'step size', the
+  // distance moved between consecutive states. A high sigma indicates larger
+  // jumps, which may result in faster mixing, but higher rejection rates.
+  // A low sigma indicates smaller steps, which lead to strong correlation
+  // between samples, but higher acceptance rates.
+  //
+  // Here, we want an adaptive sigma, which varies the step size depending on
+  // the acceptance rate.
   sl::mcmc::SlidingWindowSigmaSettings sigmaSettings = sl::mcmc::SlidingWindowSigmaSettings::Default();
-  sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default();
-  
-  // Create an adaption system for sigma
   sl::mcmc::SlidingWindowSigmaAdapter sigmaAdapter(nstacks, nchains, ndims, sigmaSettings);
-  // Create an adaption system for beta
+
+  // Stateline uses parallel-tempering by default, which involves running
+  // chains within a stack at different 'temperatures'. At higher temperatures,
+  // chains tend to mix faster. Every so often, chains within a stack will
+  // attempt to swap states, which allows the colder chains to mix faster as a
+  // result. Here, 'beta' is the inverse of the temperature value.
+  //
+  // Create an adaptive beta system, which varies the temperatures based on the
+  // swap rates of various chains.
+  sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default(); 
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
-  // define initial parameters
-  std::vector<double> sigmas = sigmaAdapter.sigmas();
-  std::vector<double> acceptRates = sigmaAdapter.acceptRates();
-  std::vector<double> betas = betaAdapter.betas();
-  std::vector<double> swapRates = betaAdapter.swapRates();
+  
+  // --------------------------------------------------------------------------
+  // Initialise the proposal function
+  // --------------------------------------------------------------------------
 
-
-  // Initialise the parameters of the distribution we are sampling from
-  Eigen::MatrixXd means(ncomponents, ndims);
-  means << -5, -5, -5,
-            5,  5,  5;
- 
-  uint port = vm["port"].as<uint>();
-  // Set up the problem
-  sl::mcmc::WorkerInterface workerInterface(sl::serialise(means),
-      {}, // empty per-job map
-      sl::mcmc::singleJobConstruct,
-      sl::mcmc::singleJobEnergy,
-      sl::DelegatorSettings::Default(port));
-
-  // We'll estimate sample covariance to make a better proposal distribution
+  // Since the distribution we are sampling from is Gaussian, we can use a
+  // multivariate Gaussian as a proposal distribution to mix faster.
+  sl::mcmc::GaussianCovProposal proposal(nstacks, nchains, ndims);
+  
+  // We'll use the sample covariance of the chain as the covariance matrix
+  // of the proposal distribution. To do this, we create a covariance estimator
+  // that efficiently computes the sample covariance.
   sl::mcmc::CovarianceEstimator covEstimator(nstacks, nchains, ndims);
-  std::vector<Eigen::MatrixXd> covariances = covEstimator.covariances();
+
+  // --------------------------------------------------------------------------
+  // Initialise the worker interface
+  // --------------------------------------------------------------------------
   
-  sl::mcmc::ProposalFunction proposalFn = std::bind(sl::mcmc::gaussianCovProposal, ph::_1, ph::_2, ph::_3, std::cref(covariances));
-  
-  // Recover the chain array?
+  // The worker interface is how the Stateline server interacts with workers.
+  // It allows the server to send jobs to workers, as well as retrieve results
+  // of jobs done by workers.
+
+  // When a worker first connects to the server, it receives both a global
+  // specification (global spec) and a job specification (job spec).
+  // The global spec specifies a string that is sent to all workers.
+  // The job spec specifies a string that is sent only to workers that handle
+  // a particular job type.
+
+  // We want to send the component means of the mixture to the workers so that
+  // they can evaluate the log likelihood. So we can use a convenient serialise
+  // method in Stateline to convert our mean matrix to a string.
+  std::string globalSpec = sl::serialise(means);
+
+  // Since there are no job types, we can just leave the job specs as an empty
+  // map. If there were different job types, then each entry in the map
+  // represents a job spec.
+  std::map<sl::comms::JobType, std::string> jobSpecs = {};
+
+  // When a sample needs to be evaluated by a worker, Stateline will first
+  // convert the sample into a list of JobData objects. Each object will then
+  // be sent to a worker to be evaluated. This is similar to the 'map' step
+  // of a map-reduce infrastructure.
+  //
+  // The conversion is done by a job construct function.
+  // Here, since we don't have multiple job types, we can just convert the
+  // sample directly into a singleton list of JobData.
+  sl::mcmc::JobConstructFn jobConstructFn = sl::mcmc::singleJobConstruct;
+
+  // Similarly, when the results from workers come back, there needs to be a
+  // result energy function to combine the results together into a single
+  // energy scalar value. Again, in map-reduce, this would be the 'reduce' step.
+  //
+  // Since we only send out one job per sample, we can just directly return
+  // the result of the JobResult.
+  sl::mcmc::ResultEnergyFn resultEnergyFn = sl::mcmc::singleJobEnergy;
+
+  // We can now create the worker interface.
+  uint port = vm["port"].as<uint>();
+  sl::mcmc::WorkerInterface workerInterface(globalSpec, jobSpecs,
+      jobConstructFn, resultEnergyFn, sl::DelegatorSettings::Default(port));
+
+  // --------------------------------------------------------------------------
+  // Set up the chain array and recovery
+  // --------------------------------------------------------------------------
+
+  // Stateline allows the recovering chains which have been saved to disk,
+  // and resuming the simulation from where it left off.
   bool recover = vm["recover"].as<bool>();
-  // Create a chain array
-  sl::mcmc::ChainArray chains(nstacks, nchains, sl::mcmc::ChainSettings::Default(recover));
+
+  // Create a chain array. Notice how the chain settings ask if we are loading
+  // an existing chain array or not.
+  sl::mcmc::ChainArray chains(nstacks, nchains,
+      sl::mcmc::ChainSettings::Default(recover));
+
+  // If we did not recover, then we need to initialise the chain array with
+  // initial parameters.
   if (!recover)
   {
-    // Generate initial samples
     for (uint i = 0; i < nstacks * nchains; i++)
     {
+      // Generate a random initial sample
       Eigen::VectorXd sample = Eigen::VectorXd::Random(ndims);
+
+      // We now use the worker interface to evaluate this initial sample
       workerInterface.submit(i, sample);
-      uint j;
-      double energy;
-      std::tie(j, energy) = workerInterface.retrieve();
-      chains.initialise(i, sample, energy, sigmas[i], betas[i]);
+      double energy = workerInterface.retrieve().second;
+
+      // Initialise this chain with the evaluated sample
+      chains.initialise(i, sample, energy,
+          sigmaAdapter.sigmas()[i], betaAdapter.betas()[i]);
     }
   }
 
-  // Create a sampler
-  sl::mcmc::Sampler sampler(workerInterface, chains, proposalFn, swapInterval);
+  // --------------------------------------------------------------------------
+  // Create a sampler and various other components
+  // --------------------------------------------------------------------------
 
-  // Create a diagnostic
+  // A sampler just takes the worker interface, chain array, proposal function,
+  // and how often to attempt swaps.
+  sl::mcmc::Sampler sampler(workerInterface, chains,
+      std::bind(&sl::mcmc::GaussianCovProposal::propose, proposal, ph::_1, ph::_2, ph::_3),
+      swapInterval);
+
+  // Stateline offers various auxiliary classes used for diagnostics and logging.
+  // Here, we create a convergence test and standard output logging.
   sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
-
-  // Create a logger
-  sl::mcmc::Logger log(nstacks, nchains, msRefresh);
+  sl::mcmc::TableLogger logger(nstacks, nchains, msRefresh);
   
-   // Record the starting time of the MCMC
+  // --------------------------------------------------------------------------
+  // Run the MCMC
+  // --------------------------------------------------------------------------
+  
+  // Record the starting time of the MCMC so we can stop the simulation once
+  // the time limit is reached.
   auto startTime = ch::steady_clock::now();
-  bool errorcon = false; // only try to flush if we didn't error out
-  while ((std::size_t)(ch::duration_cast<ch::seconds>(
-          ch::steady_clock::now() - startTime).count()) < numSeconds && !sl::global::interruptedBySignal)
+
+  // Chain ID and corresponding state.
+  uint id;
+  sl::mcmc::State state;
+
+  while (ch::duration_cast<ch::seconds>(ch::steady_clock::now() - startTime).count() < nsecs &&
+      !sl::global::interruptedBySignal)
   {
-    uint id;
-    sl::mcmc::State state;
+    // Ask the sampler to return the next state of a chain.
+    // 'id' is the ID of the chain and 'state' is the next state in that chain.
     try
     {
-      std::tie(id, state) = sampler.step(sigmas, betas);
+      std::tie(id, state) = sampler.step(sigmaAdapter.sigmas(), betaAdapter.betas());
     }
     catch (...)
     {
-      errorcon = true;
       break;
     }
+
+    // In most set ups, the main MCMC loop will need to update the various
+    // objects used by the sampler. The arguments passed to the update method
+    // varies depending on the class, so you should consult the documentation.
     sigmaAdapter.update(id, state);
     betaAdapter.update(id, state);
+
     covEstimator.update(id, state.sample);
-    covariances = covEstimator.covariances();
+    proposal.update(id, covEstimator.covariances()[id]);
 
-    sigmas = sigmaAdapter.sigmas();
-    acceptRates = sigmaAdapter.acceptRates();
-    betas = betaAdapter.betas();
-    swapRates = betaAdapter.swapRates();
+    logger.update(id, state,
+        sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
+        betaAdapter.betas(), betaAdapter.swapRates());
 
-    log.update(id, state, sigmas, acceptRates, betas, swapRates);
     diagnostic.update(id, state);
   }
-  // Finish off outstanding jobs
-  if (!errorcon)
-    sampler.flush();
 
-  LOG(INFO) << "Convergence: " << diagnostic.rHat().transpose() << std::endl;
+  // Finish any outstanding jobs
+  sampler.flush();
 
-  // Output the coldest chains to CSV
+  // Output the samples of the coldest chains to CSV
   std::ofstream out("output_chain.csv");
 
-  std::vector<sl::mcmc::State> states = chains.states(0);
-  for (auto &state : states) 
+  for (int i = 0; i < nstacks * nchains; i += nchains)
   {
-    for (Eigen::VectorXd::Index i = 0; i < state.sample.size(); i++)
+    std::size_t length = chains.length(i);
+    for (std::size_t j = 0; j < length; j++)
     {
-      if (i > 0) out << ",";
-      out << state.sample(i);
+      Eigen::VectorXd sample = chains.state(i, j).sample;
+      for (Eigen::VectorXd::Index k = 0; k < ndims; k++)
+      {
+        if (k > 0) out << ",";
+        out << sample(k);
+      }
+      out << "\n";
     }
-    out << "\n";
   }
+
+  LOG(INFO) << "Wrote output to output_chain.csv";
 
   return 0;
 }
-

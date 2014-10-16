@@ -47,10 +47,9 @@ namespace stateline
       return settings;
     }
     
-    SlidingWindowSigmaAdapter::SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, 
+    SlidingWindowSigmaAdapter::SlidingWindowSigmaAdapter(uint nStacks, uint nChains, uint nDims, 
         const SlidingWindowSigmaSettings& settings)
-      : nStacks_(nStacks),
-        nChains_(nChains),
+      : nChains_(nChains),
         sigmas_(nStacks*nChains),
         acceptRates_(nStacks*nChains),
         lengths_(nStacks*nChains),
@@ -102,7 +101,6 @@ namespace stateline
       return acceptRates_;
     }
 
-
     void SlidingWindowSigmaAdapter::adaptSigma(uint id)
     {
       double acceptRate = acceptRates_[id];
@@ -121,15 +119,13 @@ namespace stateline
     }
 
 
-
-    SlidingWindowBetaAdapter::SlidingWindowBetaAdapter( uint nStacks, uint nChains, 
+    SlidingWindowBetaAdapter::SlidingWindowBetaAdapter(uint nStacks, uint nChains, 
         const SlidingWindowBetaSettings& settings)
-      : nStacks_(nStacks),
-      nChains_(nChains),
-      betas_(nStacks*nChains),
-      swapRates_(nStacks*nChains),
-      lengths_(nStacks*nChains),
-      s_(settings)
+      : nChains_(nChains),
+        betas_(nStacks*nChains),
+        swapRates_(nStacks*nChains),
+        lengths_(nStacks*nChains),
+        s_(settings)
     {
       for (uint i = 0; i < nStacks; i++)
         for (uint j = 0; j < nChains; j++)
@@ -139,7 +135,7 @@ namespace stateline
           betas_[id] = beta;
         }
 
-      for (uint i = 0; i < nChains_ * nStacks_; i++)
+      for (uint i = 0; i < nChains * nStacks; i++)
       {
         swapRates_[i] = 0.0;
         swapBuffers_.push_back(boost::circular_buffer<bool>(s_.adaptionLength));

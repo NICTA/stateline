@@ -39,7 +39,8 @@ namespace stateline
     };
 
     template <class WorkerFunc>
-    void runMinion(std::false_type, comms::Worker &worker, const WorkerFunc &func, uint jobType)
+    void runMinion(std::false_type, comms::Worker &worker, const WorkerFunc &func,
+        comms::JobType jobType)
     {
       comms::Minion minion(worker, jobType);
       while (true)

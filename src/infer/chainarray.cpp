@@ -393,14 +393,18 @@ namespace stateline
         return stateFromCache(id, idx);
     }
 
-    std::vector<State> ChainArray::states(uint id) const
+    std::vector<State> ChainArray::states(uint id, uint nburn, uint nthin) const
     {
       uint len = length(id);
-      std::vector<State> v(len);
-      for (uint i = 0; i < len; i++)
+
+      std::vector<State> v;
+      v.reserve((len - nburn) / nthin + 1);
+
+      for (uint i = nburn; i < len; i += nthin)
       {
-        v[i] = state(id, i);
+        v.push_back(state(id, i));
       }
+
       return v;
     }
     

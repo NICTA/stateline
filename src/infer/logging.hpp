@@ -23,10 +23,10 @@ namespace stateline
 {
   namespace mcmc
   {
-    class Logger
+    class TableLogger
     {
       public:
-        Logger(uint nstacks, uint nchains, uint msRefresh);
+        TableLogger(uint nstacks, uint nchains, uint msRefresh);
 
         void update(uint id, const State & s,
             const std::vector<double>& sigmas,

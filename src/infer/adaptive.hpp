@@ -18,7 +18,6 @@ namespace stateline
 {
   namespace mcmc
   {
-
     struct SlidingWindowSigmaSettings
     {
       //! The number of states in the sliding window used to calculate the
@@ -52,7 +51,6 @@ namespace stateline
       double maxAdaptFactor;
 
       static SlidingWindowSigmaSettings Default();
-    
     };
 
     class SlidingWindowSigmaAdapter
@@ -68,10 +66,8 @@ namespace stateline
         const std::vector<double> &acceptRates() const;
 
       private:
-
         void adaptSigma(uint id);
 
-        uint nStacks_;
         uint nChains_;
         std::vector<boost::circular_buffer<bool>> acceptBuffers_;
         std::vector<double> sigmas_;
@@ -110,7 +106,6 @@ namespace stateline
       double maxAdaptFactor;
 
       static SlidingWindowBetaSettings Default();
-
     };
 
     class SlidingWindowBetaAdapter
@@ -130,7 +125,6 @@ namespace stateline
         
         void adaptBeta(uint id);
 
-        uint nStacks_;
         uint nChains_;
         std::vector<double> betas_;
         std::vector<double> swapRates_;

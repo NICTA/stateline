@@ -66,6 +66,13 @@ namespace stateline
       return std::log(pdf(d, x));
     }
 
+    //! Evaluate an unnormalised negative log PDF of a distribution.
+    template <class Distribution>
+    double nlogpdf(const Distribution &d, const Eigen::VectorXd &x)
+    {
+      return -logpdf(d, x);
+    }
+
     //! Draw a random sample from a distribution
     template <class Distribution, class RNG>
     Eigen::VectorXd sample(const Distribution &d, RNG &rng);

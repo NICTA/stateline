@@ -17,6 +17,9 @@ namespace stateline
 {
   namespace comms
   {
+
+    //! Numeric Job type.
+    typedef uint JobType;
    
     //! Numeric Job ID associated with each job type.
     typedef uint JobID;
@@ -28,7 +31,7 @@ namespace stateline
     struct JobData
     {
       //! Type of job
-      uint type;
+      JobType type;
 
       //! Data common to all jobs
       std::string globalData;
@@ -40,27 +43,21 @@ namespace stateline
 
       JobData(const JobData &) = default;
 
-      JobData(uint type, const std::string &globalData, const std::string &jobData)
-        : type(type), globalData(globalData), jobData(jobData)
-      {
-      }
+      JobData(JobType type, const std::string &globalData, const std::string &jobData)
+        : type(type), globalData(globalData), jobData(jobData) { }
 
-      JobData(uint type, std::string&& globalData, std::string&& jobData)
-        : type(type), globalData(globalData), jobData(jobData)
-      {
-      }
+      JobData(JobType type, std::string&& globalData, std::string&& jobData)
+        : type(type), globalData(globalData), jobData(jobData) { }
 
       JobData(JobData&& other)
-        : type(other.type), globalData(std::move(other.globalData)), jobData(std::move(other.jobData))
-      {
-      }
+        : type(other.type), globalData(std::move(other.globalData)), jobData(std::move(other.jobData)) { }
     };
 
     //! Abstraction of job results.
     struct ResultData
     {
       //! Type of job
-      uint type;
+      JobType type;
 
       //! Results data
       std::string data;
@@ -69,20 +66,14 @@ namespace stateline
 
       ResultData(const ResultData &) = default;
 
-      ResultData(uint type, const std::string &data)
-        : type(type), data(data)
-      {
-      }
+      ResultData(JobType type, const std::string &data)
+        : type(type), data(data) { }
 
-      ResultData(uint type, std::string&& data)
-        : type(type), data(std::move(data))
-      {
-      }
+      ResultData(JobType type, std::string&& data)
+        : type(type), data(std::move(data)) { }
 
       ResultData(ResultData&& other)
-        : type(other.type), data(std::move(other.data))
-      {
-      }
+        : type(other.type), data(std::move(other.data)) { }
 
       ResultData &operator= (ResultData&& other)
       {

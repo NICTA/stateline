@@ -13,7 +13,7 @@ namespace stateline
 {
   namespace mcmc
   {
-    Logger::Logger(uint nstacks, uint nchains, uint msRefresh)
+    TableLogger::TableLogger(uint nstacks, uint nchains, uint msRefresh)
           : msRefresh_(msRefresh),
             nstacks_(nstacks), 
             nchains_(nchains), 
@@ -30,7 +30,7 @@ namespace stateline
       std::fill(nSwapAttemptsGlobal_.begin(), nSwapAttemptsGlobal_.end(), 1); // for nan-free behaviour
     }
 
-    void Logger::update(uint id, const State& s,
+    void TableLogger::update(uint id, const State& s,
         const std::vector<double>& sigmas,
         const std::vector<double>& acceptRates,
         const std::vector<double>& betas,

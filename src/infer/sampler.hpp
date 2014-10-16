@@ -34,19 +34,31 @@ namespace stateline
     //! \returns The new proposed theta
     //!
     Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
-        double sigma,
-        const Eigen::VectorXd& min, const Eigen::VectorXd& max);
-    
-    Eigen::VectorXd gaussianCovProposal(uint id, const Eigen::VectorXd& sample, double sigma, const std::vector<Eigen::MatrixXd>& covariances);
+        double sigma, const Eigen::VectorXd& min, const Eigen::VectorXd& max);
+
+    class GaussianCovProposal
+    {
+      public:
+        GaussianCovProposal(uint nStacks, uint nChains, uint nDims);
+
+        Eigen::VectorXd propose(uint id, const Eigen::VectorXd &sample, double sigma);
+
+        void update(uint id, const Eigen::MatrixXd &cov);
+
+      private:
+        std::mt19937 gen_;
+        std::normal_distribution<> rand_; // Standard normal
+        std::vector<Eigen::MatrixXd> sigL_;
+    };
 
     class Sampler
     {
       public:
-
         Sampler(WorkerInterface& workerInterface, 
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
+
         ~Sampler();
       
         std::pair<uint, State> step(const std::vector<double>& sigmas, const std::vector<double>& betas);
