@@ -10,7 +10,7 @@ import stateline.logging as logging
 import numpy as np
 import matplotlib.pyplot as pl
 
-logging.nolog()
+logging.no_logging()
 
 # ------------------------------------------------------------------------------
 # Settings for the demo
@@ -22,7 +22,7 @@ N = 30  # Number of data points to generate
 noise = 1.0  # Standard deviation of noise
 nstacks, nchains = 20, 2  # Dimensions of the chain array
 nsamples = 1000  # Number of samples to collect (excluding burnin)
-nburn = 1000  # Number of samples to discard from the beginning
+nburn = 5000  # Number of samples to discard from the beginning
 
 # ------------------------------------------------------------------------------
 # Generate some synthetic data (true data and noisy observations)
@@ -53,10 +53,13 @@ print('Waiting for workers...')
 # Create a worker interface to communicate with workers
 workers = mcmc.WorkerInterface(5555, (data_x, data_y, noise))
 
-# Use a covariance gaussian proposal and covariance adapter
-proposal = mcmc.gaussian_cov_proposal
-sigma_adapter = mcmc.SigmaCovarianceAdapter(nstacks, nchains, 2,
-                                            steps_per_adapt=10)
+# Use a covariance gaussian proposal and covariance estimator
+proposal = mcmc.GaussianCovProposal(nstacks, nchains, 2)
+cov_estimator = mcmc.CovarianceEstimator(nstacks, nchains, 2)
+
+# Create a sigma adapter
+sigma_adapter = mcmc.SlidingWindowSigmaAdapter(nstacks, nchains, 2,
+                                               steps_per_adapt=200)
 
 # Create a beta adapter
 beta_adapter = mcmc.SlidingWindowBetaAdapter(nstacks, nchains,
@@ -79,6 +82,8 @@ while chains.length(0) < nsamples + nburn:
 
     sigma_adapter.update(i, state)
     beta_adapter.update(i, state)
+    cov_estimator.update(i, state.sample)
+    proposal.update(i, cov_estimator.cov(i))
 
 # Flush any cached samples into the database
 sampler.flush()
@@ -86,7 +91,7 @@ sampler.flush()
 # ------------------------------------------------------------------------------
 # Visualise the samples
 # ------------------------------------------------------------------------------
-samples = list(chains.cold_samples(burnin=nburn))
+samples = list(chains.cold_samples(nburn=nburn))
 
 # Plot trace
 f, (ax_m, ax_b) = pl.subplots(2, sharex=True)
@@ -96,11 +101,11 @@ for s in samples:
 
 ax_m.set_ylabel('$m$')
 ax_m.axhline(y=slope, color='r')
-ax_m.set_xlim(0, nsamples - nburn)
+ax_m.set_xlim(0, nsamples)
 ax_b.set_xlabel('step number')
 ax_b.set_ylabel('$b$')
 ax_b.axhline(y=intercept, color='r')
-ax_b.set_xlim(0, nsamples - nburn)
+ax_b.set_xlim(0, nsamples)
 pl.show()
 
 # Plot histogram
