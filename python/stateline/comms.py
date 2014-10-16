@@ -296,7 +296,7 @@ class Minion(_sl.Minion):
         super().submit_result(ResultData(self.job_type, result))
 
 
-def run_minion(worker, func, job_type=0, unpack=False):
+def run_minion(worker, func, job_type=0, unpack=False, use_global_data=False):
     """Create a Minion to run a work function.
 
     Parameters
@@ -304,22 +304,32 @@ def run_minion(worker, func, job_type=0, unpack=False):
     worker : `Worker` instance
         An instance of `Worker` to connect to.
     func : callable
-        The work function for the Minions to perform. The input of this
-        function is the job data received by calling `Minion`.`next_job()`.
+        The work function for the Minions to perform. The input to this
+        function depends on the flags `unpack` and `use_data` (see below).
         The output must be a picklable object that represents the result
         of the job. The output is passed to `Minion`.`submit()`.
     job_type : int, optional
         The type of job these new Minions should handle. Defaults to 0.
     unpack : boolean, optional
         If this is True, then the job data is unpacked as arguments to `func`.
+        Otherwise, the entire job data is passed as a single argument.
         Defaults to False.
+    use_global_data : boolean, optional
+        If this is True, then the first argument to `func` is the global data
+        Otherwise, the global is not passed to `func`. Defaults to False.
     """
-    if unpack:
-        m = Minion(worker, job_type)
-        for _, job_data in m.jobs():
-            m.submit(func(*job_data))
+    m = Minion(worker, job_type)
+    if use_global_data:
+        if unpack:
+            for global_data, job_data in m.jobs():
+                m.submit(func(global_data, *job_data))
+        else:
+            for global_data, job_data in m.jobs():
+                m.submit(func(global_data, job_data))
     else:
-        m = Minion(worker, job_type)
-        for _, job_data in m.jobs():
-            m.submit(func(job_data))
-
+        if unpack:
+            for _, job_data in m.jobs():
+                m.submit(func(*job_data))
+        else:
+            for _, job_data in m.jobs():
+                m.submit(func(job_data))
