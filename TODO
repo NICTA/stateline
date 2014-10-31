@@ -1,0 +1,42 @@
+TODO
+====
+
+Important (before launch)
+-------------------------
+- Change license to LGPL
+- Remove references to obsidian
+- Add a setup.py script to install the package automatically
+- Upload library to pip so we can pip install
+
+Not important
+-------------
+- Tuning guide for adapters + different settings for different scenarios
+- Add demo for recovery
+- Documentation update for C++
+- The C++ stats::Mixture<> is not numerically stable (log of sum of exps)
+- Improve performance by switching modulo '%' with a 'countdown' e.g.
+  if (length % adapt_interval == 0) {
+     // adapt
+  }
+
+  vs.
+
+  if (length == next_adapt) {
+    // adapt
+    next_adapt += adapt_interval
+  }
+
+  or
+
+  if (--next_adapt == 0) {
+    // adapt
+    next_adapt = adapt_interval
+  }
+
+- Do we need to store the sigmas/betas for every state in the database?
+  Could save space by only storing the current sigma/beta for each chain.
+- Need to be able to recover adapter state (e.g. recover the covariance etc.?)
+- Possible comparisons with other MCMC libraries (PyMC, emcee, BUGS)
+- Add shell script to run the demo and worker at the same time, so there's no
+  need to manually launch worker to see the demos
+- Check if there's any unused settings structs in C++
