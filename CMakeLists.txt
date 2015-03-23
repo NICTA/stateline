@@ -183,13 +183,13 @@ MACRO(ADD_SUBPROJECT directory)
   ADD_SUBDIRECTORY(${directory})
 ENDMACRO(ADD_SUBPROJECT directory)
 
-ADD_SUBPROJECT(src/app)
-ADD_SUBPROJECT(src/stats)
+#ADD_SUBPROJECT(src/app)
+#ADD_SUBPROJECT(src/stats)
 ADD_SUBPROJECT(src/comms)
-ADD_SUBPROJECT(src/db)
-ADD_SUBPROJECT(src/infer)
-ADD_SUBPROJECT(src/likelihood)
-ADD_SUBPROJECT(src/bin)
+#ADD_SUBPROJECT(src/db)
+#ADD_SUBPROJECT(src/infer)
+#ADD_SUBPROJECT(src/likelihood)
+#ADD_SUBPROJECT(src/bin)
 
 ##############################################################################
 # Build final libraries for server and client
@@ -209,4 +209,4 @@ SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 ##############################################################################
 # Add python target
 ##############################################################################
-ADD_SUBPROJECT(python)
+#ADD_SUBPROJECT(python)
