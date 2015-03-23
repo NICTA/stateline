@@ -16,23 +16,25 @@ namespace stateline
 {
   namespace comms
   {
-    Minion::Minion(Worker& w, uint jobID)
+    Minion::Minion(Worker& w, JobType jobType)
         : socket_(w.zmqContext(), ZMQ_DEALER),
-          jobIDString_(detail::serialise<std::uint32_t>(jobID))
+          jobTypeString_(detail::serialise<std::uint32_t>(jobType))
     {
       auto socketID = stateline::comms::randomSocketID();
       stateline::comms::setSocketID(socketID, socket_);
       socket_.connect(WORKER_SOCKET_ADDR.c_str());
     }
 
-    JobData Minion::nextJob()
+    std::string Minion::nextJob()
     {
       // Make sure we conform to the Stateline protocol
       if (firstMessage_)
       {
-        send(socket_, Message(stateline::comms::JOBREQUEST, { jobIDString_ }));
+        // TODO: what do we do here?
+        send(socket_, Message(stateline::comms::WORK, { jobTypeString_ }));
         firstMessage_ = false;
       }
+
       VLOG(3) << "Minion waiting on next job";
       stateline::comms::Message r = receive(socket_);
       requesterAddress_ = r.address;
@@ -42,20 +44,13 @@ namespace stateline
         addrString += a + "::";
       }
       VLOG(3) << addrString;
-      JobData j;
 
-      // type, globalData, JobData IN THAT ORDER
-      j.type = detail::unserialise<std::uint32_t>(r.data[0]);
-      j.globalData = r.data[1];
-      j.jobData = r.data[2];
-      return j;
+      return r.data[0];
     }
 
-    void Minion::submitResult(const ResultData& result)
+    void Minion::submitResult(const std::string& result)
     {
-      // Order of data: Result type, result data, new job type request
-      Message m(requesterAddress_, JOBSWAP,
-          { detail::serialise<std::uint32_t>(result.type), result.data, jobIDString_ });
+      Message m(requesterAddress_, stateline::comms::WORK, { result });
 
       VLOG(3) << "Minion submitting " << m;
       send(socket_, m);

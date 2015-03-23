@@ -29,11 +29,7 @@ namespace stateline
       {
         case HELLO: return "HELLO";
         case HEARTBEAT: return "HEARTBEAT";
-        case PROBLEMSPEC: return "PROBLEMSPEC";
-        case JOBREQUEST: return "JOBREQUEST"; 
-        case JOB: return "JOB";
-        case JOBSWAP: return "JOBSWAP";
-        case ALLDONE: return "ALLDONE";
+        case WORK: return "WORK";
         case GOODBYE: return "GOODBYE";
         default: return "UNKNOWN";
       }

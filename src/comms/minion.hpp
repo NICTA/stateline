@@ -39,27 +39,26 @@ namespace stateline
       //! \param w The parent worker object it communicates with.
       //! \param jobID The ID of the job that the minion will do.
       //!
-      Minion(Worker& w, uint jobID);
+      Minion(Worker& w, JobType jobType);
 
       //! Gets a job from the worker.
       //!
       //! \return The job to do.
       //!
-      JobData nextJob();
+      std::string nextJob();
 
       //! Submits a result to the worker. Call this function
       //! after requesting a job with job().
       //!
       //! \param result The computed result.
       //!
-      void submitResult(const ResultData& result);
+      void submitResult(const std::string& result);
 
     private:
       bool firstMessage_ = true;
       Address requesterAddress_;
-      std::string jobTypeString_;
       zmq::socket_t socket_;
-      std::string jobIDString_;
+      std::string jobTypeString_;
     };
   } // namespace comms
 } // namespace stateline

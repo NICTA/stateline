@@ -29,12 +29,11 @@ namespace stateline
     {
       HELLO = 0,
       HEARTBEAT = 1,
-      PROBLEMSPEC = 2,
-      JOBREQUEST = 3,
-      JOB = 4,
-      JOBSWAP = 5,
-      ALLDONE = 6,
-      GOODBYE = 7
+      //JOBREQUEST = 2,
+      //JOB = 3,
+      //JOBSWAP = 4,
+      WORK = 2,
+      GOODBYE = 3
     };
 
     //! Define valid messages to send between delegators and workers.

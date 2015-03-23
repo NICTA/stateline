@@ -43,8 +43,7 @@ namespace stateline
         //! \param jobSpecData The serialised problem specifications for each job.
         //! \param settings The configuration object.
         //!
-        Delegator(const std::string& commonSpecData,
-            const std::map<JobID, std::string>& jobSpecData,
+        Delegator(const std::vector<JobType> &jobTypes,
             const DelegatorSettings& settings);
 
         // Delegators can't be copied.
@@ -63,11 +62,6 @@ namespace stateline
         {
           return *context_;
         }
-        //! Initialise a worker by giving it the problem specification.
-        //! 
-        //! \param m The HELLO message the new worker sent.
-        //!
-        void sendWorkerProblemSpec(const Message& m);
 
         //! Connect a worker that has previously been sent a problem spec.
         //!
@@ -93,13 +87,6 @@ namespace stateline
         //!
         void sendFailed(const Message& m);
 
-        //! Process a job request by sending a job to the worker
-        //! if available, otherwise add to a needs job queue.
-        //!
-        //! \param m The JOBREQUEST message.
-        //!
-        void jobRequest(const Message& m);
-
         //! Get a result from a worker, then swap it for a new job.
         //! 
         //! \param m The JOBSWAP message.
@@ -113,9 +100,9 @@ namespace stateline
         //!
         void newJob(const Message& m);
 
-        //! Get the job IDs that this delegator wants done.
+        //! Get the job types that this delegator wants done.
         //!
-        std::vector<JobID> jobs() const;
+        std::vector<JobType> jobs() const;
 
       private:
         // Polling times
@@ -129,9 +116,9 @@ namespace stateline
         // Fault tolerance support
         std::map<std::string, std::vector<Message>> workerToJobMap_;
         // The queues for jobs
-        std::map<JobID, std::deque<Message>> jobQueues_;
-        std::map<JobID, std::deque<Address>> requestQueues_;
-        std::map<JobID, JobID> jobIdMap_;
+        std::map<JobType, std::deque<Message>> jobQueues_;
+        std::map<JobType, std::deque<Address>> requestQueues_;
+        std::map<JobType, JobType> jobTypeMap_;
         // Heartbeating System
         ServerHeartbeat* heartbeat_;
         bool running_;

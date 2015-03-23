@@ -17,11 +17,9 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const std::string& commonSpecData, 
-        const std::map<JobID, std::string>& jobSpecData,
+    Delegator::Delegator(const std::vector<JobType> &jobTypes,
         const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
-          commonSpecData_(commonSpecData),
           running_(true)
     {
       namespace ph = std::placeholders;
@@ -47,42 +45,37 @@ namespace stateline
       router_.add_socket(SocketID::HEARTBEAT, heartbeat);
       router_.add_socket(SocketID::NETWORK, network);
 
-      // Map external job IDs to internal consecutive IDs
-      JobID internalJobId = 0;
-      for (auto &jobSpec : jobSpecData)
+      // Map external JobTypes to internal consecutive JobType
+      JobID nJobs = 0;
+      for (JobType type : jobTypes)
       {
-        // Map the JobID given in the spec to an internal ID
-        jobIdMap_[jobSpec.first] = internalJobId;
-
-        // Copy the corresponding spec into our internal spec vector which uses
-        // contiguous ID values.
-        jobSpecData_.push_back(jobSpec.second);
-        internalJobId++;
+        jobTypeMap_[type] = nJobs++;
       }
 
       VLOG(3) << "Attaching functionality to router";
-      // // Specify the Delegator functionality
-      auto fInit = std::bind(&Delegator::sendWorkerProblemSpec, this, ph::_1);
-      auto fConnect = std::bind(&Delegator::connectWorker, this, ph::_1);
-      auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
 
+      // Specify the Delegator functionality
+      auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
       auto fDisconnect = std::bind(&Delegator::disconnectWorker, this, ph::_1);
-      auto fSwapJobs = std::bind(&Delegator::jobSwap, this, ph::_1);
+      auto fSwapJobs = [&](const Message &m)
+      {
+        // TODO: refactor this by merging connectWorker and jobSwap
+        std::string worker = m.address.back();
+        if (workerToJobMap_.count(worker) == 0)
+          connectWorker(m);
+        else
+          jobSwap(m);
+      };
+
       auto fSendFailed = std::bind(&Delegator::sendFailed, this, ph::_1);
 
-      auto fForwardToHB = [&] (const Message&m)
-      {
-        this->router_.send(SocketID::HEARTBEAT, m);};
-      auto fForwardToNetwork = [this] (const Message&m)
-      {
-        this->router_.send(SocketID::NETWORK,m);};
+      auto fForwardToHB = [this] (const Message&m) { this->router_.send(SocketID::HEARTBEAT, m); };
+      auto fForwardToNetwork = [this] (const Message&m) { this->router_.send(SocketID::NETWORK,m); };
 
-      // // Bind these functions to the router
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fInit);
+      // Bind these functions to the router
+      router_(SocketID::REQUESTER).onRcvWORK.connect(fNewJob);
       router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvJOBREQUEST.connect(fConnect);
-      router_(SocketID::REQUESTER).onRcvJOB.connect(fNewJob);
-      router_(SocketID::NETWORK).onRcvJOBSWAP.connect(fSwapJobs);
+      router_(SocketID::NETWORK).onRcvWORK.connect(fSwapJobs);
       router_(SocketID::NETWORK).onFailedSend.connect(fSendFailed);
       router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
       router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
@@ -107,55 +100,20 @@ namespace stateline
       VLOG(1) << "heartbeat deleted";
     }
 
-    void Delegator::sendWorkerProblemSpec(const Message& msgHelloFromWorker)
-    {
-      // we're not actully going to add the worker to the 'connected'
-      // list until it comes back with a jobrequest! has to solve the
-      // problemspec first...
-      //most recently appended address
-      LOG(INFO)<< "Initialising worker " << msgHelloFromWorker.address.back();
-
-      // Get the job IDs that this worker offers to do
-      std::vector<JobID> jobs;
-      detail::unserialise<std::uint32_t>(msgHelloFromWorker.data[0], jobs);
-
-      std::vector<std::string> repData;
-      repData.push_back(commonSpecData_);
-
-      for (auto job : jobs)
-      {
-        VLOG(1) << "Worker offered to solve job with ID " << job;
-
-        if (jobIdMap_.count(job))
-        {
-          VLOG(1) << "\t and we have a spec for it! " << job;
-          repData.push_back(std::to_string(job));
-          repData.push_back(jobSpecData_[jobIdMap_[job]]);
-        }
-        else
-        {
-          // Send back an empty string as the spec
-          repData.push_back(std::to_string(job));
-          repData.push_back("");
-        }
-      }
-
-      //Send back problemspec
-      router_.send(SocketID::NETWORK,
-          Message(msgHelloFromWorker.address, PROBLEMSPEC, repData));
-    }
-
     void Delegator::connectWorker(const Message& msgJobRequestFromMinion)
     {
-      // Worker has just completed the problemspec so can now be 'connected'
+      // Worker can now be 'connected'
       std::string worker = msgJobRequestFromMinion.address.back();
       std::string minion = msgJobRequestFromMinion.address.front();
       VLOG(1) << "minion " << worker << ":" << minion << " ready";
+
       if (workerToJobMap_.count(worker) == 0)
       {
         workerToJobMap_.insert(std::make_pair(worker, std::vector<Message>()));
       }
+
       LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
+
       // this message actually came from a minion, so make sure we send a job
       // to them
       sendJob(msgJobRequestFromMinion);
@@ -288,13 +246,13 @@ namespace stateline
       // send it on to the requester
       router_.send(SocketID::REQUESTER, r);
       // give the minion a new job
-      sendJob(Message( { minion, worker }, JOBSWAP, { id }));
+      sendJob(Message( { minion, worker }, WORK, { id }));
     }
 
     std::vector<JobID> Delegator::jobs() const
     {
       std::vector<JobID> jobs;
-      for (auto job : jobIdMap_)
+      for (auto job : jobTypeMap_)
         jobs.push_back(job.first);
       return jobs;
     }

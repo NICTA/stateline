@@ -59,20 +59,8 @@ namespace stateline
       //! The socket receives a heartbeat message.
       MsgSignal onRcvHEARTBEAT;
 
-      //! The socket receives a problem spec message.
-      MsgSignal onRcvPROBLEMSPEC;
-
-      //! The socket receives a job request message.
-      MsgSignal onRcvJOBREQUEST;
-
-      //! The socket receives a job.
-      MsgSignal onRcvJOB;
-
-      //! The socket receives a job swap message.
-      MsgSignal onRcvJOBSWAP;
-
-      //! The socket receives an all done message.
-      MsgSignal onRcvALLDONE;
+      //! The socket receives a work message.
+      MsgSignal onRcvWORK;
 
       //! The socket receives a goodbye message.
       MsgSignal onRcvGOODBYE;

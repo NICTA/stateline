@@ -40,10 +40,10 @@ namespace stateline
     public:
       //! Build a new worker that can handle multiple types of jobs.
       //!
-      //! \param jobIDs A list of job IDs that the worker can do.
+      //! \param job types A list of job types that the worker can do.
       //! \param settings The configuration object.
       //!
-      Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings);
+      Worker(const std::vector<JobType>& jobTypes, const WorkerSettings& settings);
  
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
@@ -62,25 +62,6 @@ namespace stateline
         return *context_;
       }
 
-      //! Return a reference to the problemspec so that the minions can
-      //! instantiate their sockets.
-      //!
-      //! \return A reference to the worker-owned problemspec.
-      //!
-      const std::string& globalSpec()
-      {
-        return globalSpec_;
-      }
-
-      //! Return the individual job specifications for the minions.
-      //!
-      //! \return A reference to the worker-owned jobspec.
-      //!
-      const std::string& jobSpec(uint jobID)
-      {
-        return jobSpecs_[jobID];
-      }
-
       //! Return a set of job IDs that are enabled.
       //!
       //! \return Set of jobs IDs that are enabled.
@@ -94,9 +75,7 @@ namespace stateline
       // Context for all local sockets
       zmq::context_t* context_;
       SocketRouter router_;
-      std::string globalSpec_;
-      std::set<uint> jobsEnabled_;
-      std::map<uint, std::string> jobSpecs_;
+      std::set<JobType> jobsEnabled_;
 
       // Heartbeating System
       ClientHeartbeat* heartbeat_;
