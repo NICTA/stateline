@@ -13,14 +13,14 @@ TARGET_LINK_LIBRARIES(router transport messages)
 
 
 # Server specific libraries
-ADD_LIBRARY(delegator delegator.cpp)
+ADD_LIBRARY(delegator delegator.cpp hdelegator.cpp)
 TARGET_LINK_LIBRARIES(delegator transport messages router)
 ADD_LIBRARY(requester requester.cpp)
 ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
 TARGET_LINK_LIBRARIES(serverheartbeat messages)
 
 # Client specific libraries
-ADD_LIBRARY(worker worker.cpp)
+ADD_LIBRARY(worker worker.cpp hworker.cpp)
 TARGET_LINK_LIBRARIES(worker transport messages router)
 ADD_LIBRARY(minion minion.cpp)
 ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)

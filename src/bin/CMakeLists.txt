@@ -21,4 +21,6 @@ FUNCTION(ADD_DEMO demoName library)
 ENDFUNCTION()
 
 ADD_DEMO(demoDelegator statelineserver)
+ADD_DEMO(headlessDelegator statelineserver)
 ADD_DEMO(demoWorker statelineclient)
+ADD_DEMO(headlessWorker statelineclient)

@@ -35,6 +35,7 @@ namespace stateline
         VLOG(1) << "ZMQ receive has thrown with type " << e.what();
         throw;
       }
+      VLOG(2) << "Message Part Received: " << result;
       return result;
     }
 
@@ -44,6 +45,7 @@ namespace stateline
       zmq::message_t message(string.size());
       memcpy(message.data(), string.data(), string.size());
 
+      VLOG(2) << "Message Part Sending: " << string;
       return socket.send(message);
     }
 
@@ -58,21 +60,40 @@ namespace stateline
 
     Message receive(zmq::socket_t& socket)
     {
+      VLOG(1) << "Receiving Message...";
       std::vector<std::string> address;
       std::string frame = receiveString(socket);
       // Do we have an address?
-      while (frame.compare("") != 0)
+      if (frame.compare("") == 0)
       {
-        address.push_back(frame);
-        frame = receiveString(socket);
+        VLOG(1) << "Message contains no address";
+      }
+      else
+      {
+        VLOG(1) << "Message has address:";
+        while (frame.compare("") != 0)
+        {
+          address.push_back(frame);
+          frame = receiveString(socket);
+        }
       }
       // address is a stack, so reverse it to get the right way around
       std::reverse(address.begin(), address.end());
 
       // We've just read the delimiter, so now get subject
+      VLOG(1) << "Reading subject:";
       auto subjectString = receiveString(socket);
+      VLOG(1) << "--as string: " << subjectString << " of length " << subjectString.size();
+      for (auto c : subjectString)
+      {
+        VLOG(1) << "----char " << c << "uint: " << uint(c);
+      }
+      // VLOG(1) << "--as uint: " << uint(&subjectString.c_str()[0]);
+      const char* chars = subjectString.c_str();
       //the underlying representation is (explicitly) an int so fairly safe
       Subject subject = (Subject)detail::unserialise<std::uint32_t>(subjectString);
+      VLOG(1) << "--as Subject: " << subject;
+      VLOG(1) << "Reading data:";
       std::vector<std::string> data;
       while (true)
       {
