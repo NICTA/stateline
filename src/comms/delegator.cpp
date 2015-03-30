@@ -116,35 +116,35 @@ namespace stateline
     {
       uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
 
-      PendingMinion minion;
+      PendingMinion minion({id}, msgRequestFromMinion.address);
 
       // Find the first job that can be given to the minion.
       for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
-        if (minion->canDo(it))
+        if (minion.canDo(*it))
         {
           // Append the minion's address to the job and forward it to the network.
-          Message r = it->message;
+          Message r = it->job;
 
           // Append new address to the minion.
           for (const auto &a : msgRequestFromMinion.address)
             r.address.push_back(a);
 
           router_.send(SocketID::NETWORK, r);
-          pendingJobs_.remove(it); // TODO: we can just label it as removed
+          pendingJobs_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
 
       // This minion can't do any job yet, add it to the pending minion queue.
-      pendingMinions_.push(msgRequestFromMinion);
+      pendingMinions_.push_back(minion);
     }
 
-    void Delegator::newJob(Message msgJobFromRequester)
+    void Delegator::newJob(const Message& msgJobFromRequester)
     {
       uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
 
-      PendingJob job;
+      PendingJob job {id, msgJobFromRequester};
 
       // Find the first minion that can do this new job.
       for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
@@ -152,11 +152,12 @@ namespace stateline
         if (it->canDo(job))
         {
           // Append the minion's address to the message and forward it to the network.
+          Message r = Message(msgJobFromRequester);
           for (const auto &a : it->address)
-            msgJobFromRequester.address.push_back(a);
+            r.address.push_back(a);
 
-          router_.send(SocketID::NETWORK, msgJobFromRequester);
-          pendingMinions_.remove(it); // TODO: we can just label it as removed
+          router_.send(SocketID::NETWORK, r); 
+          pendingMinions_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
@@ -171,29 +172,24 @@ namespace stateline
       std::string worker = goodbyeFromWorker.address.back();
 
       //remove the worker's minions from all the request queues
-      uint id = 0;
-      for (auto& queue : requestQueues_)
+      auto requestPred = [&](const PendingMinion& s)
       {
-        auto requestPred = [&](const std::vector<std::string>& s)
-        {
-          bool match = s.back() == worker;
-          if (match)
-          VLOG(1) << "Removing " << addressAsString(s) << " from request queue " << id;
-          return match;
-        };
-        auto wjBegin = std::remove_if(queue.second.begin(), queue.second.end(), requestPred);
-        auto wjEnd = queue.second.end();
-        queue.second.erase(wjBegin, wjEnd);
-        id++;
-      }
+        bool match = s.address.back() == worker;
+        if (match)
+        VLOG(1) << "Removing " << addressAsString(s.address) << " from request queue.";
+        return match;
+      };
+      auto wjBegin = std::remove_if(pendingMinions_.begin(), pendingMinions_.end(), requestPred);
+      auto wjEnd = pendingMinions_.end();
+      pendingMinions_.erase(wjBegin, wjEnd);
 
       //remove all the worker's jobs from work in progress queue 
       //and push them back onto the (appropriate) job queue
       for (auto const& j : workerToJobMap_[worker])
       {
         uint id = detail::unserialise<std::uint32_t>(j.data[0]);
-        VLOG(1) << "Requeueing " << j << "onto queue " << id;
-        jobQueues_[id].push_front(j);
+        VLOG(1) << "Requeueing " << j << "onto queue";
+        pendingJobs_.push_front({id, j});
       }
 
       // disconnect the worker

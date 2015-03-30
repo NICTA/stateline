@@ -53,7 +53,7 @@ namespace stateline
     void Minion::submitResult(const std::string& result)
     {
       Message m(requesterAddress_, stateline::comms::WORK,
-          { detail::serialise<std::uint32_t>(result.type), result, jobIDString_ });
+          { jobTypeString_, result, jobTypeString_});
 
       VLOG(3) << "Minion submitting " << m;
       send(socket_, m);

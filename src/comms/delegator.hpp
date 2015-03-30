@@ -110,9 +110,11 @@ namespace stateline
         class PendingMinion
         {
           public:
-            PendingMinion(const std::vector<JobType> jobTypes)
+            PendingMinion(const std::vector<JobType> jobTypes,
+                const Address& a)
+              : address(a)
             {
-              for (JobType &job : jobTypes)
+              for (const JobType &job : jobTypes)
               {
                 canDoJobType_.insert(job);
               }
@@ -123,9 +125,10 @@ namespace stateline
               return canDoJobType_.count(job.type);
             }
 
+            Address address;
           private:
             std::set<JobType> canDoJobType_;
-        }
+        };
 
         // Polling times
         int msNetworkPoll_;
@@ -133,7 +136,7 @@ namespace stateline
         zmq::context_t* context_;
         SocketRouter router_;
 
-        std::vector<PendingJob> pendingJobs_;
+        std::deque<PendingJob> pendingJobs_;
         std::vector<PendingMinion> pendingMinions_;
         std::map<std::string, std::vector<Message>> workerToJobMap_;
 
