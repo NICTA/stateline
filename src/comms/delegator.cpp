@@ -23,7 +23,7 @@ namespace stateline
           running_(true)
     {
       namespace ph = std::placeholders;
-      
+
       context_ = new zmq::context_t(1);
       heartbeat_ = new ServerHeartbeat(*context_, settings.heartbeat);
 
@@ -44,13 +44,6 @@ namespace stateline
       router_.add_socket(SocketID::REQUESTER, requester);
       router_.add_socket(SocketID::HEARTBEAT, heartbeat);
       router_.add_socket(SocketID::NETWORK, network);
-
-      // Map external JobTypes to internal consecutive JobType
-      JobID nJobs = 0;
-      for (JobType type : jobTypes)
-      {
-        jobTypeMap_[type] = nJobs++;
-      }
 
       VLOG(3) << "Attaching functionality to router";
 
@@ -84,7 +77,7 @@ namespace stateline
       router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
 
       VLOG(3) << "Functionality assignment complete";
-      
+
       VLOG(2) << "Starting the Routers";
       router_.start(msNetworkPoll_, running_);
     }
@@ -123,55 +116,53 @@ namespace stateline
     {
       uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
 
-      std::deque<Message>& queue = jobQueues_[id];
-      if (!queue.empty())
+      PendingMinion minion;
+
+      // Find the first job that can be given to the minion.
+      for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
-        std::string worker = msgRequestFromMinion.address.back();
-        //send a job from the job queue
-        Message r = queue.front();
-        // keep where the job came from, add new destination
-        for (auto const& a : msgRequestFromMinion.address)
+        if (minion->canDo(it))
         {
-          r.address.push_back(a);
+          // Append the minion's address to the job and forward it to the network.
+          Message r = it->message;
+
+          // Append new address to the minion.
+          for (const auto &a : msgRequestFromMinion.address)
+            r.address.push_back(a);
+
+          router_.send(SocketID::NETWORK, r);
+          pendingJobs_.remove(it); // TODO: we can just label it as removed
+          return;
         }
-        router_.send(SocketID::NETWORK, r);
-        workerToJobMap_[worker].push_back(queue.front());
-        queue.pop_front();
       }
-      else
-      {
-        // Add the minion to the request queue
-        requestQueues_[id].push_back(msgRequestFromMinion.address);
-      }
+
+      // This minion can't do any job yet, add it to the pending minion queue.
+      pendingMinions_.push(msgRequestFromMinion);
     }
 
-    void Delegator::newJob(const Message& msgJobFromRequester)
+    void Delegator::newJob(Message msgJobFromRequester)
     {
       uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
 
-      std::deque<std::vector<std::string>>& queue = requestQueues_[id];
+      PendingJob job;
 
-      //forward straight to minion if there's one waiting
-      if (!queue.empty())
+      // Find the first minion that can do this new job.
+      for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
       {
-        Message r = msgJobFromRequester;
-        // append the address of this minion
-        for (auto const& a : queue.front())
+        if (it->canDo(job))
         {
-          r.address.push_back(a);
+          // Append the minion's address to the message and forward it to the network.
+          for (const auto &a : it->address)
+            msgJobFromRequester.address.push_back(a);
+
+          router_.send(SocketID::NETWORK, msgJobFromRequester);
+          pendingMinions_.remove(it); // TODO: we can just label it as removed
+          return;
         }
-        // send the job
-        router_.send(SocketID::NETWORK, r);
-        // add to WIP list
-        std::string worker = r.address.back();
-        workerToJobMap_[worker].push_back(msgJobFromRequester);
-        // Remove the minion from the request queue 
-        queue.pop_front();
       }
-      else
-      {
-        jobQueues_[id].push_back(msgJobFromRequester);
-      }
+
+      // No minions can do this job, add it to the pending job queue
+      pendingJobs_.push_back(job);
     }
 
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
@@ -247,14 +238,6 @@ namespace stateline
       router_.send(SocketID::REQUESTER, r);
       // give the minion a new job
       sendJob(Message( { minion, worker }, WORK, { id }));
-    }
-
-    std::vector<JobID> Delegator::jobs() const
-    {
-      std::vector<JobID> jobs;
-      for (auto job : jobTypeMap_)
-        jobs.push_back(job.first);
-      return jobs;
     }
 
   } // namespace stateline

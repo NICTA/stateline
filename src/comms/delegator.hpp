@@ -88,37 +88,55 @@ namespace stateline
         void sendFailed(const Message& m);
 
         //! Get a result from a worker, then swap it for a new job.
-        //! 
+        //!
         //! \param m The JOBSWAP message.
         //!
         void jobSwap(const Message& m);
 
         //! Receive a new job from the requesters, and add it to the queue or
         //! send it directly to an idle worker.
-        //! 
+        //!
         //! \param m The JOBSWAP message.
         //!
         void newJob(const Message& m);
 
-        //! Get the job types that this delegator wants done.
-        //!
-        std::vector<JobType> jobs() const;
-
       private:
+        struct PendingJob
+        {
+          JobType type;
+          Message job;
+        };
+
+        class PendingMinion
+        {
+          public:
+            PendingMinion(const std::vector<JobType> jobTypes)
+            {
+              for (JobType &job : jobTypes)
+              {
+                canDoJobType_.insert(job);
+              }
+            }
+
+            bool canDo(const PendingJob &job)
+            {
+              return canDoJobType_.count(job.type);
+            }
+
+          private:
+            std::set<JobType> canDoJobType_;
+        }
+
         // Polling times
         int msNetworkPoll_;
         // Sockets
         zmq::context_t* context_;
         SocketRouter router_;
-        // Cached for fast sending to each client
-        std::string commonSpecData_;
-        std::vector<std::string> jobSpecData_;
-        // Fault tolerance support
+
+        std::vector<PendingJob> pendingJobs_;
+        std::vector<PendingMinion> pendingMinions_;
         std::map<std::string, std::vector<Message>> workerToJobMap_;
-        // The queues for jobs
-        std::map<JobType, std::deque<Message>> jobQueues_;
-        std::map<JobType, std::deque<Address>> requestQueues_;
-        std::map<JobType, JobType> jobTypeMap_;
+
         // Heartbeating System
         ServerHeartbeat* heartbeat_;
         bool running_;
