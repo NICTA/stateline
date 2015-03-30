@@ -18,6 +18,7 @@ FUNCTION(ADD_DEMO demoName library)
     ${GLOG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY})
+  INSTALL (TARGETS ${demoName} RUNTIME DESTINATION bin)
 ENDFUNCTION()
 
 ADD_DEMO(demoDelegator statelineserver)

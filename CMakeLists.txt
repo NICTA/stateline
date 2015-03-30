@@ -45,6 +45,17 @@ SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(LEVELDB_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
 
+# Installation
+install(DIRECTORY src/ DESTINATION "include/stateline"
+  FILES_MATCHING PATTERN "*.hpp")
+
+SET(LOCAL_INSTALL True)
+IF(LOCAL_INSTALL)
+  SET(CMAKE_INSTALL_PREFIX "${STATELINE_BINARY_DIR}/install")
+ENDIF(LOCAL_INSTALL)
+
+
+
 ##############################################################################
 # LOGGING (GLOG)
 ##############################################################################
@@ -206,7 +217,15 @@ ADD_LIBRARY(statelineclient src/app/worker.hpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
+install (TARGETS statelineserver
+         ARCHIVE DESTINATION lib
+         LIBRARY DESTINATION lib)
+install (TARGETS statelineclient
+         ARCHIVE DESTINATION lib
+         LIBRARY DESTINATION lib)
+
 ##############################################################################
 # Add python target
 ##############################################################################
 ADD_SUBPROJECT(python)
+
