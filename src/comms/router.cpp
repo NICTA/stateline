@@ -161,20 +161,8 @@ namespace stateline
         case stateline::comms::HEARTBEAT:
           h.onRcvHEARTBEAT(msg);
           break;
-        case stateline::comms::PROBLEMSPEC:
-          h.onRcvPROBLEMSPEC(msg);
-          break;
-        case stateline::comms::JOBREQUEST:
-          h.onRcvJOBREQUEST(msg);
-          break;
-        case stateline::comms::JOB:
-          h.onRcvJOB(msg);
-          break;
-        case stateline::comms::JOBSWAP:
-          h.onRcvJOBSWAP(msg);
-          break;
-        case stateline::comms::ALLDONE:
-          h.onRcvALLDONE(msg);
+        case stateline::comms::WORK:
+          h.onRcvWORK(msg);
           break;
         case stateline::comms::GOODBYE:
           h.onRcvGOODBYE(msg);

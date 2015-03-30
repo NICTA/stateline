@@ -49,7 +49,7 @@ namespace stateline
       //! \param id The job ID.
       //! \param j The job to compute.
       //!
-      void submit(JobID id, const JobData& j);
+      void submit(JobID id, JobType jobType, const std::string& data);
 
       //! Retrieves a job that has previously been submitted for computation.
       //! A pair is returned, with the id of the job (from the submit call),
@@ -62,7 +62,7 @@ namespace stateline
       //!
       //! \returns A pair of the job id and the result
       //!
-      std::pair<uint, ResultData> retrieve();
+      std::pair<uint, std::string> retrieve();
 
       //! Submits a batch of jobs for computation and immediately returns. An id is
       //! included to allow the batch to be identified later, because when batches
@@ -76,7 +76,7 @@ namespace stateline
       //! \param jobs The vector of jobs to compute
       //! \return The results of the job computations
       //!
-      void batchSubmit(JobID id, const std::vector<JobData>& jobs);
+      void batchSubmit(JobID id, const std::vector<JobType> &jobTypes, const std::string &data);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),
@@ -89,14 +89,14 @@ namespace stateline
       //!
       //! \returns A pair of the job id and the result
       //!
-      std::pair<uint, std::vector<ResultData>> batchRetrieve();
+      std::pair<uint, std::vector<std::string>> batchRetrieve();
 
     private:
       // Communicates with another inproc socket in the delegator
       zmq::socket_t socket_;
 
       // Used to keep track of the batch submissions
-      std::map<uint, std::vector<ResultData>> batches_;
+      std::map<uint, std::vector<std::string>> batches_;
       std::map<uint, uint> batchLeft_;
     };
   } // namespace comms

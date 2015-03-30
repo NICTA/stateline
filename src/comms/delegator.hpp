@@ -43,8 +43,7 @@ namespace stateline
         //! \param jobSpecData The serialised problem specifications for each job.
         //! \param settings The configuration object.
         //!
-        Delegator(const std::string& commonSpecData,
-            const std::map<JobID, std::string>& jobSpecData,
+        Delegator(const std::vector<JobType> &jobTypes,
             const DelegatorSettings& settings);
 
         // Delegators can't be copied.
@@ -63,11 +62,6 @@ namespace stateline
         {
           return *context_;
         }
-        //! Initialise a worker by giving it the problem specification.
-        //! 
-        //! \param m The HELLO message the new worker sent.
-        //!
-        void sendWorkerProblemSpec(const Message& m);
 
         //! Connect a worker that has previously been sent a problem spec.
         //!
@@ -93,45 +87,56 @@ namespace stateline
         //!
         void sendFailed(const Message& m);
 
-        //! Process a job request by sending a job to the worker
-        //! if available, otherwise add to a needs job queue.
-        //!
-        //! \param m The JOBREQUEST message.
-        //!
-        void jobRequest(const Message& m);
-
         //! Get a result from a worker, then swap it for a new job.
-        //! 
+        //!
         //! \param m The JOBSWAP message.
         //!
         void jobSwap(const Message& m);
 
         //! Receive a new job from the requesters, and add it to the queue or
         //! send it directly to an idle worker.
-        //! 
+        //!
         //! \param m The JOBSWAP message.
         //!
         void newJob(const Message& m);
 
-        //! Get the job IDs that this delegator wants done.
-        //!
-        std::vector<JobID> jobs() const;
-
       private:
+        struct PendingJob
+        {
+          JobType type;
+          Message job;
+        };
+
+        class PendingMinion
+        {
+          public:
+            PendingMinion(const std::vector<JobType> jobTypes)
+            {
+              for (JobType &job : jobTypes)
+              {
+                canDoJobType_.insert(job);
+              }
+            }
+
+            bool canDo(const PendingJob &job)
+            {
+              return canDoJobType_.count(job.type);
+            }
+
+          private:
+            std::set<JobType> canDoJobType_;
+        }
+
         // Polling times
         int msNetworkPoll_;
         // Sockets
         zmq::context_t* context_;
         SocketRouter router_;
-        // Cached for fast sending to each client
-        std::string commonSpecData_;
-        std::vector<std::string> jobSpecData_;
-        // Fault tolerance support
+
+        std::vector<PendingJob> pendingJobs_;
+        std::vector<PendingMinion> pendingMinions_;
         std::map<std::string, std::vector<Message>> workerToJobMap_;
-        // The queues for jobs
-        std::map<JobID, std::deque<Message>> jobQueues_;
-        std::map<JobID, std::deque<Address>> requestQueues_;
-        std::map<JobID, JobID> jobIdMap_;
+
         // Heartbeating System
         ServerHeartbeat* heartbeat_;
         bool running_;

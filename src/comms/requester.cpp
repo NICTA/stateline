@@ -22,16 +22,15 @@ namespace stateline
     //! \param socket The socket to send the job over.
     //! \param job The job to send.
     //!
-    void sendJob(zmq::socket_t& socket, const std::vector<JobID>& ids, const JobData& job)
+    void sendJob(zmq::socket_t& socket, const std::vector<uint>& id, uint jobType, const std::string& data)
     {
-      std::vector<std::string> idStrings;
-      for (auto i : ids)
+      std::vector<std::string> idString;
+      for (auto i : id)
       {
-        idStrings.push_back(std::to_string(i));
+        idString.push_back(std::to_string(i));
       }
 
-      Message m(idStrings, stateline::comms::JOB,
-        { detail::serialise<std::uint32_t>(job.type), job.globalData, job.jobData });
+      Message m(idString, stateline::comms::WORK, { detail::serialise<std::uint32_t>(jobType), data });
       send(socket, m);
     }
 
@@ -40,16 +39,10 @@ namespace stateline
     //! \param socket The socket to read from.
     //! \return The job result that was read from the socket.
     //!
-    ResultData receiveResult(zmq::socket_t& socket)
+    std::string receiveResult(zmq::socket_t& socket)
     {
       Message m = receive(socket);
-
-      ResultData r {
-        detail::unserialise<std::uint32_t>(m.data[0]),
-        std::move(m.data[1])
-      };
-
-      return r;
+      return m.data[0];
     }
 
     Requester::Requester(Delegator& d)
@@ -60,30 +53,30 @@ namespace stateline
       socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
     }
 
-    void Requester::submit(uint id, const JobData& j)
+    void Requester::submit(uint id, JobType jobType, const std::string& data)
     {
-      batchSubmit(id, { j });
+      batchSubmit(id, { jobType }, data);
     }
 
-    std::pair<uint, ResultData> Requester::retrieve()
+    std::pair<uint, std::string> Requester::retrieve()
     {
       auto r = batchRetrieve();
       return { r.first, std::move(r.second.front()) };
     }
 
-    void Requester::batchSubmit(uint id, const std::vector<JobData>& jobs)
+    void Requester::batchSubmit(JobID id, const std::vector<JobType>& jobTypes, const std::string &data)
     {
-      uint nJobs = jobs.size();
-      batches_[id] = std::vector<ResultData>(nJobs);
+      uint nJobs = jobTypes.size();
+      batches_[id] = std::vector<std::string>(nJobs);
       batchLeft_[id] = nJobs;
 
       for (uint i = 0; i < nJobs; i++)
       {
-        sendJob(socket_, { id, i }, std::move(jobs[i]));
+        sendJob(socket_, { id, i }, jobTypes[i], data);
       }
     }
 
-    std::pair<uint, std::vector<ResultData>> Requester::batchRetrieve()
+    std::pair<JobID, std::vector<std::string>> Requester::batchRetrieve()
     {
       while (true)
       {
@@ -92,11 +85,7 @@ namespace stateline
         uint batchNum = std::stoul(r.address[0]);
         uint idx = std::stoul(r.address[1]);
 
-        batches_[batchNum][idx] =
-        {
-          detail::unserialise<std::uint32_t>(r.data[0]),
-          std::move(r.data[1])
-        };
+        batches_[batchNum][idx] = std::move(r.data[1]);
 
         if (--batchLeft_[batchNum] == 0) {
           // This batch has finished
