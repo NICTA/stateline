@@ -22,7 +22,7 @@
 
 #include "app/logging.hpp"
 #include "app/commandline.hpp"
-#include "comms/hworker.hpp"
+#include "comms/worker.hpp"
 #include "app/signal.hpp"
 #include "stats/mixture.hpp"
 
@@ -69,7 +69,7 @@ int main(int ac, char *av[])
   // of 0. In cases where there are more than one job type, the vector should
   // contain the job types that this worker wants to handle.
   std::vector<uint> jobTypes = { 0 };
-  sl::comms::HWorker worker(jobTypes, settings);
+  sl::comms::Worker worker(jobTypes, settings);
   
   
   while(!sl::global::interruptedBySignal)

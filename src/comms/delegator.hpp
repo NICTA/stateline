@@ -29,7 +29,8 @@ namespace stateline
   namespace comms
   {
     //! Address that the requesters connect their sockets to.
-    const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
+    // const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
+    const std::string DELEGATOR_SOCKET_ADDR = "ipc:///tmp/sl_delegator.socket";
 
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.

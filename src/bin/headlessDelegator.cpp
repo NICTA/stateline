@@ -19,15 +19,11 @@
 
 #include <chrono>
 
-#include "infer/sampler.hpp"
-#include "infer/adaptive.hpp"
-#include "infer/diagnostics.hpp"
-#include "infer/logging.hpp"
 #include "app/logging.hpp"
 #include "app/serial.hpp"
 #include "app/signal.hpp"
 #include "app/commandline.hpp"
-#include "comms/hdelegator.hpp"
+#include "comms/delegator.hpp"
 
 // Alias namespaces for conciseness
 namespace sl = stateline;
@@ -60,14 +56,13 @@ int main(int ac, char *av[])
   sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
   
   
-  std::string globalSpec = "whaaat";
-  std::map<sl::comms::JobType, std::string> jobSpecs = {};
+  std::vector<sl::comms::JobType> jobTypes = {};
   
   uint port = vm["port"].as<uint>();
   auto settings = sl::DelegatorSettings::Default(port);
   settings.heartbeat.msRate = 100000;
   settings.heartbeat.msTimeout = 200000;
-  sl::comms::HDelegator delegator(globalSpec, jobSpecs, settings);
+  sl::comms::Delegator delegator(jobTypes, settings);
 
   while(!sl::global::interruptedBySignal)
   {

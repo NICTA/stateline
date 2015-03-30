@@ -194,19 +194,20 @@ MACRO(ADD_SUBPROJECT directory)
   ADD_SUBDIRECTORY(${directory})
 ENDMACRO(ADD_SUBPROJECT directory)
 
-#ADD_SUBPROJECT(src/app)
-#ADD_SUBPROJECT(src/stats)
+ADD_SUBPROJECT(src/app)
+ADD_SUBPROJECT(src/stats)
 ADD_SUBPROJECT(src/comms)
-#ADD_SUBPROJECT(src/db)
+ADD_SUBPROJECT(src/db)
 #ADD_SUBPROJECT(src/infer)
-#ADD_SUBPROJECT(src/likelihood)
-#ADD_SUBPROJECT(src/bin)
+ADD_SUBPROJECT(src/likelihood)
+ADD_SUBPROJECT(src/bin)
 
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
 SET(STATELINE_COMMON router messages transport ${ZMQ_LIBRARY} logging)
-SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
+#SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
+SET(STATELINE_SERVER delegator requester serverheartbeat)
 SET(STATELINE_CLIENT worker minion clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/logging.hpp)

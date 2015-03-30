@@ -29,7 +29,8 @@ namespace stateline
   namespace comms
   {
     //! Address that the minions connect their sockets to.
-    const std::string WORKER_SOCKET_ADDR = "inproc://worker";
+    // const std::string WORKER_SOCKET_ADDR = "inproc://worker";
+    const std::string WORKER_SOCKET_ADDR = "ipc:///tmp/sl_worker.socket";
 
     //! Worker object that takes jobs, forwards them to a minion
     //! then receives results from the minion and send them back
