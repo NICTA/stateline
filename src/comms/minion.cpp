@@ -45,12 +45,15 @@ namespace stateline
       }
       VLOG(3) << addrString;
 
-      return r.data[0];
+      // r.data[0] is job type
+      // r.data[1] is the data
+      return r.data[1];
     }
 
     void Minion::submitResult(const std::string& result)
     {
-      Message m(requesterAddress_, stateline::comms::WORK, { result });
+      Message m(requesterAddress_, stateline::comms::WORK,
+          { detail::serialise<std::uint32_t>(result.type), result, jobIDString_ });
 
       VLOG(3) << "Minion submitting " << m;
       send(socket_, m);
