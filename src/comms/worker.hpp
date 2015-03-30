@@ -41,10 +41,9 @@ namespace stateline
     public:
       //! Build a new worker that can handle multiple types of jobs.
       //!
-      //! \param job types A list of job types that the worker can do.
       //! \param settings The configuration object.
       //!
-      Worker(const std::vector<JobType>& jobTypes, const WorkerSettings& settings);
+      Worker(const WorkerSettings& settings);
  
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
@@ -63,20 +62,10 @@ namespace stateline
         return *context_;
       }
 
-      //! Return a set of job IDs that are enabled.
-      //!
-      //! \return Set of jobs IDs that are enabled.
-      //!
-      const std::set<uint> jobsEnabled() const
-      {
-        return jobsEnabled_;
-      }
-
     private:
       // Context for all local sockets
       zmq::context_t* context_;
       SocketRouter router_;
-      std::set<JobType> jobsEnabled_;
 
       // Heartbeating System
       ClientHeartbeat* heartbeat_;

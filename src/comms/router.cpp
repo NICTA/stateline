@@ -35,14 +35,14 @@ namespace stateline
       return os;
     }
 
-    SocketRouter::SocketRouter()
-      : threadSockets_(nullptr)
+    SocketRouter::SocketRouter(const std::string& name)
+      : threadSockets_(nullptr), name_(name)
     {
     }
 
     SocketRouter::~SocketRouter()
     {
-      VLOG(1) << "Waiting for polling thread to return";
+      VLOG(1) << "Router " << name_ << " waiting for polling thread to return";
       if (threadReturned_.valid())
       {
         threadReturned_.wait();
@@ -63,7 +63,7 @@ namespace stateline
 
     void SocketRouter::start(int msPerPoll, bool& running)
     {
-      LOG(INFO)<< "starting router with timeout at " << msPerPoll << " ms";
+      LOG(INFO)<< "starting router " << name_ << " with timeout at " << msPerPoll << " ms";
       // poll with timeout
       threadReturned_ = std::async(std::launch::async, &SocketRouter::poll, this, msPerPoll, std::ref(running));
     }
@@ -81,9 +81,9 @@ namespace stateline
 
       uint index = indexMap_.left.at(id);
       if (msg.subject != stateline::comms::HEARTBEAT)
-        VLOG(3) << "Sending " << msg << " to " << id;
+        VLOG(3) << "Router " << name_ <<  " sending " << msg << " to " << id;
       else
-        VLOG(4) << "Sending " << msg << " to " << id;
+        VLOG(4) << "Router " << name_ << " sending " << msg << " to " << id;
 
       try
       {
@@ -96,7 +96,7 @@ namespace stateline
           handlers_[index]->onFailedSend(msg);
         } else
         {
-          LOG(ERROR)<< "COULD SEND A MESSAGE\n";
+          LOG(ERROR)<< "ROUTER " << name_ <<  " COULD NOT SEND A MESSAGE\n";
         }
       }
     }
@@ -142,16 +142,16 @@ namespace stateline
           handlers_[i]->onPoll();
         }
       }
-      LOG(INFO) << "Poll thread has exited loop, must be shutting down";
+      LOG(INFO) << "Router " << name_ << "'s Poll thread has exited loop, must be shutting down";
     }
 
     void SocketRouter::receive(zmq::socket_t& socket, SocketHandler& h, const SocketID& idx)
     {
       auto msg = stateline::comms::receive(socket);
       if (msg.subject != stateline::comms::HEARTBEAT)
-        VLOG(3) << "Received " << msg << " from " << idx;
+        VLOG(3) << "Router " << name_ << " received " << msg << " from " << idx;
       else
-        VLOG(4) << "Received " << msg << " from " << idx;
+        VLOG(4) << "Router " << name_ << " received " << msg << " from " << idx;
 
       switch (msg.subject)
       {

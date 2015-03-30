@@ -81,7 +81,7 @@ namespace stateline
       public:
         //! Create a new socket router.
         //!
-        SocketRouter();
+        SocketRouter(const std::string& name);
 
         //! Clean up resources used by the socket router.
         //!
@@ -150,6 +150,7 @@ namespace stateline
         std::vector<std::unique_ptr<zmq::socket_t>> sockets_;
         std::vector<std::unique_ptr<zmq::socket_t>>* threadSockets_; // view only for send
         IndexBiMap indexMap_;
+        std::string name_;
     };
 
   } // namespace stateline

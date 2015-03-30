@@ -68,8 +68,7 @@ int main(int ac, char *av[])
   // only sends out one job type, we can just set it to the default job type
   // of 0. In cases where there are more than one job type, the vector should
   // contain the job types that this worker wants to handle.
-  std::vector<uint> jobTypes = { 0 };
-  sl::comms::Worker worker(jobTypes, settings);
+  sl::comms::Worker worker(settings);
   
   
   while(!sl::global::interruptedBySignal)

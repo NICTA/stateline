@@ -47,7 +47,7 @@ namespace stateline
 
     ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
         : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout),
-        running_(true)
+        router_("HB"), running_(true)
     {
       // Create the router's socket
       std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context, ZMQ_PAIR));

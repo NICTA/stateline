@@ -35,8 +35,8 @@ namespace stateline
       exit(EXIT_SUCCESS);
     }
 
-    Worker::Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings)
-      : running_(true)
+    Worker::Worker(const WorkerSettings& settings)
+      : router_("main"), running_(true)
     {
       // Setup sockets 
       context_ = new zmq::context_t(1);
@@ -69,20 +69,23 @@ namespace stateline
       auto fDisconnect = [&] (const Message&m)
       { disconnectFromServer(m);};
 
+      auto fGetHello = [&] (const Message&m)
+      {LOG(INFO)<< "Connection initialised";};
+
       // Bind functionality to the router
       router_(SocketID::MINION).onRcvWORK.connect(onRcvMinion);
       router_(SocketID::NETWORK).onRcvWORK.connect(onRcvNetwork);
 
       router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
       router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
+      router_(SocketID::NETWORK).onRcvHELLO.connect(fGetHello);
       router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
       router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
       router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
 
       // Initialise the connection
-      router_.send(SocketID::NETWORK, Message(HELLO, { detail::serialise<std::uint32_t>(jobIDs) }));
-
-      LOG(INFO)<< "Connection initialised";
+      router_.send(SocketID::NETWORK, Message(HELLO));
+      // Should be a Hello back from the delegator
 
       // Start the router and heartbeating
       router_.start(settings.msPollRate, running_);

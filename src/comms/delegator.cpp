@@ -20,6 +20,7 @@ namespace stateline
     Delegator::Delegator(const std::vector<JobType> &jobTypes,
         const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
+          router_("main"),
           running_(true)
     {
       namespace ph = std::placeholders;
@@ -47,27 +48,39 @@ namespace stateline
 
       VLOG(3) << "Attaching functionality to router";
 
+
+
       // Specify the Delegator functionality
       auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
       auto fDisconnect = std::bind(&Delegator::disconnectWorker, this, ph::_1);
-      auto fSwapJobs = [&](const Message &m)
+      auto fNewWorker = [&] (const Message &m)
       {
-        // TODO: refactor this by merging connectWorker and jobSwap
+        //forwarding to HEARTBEAT
+        router_.send(SocketID::HEARTBEAT, m);
         std::string worker = m.address.back();
         if (workerToJobMap_.count(worker) == 0)
           connectWorker(m);
-        else
-          jobSwap(m);
+        // Polite to reply
+        router_.send(SocketID::NETWORK, Message({worker}, HELLO));
+      };
+      
+      auto fSwapJobs = [&](const Message &m)
+      {
+        jobSwap(m);
       };
 
       auto fSendFailed = std::bind(&Delegator::sendFailed, this, ph::_1);
 
-      auto fForwardToHB = [this] (const Message&m) { this->router_.send(SocketID::HEARTBEAT, m); };
+      auto fForwardToHB = [this] (const Message&m) 
+      { 
+        router_.send(SocketID::HEARTBEAT, m);
+      };
+
       auto fForwardToNetwork = [this] (const Message&m) { this->router_.send(SocketID::NETWORK,m); };
 
       // Bind these functions to the router
       router_(SocketID::REQUESTER).onRcvWORK.connect(fNewJob);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
+      router_(SocketID::NETWORK).onRcvHELLO.connect(fNewWorker);
       router_(SocketID::NETWORK).onRcvWORK.connect(fSwapJobs);
       router_(SocketID::NETWORK).onFailedSend.connect(fSendFailed);
       router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
@@ -93,23 +106,16 @@ namespace stateline
       VLOG(1) << "heartbeat deleted";
     }
 
-    void Delegator::connectWorker(const Message& msgJobRequestFromMinion)
+    void Delegator::connectWorker(const Message& msgHelloWorker)
     {
       // Worker can now be 'connected'
-      std::string worker = msgJobRequestFromMinion.address.back();
-      std::string minion = msgJobRequestFromMinion.address.front();
-      VLOG(1) << "minion " << worker << ":" << minion << " ready";
-
+      std::string worker = msgHelloWorker.address.back();
+      VLOG(1) << "worker " << worker <<  " ready";
       if (workerToJobMap_.count(worker) == 0)
       {
         workerToJobMap_.insert(std::make_pair(worker, std::vector<Message>()));
       }
-
       LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
-
-      // this message actually came from a minion, so make sure we send a job
-      // to them
-      sendJob(msgJobRequestFromMinion);
     }
 
     void Delegator::sendJob(const Message& msgRequestFromMinion)
