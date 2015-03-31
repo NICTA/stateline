@@ -62,7 +62,7 @@ int main(int ac, char *av[])
   sl::WorkerSettings settings = sl::WorkerSettings::Default(address);
 
   settings.heartbeat.msRate = 100000;
-    settings.heartbeat.msTimeout = 200000;
+  settings.heartbeat.msTimeout = 200000;
 
   // In Stateline, a worker can handle multiple job types. Since the server
   // only sends out one job type, we can just set it to the default job type

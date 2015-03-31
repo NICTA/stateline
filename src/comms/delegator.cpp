@@ -241,6 +241,8 @@ namespace stateline
       {
         VLOG(3) << "Matching return work with WIP queue: " << r << " vs " << s;
         bool match = true;
+        // we only match the back set of addresses because we don't care about
+        // who did the job, only who sent it.
         for (uint i=0; i<r.address.size();i++)
         {
           VLOG(3) << "substring:" << r.address[i] << " vs " << s.address[i];

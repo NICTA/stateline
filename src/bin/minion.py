@@ -1,6 +1,7 @@
 import zmq
 import random
 import uuid
+import time
 
 HELLO = b'\x00\x00\x00\x00b'
 HEARTBEAT = b'\x01\x00\x00\x00b'
@@ -28,6 +29,7 @@ print("Message received", r)
 address = r[0:2]
 #do some work
 print("doing work...")
+time.sleep(10)
 rmsg = address + [b"", WORK, b"result_data", jobType]
 print("sending result...")
 socket.send_multipart(rmsg)
