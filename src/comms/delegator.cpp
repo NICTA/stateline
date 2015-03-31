@@ -17,8 +17,7 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const std::vector<JobType> &jobTypes,
-        const DelegatorSettings& settings)
+    Delegator::Delegator(const DelegatorSettings& settings)
         : msNetworkPoll_(settings.msPollRate),
           router_("main"),
           running_(true)
@@ -47,8 +46,6 @@ namespace stateline
       router_.add_socket(SocketID::NETWORK, network);
 
       VLOG(3) << "Attaching functionality to router";
-
-
 
       // Specify the Delegator functionality
       auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
@@ -120,14 +117,15 @@ namespace stateline
 
     void Delegator::sendJob(const Message& msgRequestFromMinion)
     {
-      uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
+      std::string jobType = msgRequestFromMinion.data[0];
 
-      PendingMinion minion({id}, msgRequestFromMinion.address);
+      PendingMinion minion {jobType, msgRequestFromMinion.address};
 
+      VLOG(1) << "Received new work request from minion";
       // Find the first job that can be given to the minion.
       for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
-        if (minion.canDo(*it))
+        if (it->type == jobType)
         {
           // Append the minion's address to the job and forward it to the network.
           Message r = it->job;
@@ -136,38 +134,51 @@ namespace stateline
           for (const auto &a : msgRequestFromMinion.address)
             r.address.push_back(a);
 
+          VLOG(1) << "Found existing job for minion, sending...";
           router_.send(SocketID::NETWORK, r);
+          //Add job to WIP vector for that worker
+          std::string worker = r.address.back();
+          workerToJobMap_[worker].push_back(r);
+          VLOG(1) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
           pendingJobs_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
 
+      VLOG(1) << "No work for minion, pushing to pending queue";
       // This minion can't do any job yet, add it to the pending minion queue.
       pendingMinions_.push_back(minion);
     }
 
     void Delegator::newJob(const Message& msgJobFromRequester)
     {
-      uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
+      std::string jobType = msgJobFromRequester.data[0];
 
-      PendingJob job {id, msgJobFromRequester};
+      PendingJob job {jobType, msgJobFromRequester};
 
+      VLOG(1) << "New job received.";
       // Find the first minion that can do this new job.
       for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
       {
-        if (it->canDo(job))
+        if (it->type == jobType)
         {
           // Append the minion's address to the message and forward it to the network.
+          VLOG(1) << "Found a minion to do the work, sending on.";
           Message r = Message(msgJobFromRequester);
           for (const auto &a : it->address)
             r.address.push_back(a);
 
           router_.send(SocketID::NETWORK, r); 
+          //Add job to WIP vector for that worker
+          std::string worker = it->address.back();
+          workerToJobMap_[worker].push_back(msgJobFromRequester);
+          VLOG(1) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
           pendingMinions_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
 
+      VLOG(1) << "Couldn't find a minion to complete, adding to job queue.";
       // No minions can do this job, add it to the pending job queue
       pendingJobs_.push_back(job);
     }
@@ -193,9 +204,9 @@ namespace stateline
       //and push them back onto the (appropriate) job queue
       for (auto const& j : workerToJobMap_[worker])
       {
-        uint id = detail::unserialise<std::uint32_t>(j.data[0]);
+        std::string jobType = j.data[0];
         VLOG(1) << "Requeueing " << j << "onto queue";
-        pendingJobs_.push_front({id, j});
+        pendingJobs_.push_front({jobType, j});
       }
 
       // disconnect the worker
@@ -223,23 +234,30 @@ namespace stateline
       std::string minion = r.address.back();
       r.address.pop_back();
       // Remove and store requested id for new job
-      std::string id = r.data.back();
+      std::string newJobType = r.data.back();
       r.data.pop_back();
       //remove job from work in progress queue
       auto remPred = [&](const Message& s)
       {
-        bool match = r.address == s.address;
+        VLOG(3) << "Matching return work with WIP queue: " << r << " vs " << s;
+        bool match = true;
+        for (uint i=0; i<r.address.size();i++)
+        {
+          VLOG(3) << "substring:" << r.address[i] << " vs " << s.address[i];
+          match = match && (r.address[i] == s.address[i]);
+        }
         if (match)
-        VLOG(3) << "removing " << s << " from WIP queue";
+          VLOG(3) << "Job found-- removing from WIP queue";
         return match;
       };
+         
       auto remBegin = std::remove_if(workerToJobMap_[worker].begin(), workerToJobMap_[worker].end(), remPred);
       auto remEnd = workerToJobMap_[worker].end();
       workerToJobMap_[worker].erase(remBegin, remEnd);
       // send it on to the requester
       router_.send(SocketID::REQUESTER, r);
       // give the minion a new job
-      sendJob(Message( { minion, worker }, WORK, { id }));
+      sendJob(Message( { minion, worker }, WORK, { newJobType }));
     }
 
   } // namespace stateline

@@ -40,12 +40,9 @@ namespace stateline
       public:
         //! Create a new delegator.
         //!
-        //! \param commonSpecData The serialised common problem specification.
-        //! \param jobSpecData The serialised problem specifications for each job.
         //! \param settings The configuration object.
         //!
-        Delegator(const std::vector<JobType> &jobTypes,
-            const DelegatorSettings& settings);
+        Delegator(const DelegatorSettings& settings);
 
         // Delegators can't be copied.
         Delegator(const Delegator &other) = delete;
@@ -104,31 +101,14 @@ namespace stateline
       private:
         struct PendingJob
         {
-          JobType type;
+          std::string type;
           Message job;
         };
 
-        class PendingMinion
+        struct PendingMinion
         {
-          public:
-            PendingMinion(const std::vector<JobType> jobTypes,
-                const Address& a)
-              : address(a)
-            {
-              for (const JobType &job : jobTypes)
-              {
-                canDoJobType_.insert(job);
-              }
-            }
-
-            bool canDo(const PendingJob &job)
-            {
-              return canDoJobType_.count(job.type);
-            }
-
-            Address address;
-          private:
-            std::set<JobType> canDoJobType_;
+          std::string type;
+          Address address;
         };
 
         // Polling times

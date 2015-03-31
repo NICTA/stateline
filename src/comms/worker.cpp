@@ -69,23 +69,23 @@ namespace stateline
       auto fDisconnect = [&] (const Message&m)
       { disconnectFromServer(m);};
 
-      auto fGetHello = [&] (const Message&m)
-      {LOG(INFO)<< "Connection initialised";};
-
       // Bind functionality to the router
       router_(SocketID::MINION).onRcvWORK.connect(onRcvMinion);
       router_(SocketID::NETWORK).onRcvWORK.connect(onRcvNetwork);
 
       router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
       router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fGetHello);
       router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
       router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
       router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
 
       // Initialise the connection
+      LOG(INFO)<< "Connecting to server...";
       router_.send(SocketID::NETWORK, Message(HELLO));
       // Should be a Hello back from the delegator
+      Message reply = router_.receive(SocketID::NETWORK);
+      // TODO: explicit time-out here and error
+      LOG(INFO)<< "Connection to server initialised";
 
       // Start the router and heartbeating
       router_.start(settings.msPollRate, running_);

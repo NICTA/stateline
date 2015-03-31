@@ -16,9 +16,9 @@ print("connecting to ", addr)
 socket.connect(addr)
 print("connected.")
         
-jobID = b'\x00\x00\x00\x00'
+jobType = b'gravity'
 subject = WORK
-msg = [b"", subject, jobID]
+msg = [b"", subject, jobType]
 print("sending message", msg)
 socket.send_multipart(msg)
 print("sent. Receiving...")
@@ -28,7 +28,7 @@ print("Message received", r)
 address = r[0:2]
 #do some work
 print("doing work...")
-rmsg = address + [b"", WORK, b"result_data", jobID]
+rmsg = address + [b"", WORK, b"result_data", jobType]
 print("sending result...")
 socket.send_multipart(rmsg)
 

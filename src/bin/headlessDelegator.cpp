@@ -55,14 +55,11 @@ int main(int ac, char *av[])
   // Initialise the logging settings
   sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
   
-  
-  std::vector<sl::comms::JobType> jobTypes = {};
-  
   uint port = vm["port"].as<uint>();
   auto settings = sl::DelegatorSettings::Default(port);
   settings.heartbeat.msRate = 100000;
   settings.heartbeat.msTimeout = 200000;
-  sl::comms::Delegator delegator(jobTypes, settings);
+  sl::comms::Delegator delegator(settings);
 
   while(!sl::global::interruptedBySignal)
   {

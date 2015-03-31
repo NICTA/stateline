@@ -18,13 +18,11 @@ socket.connect(addr)
 print("connected.")
 
 i= 3
-jobID = b'\x00\x00\x00\x00' #this is an int so must be 32bit
+jobType = b'gravity' 
 subject = WORK
 batchID = chr(i).encode() # is just a string so can be whatevs
-globalData = b"harro"
-localData = b"prease"
-# msg = [batchID, b"", subject, jobID, globalData, localData]
-msg = [batchID, b"", subject, jobID, globalData, localData]
+data = b"harro prease"
+msg = [batchID, b"", subject, jobType, data]
 print("sending message...", msg)
 socket.send_multipart(msg)
 print("message sent. recieving...")

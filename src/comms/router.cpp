@@ -107,7 +107,9 @@ namespace stateline
       if (threadSockets_) // the poll thread now owns the sockets
         sockets = threadSockets_;
       uint index = indexMap_.left.at(id);
-      return comms::receive(*((*sockets)[index]));
+      Message m =  comms::receive(*((*sockets)[index]));
+      VLOG(3) << "Router " << name_ << " received " << m << " from " << id;
+      return m;
     }
 
     // this is an int because -1 indicates no timeout
