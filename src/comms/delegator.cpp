@@ -138,7 +138,7 @@ namespace stateline
           router_.send(SocketID::NETWORK, r);
           //Add job to WIP vector for that worker
           std::string worker = r.address.back();
-          workerToJobMap_[worker].push_back(r);
+          workerToJobMap_[worker].push_back(it->job);
           VLOG(1) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
           pendingJobs_.erase(it); // TODO: we can just label it as removed
           return;

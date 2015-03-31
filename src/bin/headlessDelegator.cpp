@@ -57,8 +57,8 @@ int main(int ac, char *av[])
   
   uint port = vm["port"].as<uint>();
   auto settings = sl::DelegatorSettings::Default(port);
-  settings.heartbeat.msRate = 100000;
-  settings.heartbeat.msTimeout = 200000;
+  // settings.heartbeat.msRate = 100000;
+  // settings.heartbeat.msTimeout = 200000;
   sl::comms::Delegator delegator(settings);
 
   while(!sl::global::interruptedBySignal)
