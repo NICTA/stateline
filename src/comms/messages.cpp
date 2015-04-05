@@ -54,13 +54,13 @@ namespace stateline
     std::string addressAsString(const Address& address)
     {
       // Concatenate the vector of addresses together with ':' as a delimiter
-      std::stringstream ss;
+      std::string result;
       if (!address.empty()) {
-        ss << address.back();
+        result += address.back();
         std::for_each(address.rbegin() + 1, address.rend(),
-            [&](const std::string &addr) { ss << ":" << addr; });
+            [&](const std::string& addr) { result += ":" + addr; });
       }
-      return ss.str();
+      return result;
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& m)

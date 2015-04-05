@@ -39,7 +39,7 @@ namespace stateline
     struct Message
     {
       Message(const Message&) = default;
-      Message &operator=(const Message&) = default;
+      Message& operator=(const Message&) = default;
       Message(Message&& msg);
 
       //! Constructor to build a message.
