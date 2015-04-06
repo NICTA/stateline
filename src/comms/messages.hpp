@@ -38,10 +38,6 @@ namespace stateline
     //!
     struct Message
     {
-      Message(const Message&) = default;
-      Message& operator=(const Message&) = default;
-      Message(Message&& msg);
-
       //! Constructor to build a message.
       //!
       //! \param address The address to send the message to.
@@ -49,8 +45,7 @@ namespace stateline
       //! \param data A vector of data to send in the message. Each element of
       //!          the vector is sent as a separate frame.
       //!
-      Message(const Address& address, const Subject& subject,
-          const std::vector<std::string>& data = {});
+      Message(Address address, Subject subject, std::vector<std::string> data = {});
 
       //! Create a new message with no address.
       //!
@@ -58,7 +53,7 @@ namespace stateline
       //! \param data A vector of data to send in the message. Each element of
       //!          the vector is sent as a separate frame.
       //!
-      Message(const Subject& subject, const std::vector<std::string>& data = {});
+      Message(Subject subject, std::vector<std::string> data = {});
 
       //! Equality comparator for testing purposes.
       //!

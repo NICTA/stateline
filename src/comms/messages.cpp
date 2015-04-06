@@ -31,18 +31,13 @@ namespace stateline
       }
     }
 
-    Message::Message(Message&& msg)
-      : address(std::move(msg.address)), subject(msg.subject), data(std::move(msg.data))
+    Message::Message(Address address, Subject subject, std::vector<std::string> data)
+      : address(std::move(address)), subject(std::move(subject)), data(std::move(data))
     {
     }
 
-    Message::Message(const Address& address, const Subject& subject, const std::vector<std::string>& data)
-      : address(address), subject(subject), data(data)
-    {
-    }
-
-    Message::Message(const Subject& subject, const std::vector<std::string>& data)
-        : subject(subject), data(data)
+    Message::Message(Subject subject, std::vector<std::string> data)
+        : subject(std::move(subject)), data(std::move(data))
     {
     }
 
