@@ -47,12 +47,10 @@ namespace stateline
 
     ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
         : msFrequency_(settings.msRate), msPollingFrequency_(settings.msPollRate), msTimeout_(settings.msTimeout),
-        router_("HB"), running_(true)
+        router_("HB"), running_(true), socket_(context, ZMQ_PAIR)
     {
-      // Create the router's socket
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(context, ZMQ_PAIR));
-      heartbeat->connect(CLIENT_HB_SOCKET_ADDR.c_str());
-      router_.add_socket(SocketID::HEARTBEAT, heartbeat);
+      socket_.connect(CLIENT_HB_SOCKET_ADDR.c_str());
+      router_.add_socket(SocketID::HEARTBEAT, socket);
 
       // Specify functionality 
       auto onRcvHEARTBEAT = [&] (const Message &)
@@ -60,22 +58,20 @@ namespace stateline
       auto onRcvGOODBYE = [&] (const Message &)
       { running_ = false;};
 
-      auto timeout = [&] ()
-      { monitorTimeout(lastReceivedTime_, router_, msTimeout_, running_);};
-      auto send = [&] ()
-      { sendHeartbeat(lastSendTime_, router_, msFrequency_);};
+      auto onPoll = [&] ()
+      { monitorTimeout(lastReceivedTime_, router_, msTimeout_, running_);
+        sendHeartbeat(lastSendTime_, router_, msFrequency_); 
+      };
 
       // Bind to router
-      router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(onRcvHEARTBEAT);
-      router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(onRcvGOODBYE);
-      router_(SocketID::HEARTBEAT).onPoll.connect(timeout);
-      router_(SocketID::HEARTBEAT).onPoll.connect(send);
-      router_(SocketID::HEARTBEAT).onFailedSend.connect(failedSend);
+      router_.bind(onRcvHEARTBEAT, HEARTBEAT, SocketID::HEARTBEAT);
+      router_(onRcvGOODBYE, GOODBYE, SocketID::HEARTBEAT);
+      router_.bindOnPoll(onPoll, SocketID::HEARTBEAT);
       
       // Start router 
       lastSendTime_ = std::chrono::high_resolution_clock::now();
       lastReceivedTime_ = std::chrono::high_resolution_clock::now();
-      router_.start(msPollingFrequency_, running_); // milliseconds between polling loops
+      router_.poll(msPollingFrequency_, running_); // milliseconds between polling loops
     }
 
     ClientHeartbeat::~ClientHeartbeat()

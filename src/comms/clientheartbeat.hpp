@@ -15,6 +15,7 @@
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/settings.hpp"
+#include "comms/socket.hpp"
 
 namespace stateline
 {
@@ -48,6 +49,7 @@ namespace stateline
       hrc::time_point lastSendTime_;
       hrc::time_point lastReceivedTime_;
       bool running_;
+      Socket socket_;
     };
   } // namespace comms
 } // namespace stateline

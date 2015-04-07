@@ -10,6 +10,7 @@
 
 #include "comms/worker.hpp"
 #include "comms/serial.hpp"
+#include "comms/thread.hpp"
 
 #include <cstdlib>
 
@@ -17,89 +18,70 @@ namespace stateline
 {
   namespace comms
   {
-    void forwardToNetwork(const Message& m, SocketRouter& router)
-    {
-      VLOG(3) << "forwarding to delegator: " << m;
-      router.send(SocketID::NETWORK, m);
-    }
 
-    void forwardToMinion(const Message& m, SocketRouter& router)
+    Worker::Worker(const WorkerSettings& settings, zmq::context_t& context)
+      : context_(context), 
+      minion_(context, ZMQ_ROUTER, "toMinion"), 
+      heartbeat_(context, ZMQ_PAIR, "toHBRouter"), 
+      network_(context, ZMQ_DEALER, "toNetwork"),
+      router_("main", {&minion_, &heartbeat_, &network_}), 
+      running_(true)
     {
-      VLOG(3) << "forwarding to minion: " << m;
-      router.send(SocketID::MINION, m);
-    }
-
-    void disconnectFromServer(const Message& m)
-    {
-      LOG(INFO)<< "Worker disconnecting from server";
-      exit(EXIT_SUCCESS);
-    }
-
-    Worker::Worker(const WorkerSettings& settings)
-      : router_("main"), running_(true)
-    {
-      // Setup sockets 
-      context_ = new zmq::context_t(1);
       
-      std::unique_ptr<zmq::socket_t> minion(new zmq::socket_t(*context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_DEALER));
-      minion->bind(WORKER_SOCKET_ADDR.c_str());
-      heartbeat->bind(CLIENT_HB_SOCKET_ADDR.c_str());
+      minion_.bind(WORKER_SOCKET_ADDR.c_str());
+      heartbeat_.bind(CLIENT_HB_SOCKET_ADDR.c_str());
       auto networkSocketID = stateline::comms::randomSocketID();
-      stateline::comms::setSocketID(networkSocketID, *(network));
+      network_.setIdentifier(networkSocketID);
       std::string address = "tcp://" + settings.address;
       LOG(INFO)<< "Worker connecting to " << address;
-      network->connect(address.c_str());
-      // Transfer sockets to the router
-      router_.add_socket(SocketID::MINION, minion);
-      router_.add_socket(SocketID::HEARTBEAT, heartbeat);
-      router_.add_socket(SocketID::NETWORK, network);
+      network_.connect(address);
 
       // Specify the Worker functionality
-      auto onRcvMinion = [&] (const Message&m)
-      { forwardToNetwork(m, this->router_);};
-      auto onRcvNetwork = [&] (const Message&m)
-      { forwardToMinion(m, this->router_);};
-
-      auto fForwardToHB = [&] (const Message&m)
-      { this->router_.send(SocketID::HEARTBEAT, m);};
+      auto forwardToMinion = [&] (const Message&m)
+      {minion_.send(m);};
+      auto forwardToHB = [&] (const Message&m)
+      {heartbeat_.send(m);};
       auto fForwardToNetwork = [&] (const Message&m)
-      { this->router_.send(SocketID::NETWORK,m);};
+      {network_.send(m);};
       auto fDisconnect = [&] (const Message&m)
-      { disconnectFromServer(m);};
+      { 
+        LOG(INFO)<< "Worker disconnecting from server";
+        exit(EXIT_SUCCESS);
+      };
 
+      // Just the order we gave them to the router
+      const uint MINION_SOCKET=0,HB_SOCKET=1,NETWORK_SOCKET=2;
       // Bind functionality to the router
-      router_(SocketID::MINION).onRcvWORK.connect(onRcvMinion);
-      router_(SocketID::NETWORK).onRcvWORK.connect(onRcvNetwork);
-
-      router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
-      router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
-      router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
+      router_.bind(MINION_SOCKET, WORK, forwardToNetwork);
+      router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
+      router_bind(HB_SOCKET, GOODBYE, disconnect);
+      router_.bind(NETWORK_SOCKET, WORK, forwardToMinion);
+      router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
+      router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
+      router_.bind(NETWORK_SOCKET, GOODBYE, forwardToHB);
 
       // Initialise the connection
       LOG(INFO)<< "Connecting to server...";
-      router_.send(SocketID::NETWORK, Message(HELLO));
+      network_.send(Message(HELLO));
       // Should be a Hello back from the delegator
-      Message reply = router_.receive(SocketID::NETWORK);
+      Message reply = network_.receive();
       // TODO: explicit time-out here and error
       LOG(INFO)<< "Connection to server initialised";
-
-      // Start the router and heartbeating
-      router_.start(settings.msPollRate, running_);
       
       // Start the heartbeat system
-      heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
+      // TODO this has to use our templated thread starter
+      startInThread<ClientHeartbeat>(*context_, settings.heartbeat);
+      // heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
+      
+      // Start the router and heartbeating
+      router_.poll(settings.msPollRate, running_);
 
     }
 
     Worker::~Worker()
     {
       running_ = false;
-      delete context_;
-      delete heartbeat_;
+      // delete heartbeat_;
     }
   
   }

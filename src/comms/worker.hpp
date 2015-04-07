@@ -23,6 +23,7 @@
 #include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/clientheartbeat.hpp"
+#include "comms/socket.hpp"
 
 namespace stateline
 {
@@ -43,7 +44,7 @@ namespace stateline
       //!
       //! \param settings The configuration object.
       //!
-      Worker(const WorkerSettings& settings);
+      Worker(const WorkerSettings& settings, zmq::context_t& context);
  
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
@@ -52,20 +53,14 @@ namespace stateline
       //!
       ~Worker();
 
-      //! Return a ref to the context object owned by the worker.
-      //! This allows a minion to use inproc sockets and connect.
-      //!
-      //! \return A reference to the zmq::context_t object
-      //!
-      zmq::context_t& zmqContext()
-      {
-        return *context_;
-      }
-
     private:
       // Context for all local sockets
-      zmq::context_t* context_;
+      zmq::context_t& context_;
       SocketRouter router_;
+
+      Socket minion_;
+      Socket heartbeat_;
+      Socket network_;
 
       // Heartbeating System
       ClientHeartbeat* heartbeat_;

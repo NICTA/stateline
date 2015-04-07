@@ -42,7 +42,7 @@ namespace stateline
         //!
         //! \param settings The configuration object.
         //!
-        Delegator(const DelegatorSettings& settings);
+        Delegator(const DelegatorSettings& settings, zmq::context_t& context);
 
         // Delegators can't be copied.
         Delegator(const Delegator &other) = delete;
@@ -51,15 +51,15 @@ namespace stateline
         //!
         ~Delegator();
 
-        //! Return a reference to the context object owned by the delegator.
-        //! this allows a requester to use inproc sockets and connect.
-        //!
-        //! \return a reference to the zmq::context_t object
-        //!
-        zmq::context_t& zmqContext()
-        {
-          return *context_;
-        }
+        // //! Return a reference to the context object owned by the delegator.
+        // //! this allows a requester to use inproc sockets and connect.
+        // //!
+        // //! \return a reference to the zmq::context_t object
+        // //!
+        // zmq::context_t& zmqContext()
+        // {
+        //   return *context_;
+        // }
 
         //! Connect a worker that has previously been sent a problem spec.
         //!
