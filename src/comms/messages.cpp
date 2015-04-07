@@ -8,7 +8,8 @@
 
 #include "comms/messages.hpp"
 
-#include <sstream>
+#include <algorithm>
+#include <ostream>
 
 namespace stateline
 {
