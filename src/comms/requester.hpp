@@ -36,7 +36,7 @@ namespace stateline
       //!
       //! \param d A reference to the delegator object to communicate with
       //!
-      Requester(Delegator& d);
+      Requester(zmq::context_t& context);
 
       //! Submits a job for computation and immediately returns. An id is
       //! included to allow the job to be identified later, because when jobs

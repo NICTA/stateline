@@ -54,12 +54,13 @@ int main(int ac, char *av[])
 
   // Initialise the logging settings
   sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
-  
+
   uint port = vm["port"].as<uint>();
   auto settings = sl::DelegatorSettings::Default(port);
   // settings.heartbeat.msRate = 100000;
   // settings.heartbeat.msTimeout = 200000;
-  sl::comms::Delegator delegator(settings);
+  zmq::context_t context(1);
+  sl::comms::Delegator delegator(context, settings);
 
   while(!sl::global::interruptedBySignal)
   {

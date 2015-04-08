@@ -45,8 +45,8 @@ namespace stateline
       return m.data[0];
     }
 
-    Requester::Requester(Delegator& d)
-        : socket_(d.zmqContext(), ZMQ_DEALER)
+    Requester::Requester(zmq::context_t& context)
+        : socket_(context, ZMQ_DEALER)
     {
       auto socketID = stateline::comms::randomSocketID();
       stateline::comms::setSocketID(socketID, socket_);
