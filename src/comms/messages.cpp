@@ -8,11 +8,8 @@
 
 #include "comms/messages.hpp"
 
-#include <string>
-#include <vector>
-#include <map>
-#include <glog/logging.h>
-#include <zmq.hpp>
+#include <algorithm>
+#include <ostream>
 
 namespace stateline
 {
@@ -35,47 +32,31 @@ namespace stateline
       }
     }
 
-    Message::Message(Message&& msg)
-      : address(std::move(msg.address)), subject(msg.subject), data(std::move(msg.data))
+    Message::Message(Address address, Subject subject, std::vector<std::string> data)
+      : address(std::move(address)), subject(std::move(subject)), data(std::move(data))
     {
     }
 
-    Message::Message(const Address& addr, const Subject& subj, const std::vector<std::string>& d)
-      : address(addr), subject(subj), data(d)
+    Message::Message(Subject subject, std::vector<std::string> data)
+        : subject(std::move(subject)), data(std::move(data))
     {
     }
 
-    Message::Message(const Subject& subj, const std::vector<std::string>& d)
-        : subject(subj), data(d)
+    bool Message::operator==(const Message& m) const
     {
+      return address == m.address && subject == m.subject && data == m.data;
     }
 
-    Message::Message(const Address& addr, const Subject& subj)
-        : address(addr), subject(subj)
-    {
-    }
-
-    Message::Message(const Subject& subj)
-        : subject(subj)
-    {
-    }
-
-    bool Message::operator ==(const Message& m) const
-    {
-      return (address == m.address) && (subject == m.subject) && (data == m.data);
-    }
-
-    std::string addressAsString(const std::vector<std::string>& addr)
+    std::string addressAsString(const Address& address)
     {
       // Concatenate the vector of addresses together with ':' as a delimiter
-      std::string buffer;
-      uint i = addr.size();
-      while (i--)
-      {
-        buffer.append(addr[i]);
-        if (i > 0) buffer.append(":");
+      std::string result;
+      if (!address.empty()) {
+        result += address.back();
+        std::for_each(address.rbegin() + 1, address.rend(),
+            [&](const std::string& addr) { result += ":" + addr; });
       }
-      return buffer;
+      return result;
     }
 
     std::ostream& operator<<(std::ostream& os, const Message& m)
