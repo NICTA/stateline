@@ -15,23 +15,6 @@ namespace stateline
 {
   namespace comms
   {
-    //! Send a job over a ZMQ socket.
-    //!
-    //! \param socket The socket to send the job over.
-    //! \param job The job to send.
-    //!
-    void sendJob(zmq::socket_t& socket, const std::vector<uint>& id, uint jobType, const std::string& data)
-    {
-      std::vector<std::string> idString;
-      for (auto i : id)
-      {
-        idString.push_back(std::to_string(i));
-      }
-
-      Message m(idString, stateline::comms::WORK, { detail::serialise<std::uint32_t>(jobType), data });
-      send(socket, m);
-    }
-
     //! Read a job result from a socket.
     //!
     //! \param socket The socket to read from.
@@ -51,18 +34,7 @@ namespace stateline
       socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
     }
 
-    void Requester::submit(uint id, JobType jobType, const std::string& data)
-    {
-      batchSubmit(id, { jobType }, data);
-    }
-
-    std::pair<uint, std::string> Requester::retrieve()
-    {
-      auto r = batchRetrieve();
-      return { r.first, std::move(r.second.front()) };
-    }
-
-    void Requester::batchSubmit(JobID id, const std::vector<JobType>& jobTypes, const std::string &data)
+    void Requester::submit(uint id, const std::vector<JobType>& jobTypes, const std::string& data)
     {
       uint nJobs = jobTypes.size();
       batches_[id] = std::vector<std::string>(nJobs);
@@ -70,11 +42,11 @@ namespace stateline
 
       for (uint i = 0; i < nJobs; i++)
       {
-        sendJob(socket_, { id, i }, jobTypes[i], data);
+        socket.send({{ std::to_string(id), std::to_string(i) }, WORK, { jobTypes[i], data });
       }
     }
 
-    std::pair<JobID, std::vector<std::string>> Requester::batchRetrieve()
+    std::pair<uint, std::vector<std::string>> Requester::retrieve()
     {
       while (true)
       {

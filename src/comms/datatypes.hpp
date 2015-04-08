@@ -17,12 +17,6 @@ namespace stateline
 {
   namespace comms
   {
-    //! Numeric Job type.
-    typedef uint JobType;
-   
-    //! Numeric Job ID to distinguish different jobs.
-    typedef uint JobID;
-
     //! High resolution clock used for heartbeating
     typedef std::chrono::high_resolution_clock hrc;
 
