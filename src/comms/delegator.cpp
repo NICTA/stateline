@@ -12,6 +12,7 @@
 
 #include "comms/datatypes.hpp"
 #include "comms/serial.hpp"
+#include "comms/thread.hpp"
 
 namespace stateline
 {
@@ -22,7 +23,7 @@ namespace stateline
           heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
           network_(context, ZMQ_ROUTER, "toNetwork"),
           router_("main", {&requester_, &heartbeat_, &network_}),
-          running_(true),
+          running_(true)
     {
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
@@ -30,27 +31,27 @@ namespace stateline
       network_.setFallback([&](const Message& m) { sendFailed(m); });
       network_.bind("tcp://*:" + std::to_string(settings.port));
 
-      LOG(INFO) << "Delegator listening on " << address;
+      LOG(INFO) << "Delegator listening on tcp://*:" + std::to_string(settings.port);
 
       // Specify the Delegator functionality
       auto fNewJob = [&](const Message& m) { newJob(m); };
-      auto fDisconnect = [&](const Message& m) { disconnectWorker(m); }
+      auto fDisconnect = [&](const Message& m) { disconnectWorker(m); };
       auto fNewWorker = [&](const Message &m)
       {
         //forwarding to HEARTBEAT
-        router_.send(SocketID::HEARTBEAT, m);
+        heartbeat_.send(m);
         std::string worker = m.address.back();
         if (workerToJobMap_.count(worker) == 0)
           connectWorker(m);
         // Polite to reply
-        router_.send(SocketID::NETWORK, Message({worker}, HELLO));
+        network_.send({{worker}, HELLO});
       };
 
       auto fSwapJobs = [&](const Message &m) { jobSwap(m); };
       auto fForwardToHB = [&](const Message& m) { heartbeat_.send(m); };
       auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
       auto fForwardToHBAndDisconnect = [&](const Message& m)
-        { fForwardToHB(m); fDisonnect(m); };
+        { fForwardToHB(m); fDisconnect(m); };
 
       // Bind functionality to the router
       const uint REQUESTER_SOCKET = 0, HB_SOCKET = 1, NETWORK_SOCKET = 2;
@@ -64,7 +65,7 @@ namespace stateline
       router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
 
       // Start the heartbeat thread
-      startInThread<ServerHeartbeat>(context_, settings.heartbeat);
+      startInThread<ServerHeartbeat>(std::ref(context), settings.heartbeat);
 
       // Start the router and heartbeating
       router_.poll(settings.msPollRate, running_);
@@ -107,7 +108,7 @@ namespace stateline
             r.address.push_back(a);
 
           VLOG(1) << "Found existing job for minion, sending...";
-          router_.send(SocketID::NETWORK, r);
+          network_.send(r);
           //Add job to WIP vector for that worker
           std::string worker = r.address.back();
           workerToJobMap_[worker].push_back(it->job);
@@ -140,7 +141,7 @@ namespace stateline
           for (const auto &a : it->address)
             r.address.push_back(a);
 
-          router_.send(SocketID::NETWORK, r); 
+          network_.send(r);
           //Add job to WIP vector for that worker
           std::string worker = it->address.back();
           workerToJobMap_[worker].push_back(msgJobFromRequester);
@@ -229,7 +230,7 @@ namespace stateline
       auto remEnd = workerToJobMap_[worker].end();
       workerToJobMap_[worker].erase(remBegin, remEnd);
       // send it on to the requester
-      router_.send(SocketID::REQUESTER, r);
+      requester_.send(r);
       // give the minion a new job
       sendJob(Message( { minion, worker }, WORK, { newJobType }));
     }

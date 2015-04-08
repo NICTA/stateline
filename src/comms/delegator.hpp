@@ -42,7 +42,7 @@ namespace stateline
         //!
         //! \param settings The configuration object.
         //!
-        Delegator(zmq::contex_t& context, const DelegatorSettings& settings);
+        Delegator(zmq::context_t& context, const DelegatorSettings& settings);
 
         // Delegators can't be copied.
         Delegator(const Delegator &other) = delete;

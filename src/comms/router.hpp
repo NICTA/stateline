@@ -43,7 +43,7 @@ namespace stateline
         //!
         ~SocketRouter();
 
-        void bind(const Subject& s, uint socketIndex, const Callback& f);
+        void bind(uint socketIndex, const Subject& s, const Callback& f);
 
         void bindOnPoll(const std::function<void(void)>& f);
 

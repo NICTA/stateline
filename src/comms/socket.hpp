@@ -26,7 +26,7 @@ namespace stateline
         void setLinger(int l){
           socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
           }
-        void setIdentity(const std::string& id);
+        void setIdentifier(const std::string& id);
 
       private:
 

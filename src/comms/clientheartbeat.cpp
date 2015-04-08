@@ -24,7 +24,7 @@ namespace stateline
     //! \param router A reference to the socket router.
     //! \param msTimeout The heartbeat timeout in milliseconds.
     //!
-    void monitorTimeout(hrc::time_point& lastReceivedTime, SocketRouter& router, uint msTimeout, bool& running);
+    void monitorTimeout(hrc::time_point& lastReceivedTime, Socket& socket, uint msTimeout, bool& running);
 
     //! Update book-keeping on server heartbeats. Called when the socket receives a heartbeat from the server.
     //!
@@ -38,36 +38,40 @@ namespace stateline
     //! \param router A reference to the socket router.
     //! \param msFrequency The number of milliseconds between each heartbeat.
     //!
-    void sendHeartbeat(hrc::time_point& lastSendTime, SocketRouter& router, uint msFrequency);
+    void sendHeartbeat(hrc::time_point& lastSendTime, Socket& socket, uint msFrequency);
 
     ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
         : socket_(context, ZMQ_PAIR, "toClient"),
           router_("HB", { &socket_ }),
-          running_(true)
+          msPollRate_(settings.msPollRate),
+          running_(false)
     {
       socket_.connect(CLIENT_HB_SOCKET_ADDR);
 
       // Specify functionality
-      auto fRcvHeartbeat = [&](const Message&) { heartbeatArrived(lastReceivedTime_); };
-      auto fRcvGoodbye = [&](const Message&) { running_ = false;};
+      auto rcvHeartbeat = [&](const Message&) { heartbeatArrived(lastReceivedTime_); };
+      auto rcvGoodbye = [&](const Message&) { running_ = false;};
 
       auto onPoll = [&]()
       {
-        monitorTimeout(lastReceivedTime_, router_, settings.msTimeout, running_);
-        sendHeartbeat(lastSendTime_, router_, settings.msRate); 
+        monitorTimeout(lastReceivedTime_, socket_, settings.msTimeout, running_);
+        sendHeartbeat(lastSendTime_, socket_, settings.msRate); 
       };
 
       // Bind to router
       const uint CLIENT_SOCKET = 0;
 
-      router_.bind(HEARTBEAT, CLIENT_SOCKET, fRcvHeartbeat);
-      router_.bind(GOODBYE, CLIENT_SOCKET, fRcvGoodbye);
+      router_.bind(CLIENT_SOCKET, HEARTBEAT, rcvHeartbeat);
+      router_.bind(CLIENT_SOCKET, GOODBYE, rcvGoodbye);
       router_.bindOnPoll(onPoll);
+    }
 
-      // Start router
+    void ClientHeartbeat::start()
+    {
+      running_ = true;
       lastSendTime_ = std::chrono::high_resolution_clock::now();
       lastReceivedTime_ = std::chrono::high_resolution_clock::now();
-      router_.poll(settings.msPollRate, running_); // milliseconds between polling loops
+      router_.poll(msPollRate_, running_); // milliseconds between polling loops
     }
 
     ClientHeartbeat::~ClientHeartbeat()

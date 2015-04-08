@@ -30,7 +30,7 @@ namespace stateline
       for (auto& s : sockets_)
       {
         s->setLinger(0);
-        pollList_.emplace_back(s, 0, ZMQ_POLLIN, 0);
+        pollList_.push_back({s, 0, ZMQ_POLLIN, 0});
       }
     }
 
@@ -44,7 +44,7 @@ namespace stateline
       // VLOG(1) << "Waiting complete";
     }
 
-    void SocketRouter::bind(const Subject& s, uint socketIndex, const Callback& f)
+    void SocketRouter::bind(uint socketIndex, const Subject& s, const Callback& f)
     {
       callbacks_[index(socketIndex, s)] = f;
     }
@@ -115,7 +115,7 @@ namespace stateline
           bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
           if (newMsg)
           {
-            uint index = indexMap_.right.at(i);
+            Message msg = sockets_[i]->receive();
             callbacks_[index(i, msg.subject)](msg);
             // receive(*(sockets[i]), *(handlers_[i]), index);
           }

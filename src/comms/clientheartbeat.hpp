@@ -37,6 +37,8 @@ namespace stateline
       //!
       ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings);
 
+      void start();
+
       //! Cleanup resources used by the heartbeat thread.
       //!
       ~ClientHeartbeat();
@@ -44,6 +46,8 @@ namespace stateline
     private:
       Socket socket_;
       SocketRouter router_;
+
+      uint msPollRate_;
 
       hrc::time_point lastSendTime_;
       hrc::time_point lastReceivedTime_;

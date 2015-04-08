@@ -32,13 +32,13 @@ namespace stateline
       network_.setIdentifier(randomSocketID());
       network_.connect("tcp://" + settings.address);
 
-      LOG(INFO) << "Worker connecting to " << address;
+      LOG(INFO) << "Worker connecting to " << settings.address;
 
       // Specify the Worker functionality
       auto forwardToMinion = [&](const Message&m) { minion_.send(m); };
       auto forwardToHB = [&](const Message& m) { heartbeat_.send(m); };
-      auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
-      auto fDisconnect = [&](const Message& m)
+      auto forwardToNetwork = [&](const Message& m) { network_.send(m); };
+      auto disconnect = [&](const Message&)
       {
         LOG(INFO)<< "Worker disconnecting from server";
         exit(EXIT_SUCCESS);
@@ -65,11 +65,9 @@ namespace stateline
       LOG(INFO)<< "Connection to server initialised";
 
       // Start the heartbeat thread
-      // TODO this has to use our templated thread starter
       // TODO should we store the future returned by this function
       // so we can wait for the client heartbeat to finish when we terminate?
-      startInThread<ClientHeartbeat>(context_, settings.heartbeat);
-      // heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
+      startInThread<ClientHeartbeat>(std::ref(context), settings.heartbeat);
 
       // Start the router and heartbeating
       router_.poll(settings.msPollRate, running_);
