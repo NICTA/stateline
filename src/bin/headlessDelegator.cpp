@@ -58,15 +58,25 @@ int main(int ac, char *av[])
 
   uint port = vm["port"].as<uint>();
   auto settings = sl::DelegatorSettings::Default(port);
-  // settings.heartbeat.msRate = 100000;
-  // settings.heartbeat.msTimeout = 200000;
-  zmq::context_t context(1);
-  startInThread<sl::comms::Delegator>(std::ref(context), std::cref(settings));
+  settings.heartbeat.msRate = 100000;
+  settings.heartbeat.msTimeout = 200000;
+  zmq::context_t* context = new zmq::context_t(1);
+  LOG(INFO) << "\033[1;31mstarting delegator in thread\033[0m";
+  bool running = true;
+  auto future = startInThread<sl::comms::Delegator>(running, std::ref(*context), std::cref(settings));
+  //sl::comms::Delegator delegator(context, settings);
+  //delegator.start();
+  LOG(INFO) << "started delegator in thread";
 
   while(!sl::global::interruptedBySignal)
   {
     std::this_thread::sleep_for(ch::milliseconds(500));
   }
+
+  running = false;
+  delete context;
+
+  future.wait();
 
   return 0;
 }

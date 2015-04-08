@@ -5,14 +5,19 @@
 // worker, and heartbeat systems all take.
 
 template <class T, class...Args>
-std::future<bool> startInThread(Args&&... args)
+std::future<bool> startInThread(std::reference_wrapper<bool> running, Args&&... args)
 {
-  auto func = [](Args&&... args) -> bool
+  auto func = [=](Args&&... args) -> bool
   {
-    T obj(std::forward<Args>(args)...);
+    LOG(INFO) << "Creating object";
+    T obj(std::forward<Args>(args)..., running);
+    LOG(INFO) << "Calling start";
     obj.start();
     return true;
   };
 
-  return std::async(std::launch::async, func, std::forward<Args>(args)...);
+  LOG(INFO) << "calling async";
+  auto result = std::async(std::launch::async, func, std::forward<Args>(args)...);
+  LOG(INFO) << "async called";
+  return result;
 }

@@ -19,7 +19,7 @@ namespace stateline
   namespace comms
   {
 
-    Worker::Worker(zmq::context_t& context, const WorkerSettings& settings)
+    Worker::Worker(zmq::context_t& context, const WorkerSettings& settings, bool& running)
       : context_(context),
         minion_(context, ZMQ_ROUTER, "toMinion"),
         heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
@@ -27,7 +27,7 @@ namespace stateline
         router_("main", {&minion_, &heartbeat_, &network_}),
         msPollRate_(settings.msPollRate),
         hbSettings_(settings.heartbeat),
-        running_(false)
+        running_(running)
     {
       // Initialise the local sockets
       minion_.bind(WORKER_SOCKET_ADDR);
@@ -62,13 +62,10 @@ namespace stateline
 
     Worker::~Worker()
     {
-      running_ = false;
     }
 
     void Worker::start()
     {
-      running_ = true;
-
       // Initialise the connection
       LOG(INFO)<< "Connecting to server...";
       network_.send(Message(HELLO));
@@ -78,8 +75,9 @@ namespace stateline
       LOG(INFO)<< "Connection to server initialised";
 
       // Start the heartbeat thread and router
-      startInThread<ClientHeartbeat>(std::ref(context_), std::cref(hbSettings_));
+      auto future = startInThread<ClientHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
       router_.poll(msPollRate_, running_);
+      future.wait();
     }
 
   }

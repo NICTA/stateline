@@ -44,7 +44,7 @@ namespace stateline
       //! \param context The ZMQ context.
       //! \param settings Heartbeat settings.
       //!
-      ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings);
+      ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings, bool& running);
 
       void start();
 
@@ -62,6 +62,7 @@ namespace stateline
       HBMap lastHeartbeats_;
 
       hrc::time_point lastSendTime_;
+
       bool running_;
     };
 

@@ -18,7 +18,7 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings)
+    Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings, bool& running)
         : context_(context),
           requester_(context, ZMQ_ROUTER, "toRequester"),
           heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
@@ -26,13 +26,17 @@ namespace stateline
           router_("main", {&requester_, &heartbeat_, &network_}),
           msPollRate_(settings.msPollRate),
           hbSettings_(settings.heartbeat),
-          running_(false)
+          running_(running)
     {
+      LOG(INFO) << "Starting delegator constructor";
+
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
       heartbeat_.bind(SERVER_HB_SOCKET_ADDR);
-      network_.setFallback([&](const Message& m) { sendFailed(m); });
-      network_.bind("tcp://*:" + std::to_string(settings.port));
+      //network_.setFallback([&](const Message& m) { sendFailed(m); });
+      LOG(INFO) << "Binding to tcp://*:" + std::to_string(settings.port);
+      std::string address = "tcp://*:" + std::to_string(settings.port);
+      network_.bind(address);
 
       LOG(INFO) << "Delegator listening on tcp://*:" + std::to_string(settings.port);
 
@@ -66,20 +70,22 @@ namespace stateline
       router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
       router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
+
+      LOG(INFO) << "Finished binding router";
     }
 
     Delegator::~Delegator()
     {
-      running_ = false;
     }
 
     void Delegator::start()
     {
-      running_ = true;
-
       // Start the heartbeat thread and router
-      startInThread<ServerHeartbeat>(std::ref(context_), std::cref(hbSettings_));
+      LOG(INFO) << "Starting HB thread";
+      auto future = startInThread<ServerHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
+      LOG(INFO) << "Started HB thread";
       router_.poll(msPollRate_, running_);
+      future.wait();
     }
 
     void Delegator::connectWorker(const Message& msgHelloWorker)

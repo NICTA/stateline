@@ -58,13 +58,15 @@ namespace stateline
     //!
     void sendHeartbeats(HBClients& clients, hrc::time_point& lastHbTime, Socket& socket, uint msFrequency);
 
-    ServerHeartbeat::ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
+    ServerHeartbeat::ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings, bool& running)
         : socket_(context, ZMQ_PAIR, "toServer"),
           router_("HB", { &socket_ }),
           msPollRate_(settings.msPollRate),
-          running_(false)
+          running_(running)
     {
+      LOG(INFO) << "Starting server HB constructor";
       socket_.connect(SERVER_HB_SOCKET_ADDR);
+      LOG(INFO) << "server HB Connected";
 
       // Specify functionality
       auto rcvHello = [&](const Message& m) { insertClient(m, clients_, lastHeartbeats_); };
@@ -84,18 +86,18 @@ namespace stateline
       router_.bind(CLIENT_SOCKET, GOODBYE, rcvGoodbye);
       router_.bind(CLIENT_SOCKET, HEARTBEAT, rcvHeartbeat);
       router_.bindOnPoll(onPoll);
+      LOG(INFO) << "server HB constructor finished";
     }
 
     void ServerHeartbeat::start()
     {
-      running_ = true;
+      LOG(INFO) << "starting server HB";
       lastSendTime_ = std::chrono::high_resolution_clock::now();
       router_.poll(msPollRate_, running_);
     }
 
     ServerHeartbeat::~ServerHeartbeat()
     {
-      running_ = false; // should finish the router thread
     }
 
     void insertClient(const Message& m, HBClients& clients, HBMap& lastHeartbeats)

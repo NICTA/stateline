@@ -61,21 +61,26 @@ int main(int ac, char *av[])
   // --------------------------------------------------------------------------
   std::string address = vm["address"].as<std::string>();
   sl::WorkerSettings settings = sl::WorkerSettings::Default(address);
-
-  // settings.heartbeat.msRate = 100000;
-  // settings.heartbeat.msTimeout = 200000;
+  settings.heartbeat.msRate = 100000;
+  settings.heartbeat.msTimeout = 200000;
 
   // In Stateline, a worker can handle multiple job types. Since the server
   // only sends out one job type, we can just set it to the default job type
   // of 0. In cases where there are more than one job type, the vector should
   // contain the job types that this worker wants to handle.
-  zmq::context_t context(1);
-  startInThread<sl::comms::Worker>(std::ref(context), std::cref(settings));
+  zmq::context_t* context = new zmq::context_t(1);
+  bool running = true;
+  auto future = startInThread<sl::comms::Worker>(running, std::ref(*context), std::cref(settings));
 
   while(!sl::global::interruptedBySignal)
   {
     std::this_thread::sleep_for(ch::milliseconds(500));
   }
+
+  running = false;
+  delete context;
+
+  future.wait();
 
   return 0;
 }

@@ -44,7 +44,7 @@ namespace stateline
       //!
       //! \param settings The configuration object.
       //!
-      Worker(zmq::context_t& context, const WorkerSettings& settings);
+      Worker(zmq::context_t& context, const WorkerSettings& settings, bool& running);
 
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
@@ -66,7 +66,7 @@ namespace stateline
       uint msPollRate_;
       HeartbeatSettings hbSettings_;
 
-      bool running_;
+      bool& running_;
     };
 
     //! Forward a message to the delegator.

@@ -26,7 +26,8 @@ namespace stateline
     SocketRouter::SocketRouter(const std::string& name, const std::vector<Socket*>& sockets)
       : name_(name),
         sockets_(sockets),
-        callbacks_((uint)Subject::Size * sockets.size(), nullptr) // TODO: add default callback to throw exception
+        callbacks_((uint)Subject::Size * sockets.size(), nullptr), // TODO: add default callback to throw exception
+        onPoll_([](){})
     {
       for (auto s : sockets_)
       {
@@ -115,7 +116,7 @@ namespace stateline
         // figure out which socket it's from
         for (uint i = 0; i < pollList_.size(); i++)
         {
-            VLOG(4) << "Polling " << i;
+          //  VLOG(4) << "Polling " << i;
           bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
           if (newMsg)
           {

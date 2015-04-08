@@ -31,6 +31,7 @@ namespace stateline
 
     google::InitGoogleLogging(appName.c_str());
     FLAGS_logtostderr = stdErr;
+    FLAGS_colorlogtostderr = true;
     FLAGS_log_dir = directory;
     FLAGS_minloglevel = normLog;
     FLAGS_v = vLevel;

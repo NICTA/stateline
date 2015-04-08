@@ -40,11 +40,11 @@ namespace stateline
     //!
     void sendHeartbeat(hrc::time_point& lastSendTime, Socket& socket, uint msFrequency);
 
-    ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings)
+    ClientHeartbeat::ClientHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings, bool& running)
         : socket_(context, ZMQ_PAIR, "toClient"),
           router_("HB", { &socket_ }),
           msPollRate_(settings.msPollRate),
-          running_(false)
+          running_(running)
     {
       socket_.connect(CLIENT_HB_SOCKET_ADDR);
 
@@ -68,7 +68,6 @@ namespace stateline
 
     void ClientHeartbeat::start()
     {
-      running_ = true;
       lastSendTime_ = std::chrono::high_resolution_clock::now();
       lastReceivedTime_ = std::chrono::high_resolution_clock::now();
       router_.poll(msPollRate_, running_); // milliseconds between polling loops
@@ -76,7 +75,6 @@ namespace stateline
 
     ClientHeartbeat::~ClientHeartbeat()
     {
-      running_ = false;
     }
 
     // TODO: why not just make these member functions?
