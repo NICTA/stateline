@@ -9,15 +9,10 @@ std::future<bool> startInThread(std::reference_wrapper<bool> running, Args&&... 
 {
   auto func = [=](Args&&... args) -> bool
   {
-    LOG(INFO) << "Creating object";
     T obj(std::forward<Args>(args)..., running);
-    LOG(INFO) << "Calling start";
     obj.start();
     return true;
   };
 
-  LOG(INFO) << "calling async";
-  auto result = std::async(std::launch::async, func, std::forward<Args>(args)...);
-  LOG(INFO) << "async called";
-  return result;
+  return std::async(std::launch::async, func, std::forward<Args>(args)...);
 }

@@ -11,8 +11,6 @@
 #include <iterator>
 #include <string>
 
-#include "comms/serial.hpp"
-
 namespace stateline
 {
   namespace comms

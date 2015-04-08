@@ -11,7 +11,6 @@
 #include <string>
 
 #include "comms/datatypes.hpp"
-#include "comms/serial.hpp"
 #include "comms/thread.hpp"
 
 namespace stateline
@@ -28,13 +27,10 @@ namespace stateline
           hbSettings_(settings.heartbeat),
           running_(running)
     {
-      LOG(INFO) << "Starting delegator constructor";
-
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
       heartbeat_.bind(SERVER_HB_SOCKET_ADDR);
-      //network_.setFallback([&](const Message& m) { sendFailed(m); });
-      LOG(INFO) << "Binding to tcp://*:" + std::to_string(settings.port);
+      network_.setFallback([&](const Message& m) { sendFailed(m); });
       std::string address = "tcp://*:" + std::to_string(settings.port);
       network_.bind(address);
 
@@ -70,8 +66,6 @@ namespace stateline
       router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
       router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
-
-      LOG(INFO) << "Finished binding router";
     }
 
     Delegator::~Delegator()
@@ -81,9 +75,7 @@ namespace stateline
     void Delegator::start()
     {
       // Start the heartbeat thread and router
-      LOG(INFO) << "Starting HB thread";
       auto future = startInThread<ServerHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
-      LOG(INFO) << "Started HB thread";
       router_.poll(msPollRate_, running_);
       future.wait();
     }
@@ -106,7 +98,7 @@ namespace stateline
 
       PendingMinion minion {jobType, msgRequestFromMinion.address};
 
-      VLOG(1) << "Received new work request from minion";
+      VLOG(3) << "Received new work request from minion";
       // Find the first job that can be given to the minion.
       for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
@@ -119,18 +111,18 @@ namespace stateline
           for (const auto &a : msgRequestFromMinion.address)
             r.address.push_back(a);
 
-          VLOG(1) << "Found existing job for minion, sending...";
+          VLOG(3) << "Found existing job for minion, sending...";
           network_.send(r);
           //Add job to WIP vector for that worker
           std::string worker = r.address.back();
           workerToJobMap_[worker].push_back(it->job);
-          VLOG(1) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
+          VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
           pendingJobs_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
 
-      VLOG(1) << "No work for minion, pushing to pending queue";
+      VLOG(3) << "No work for minion, pushing to pending queue";
       // This minion can't do any job yet, add it to the pending minion queue.
       pendingMinions_.push_back(minion);
     }
@@ -141,14 +133,14 @@ namespace stateline
 
       PendingJob job {jobType, msgJobFromRequester};
 
-      VLOG(1) << "New job received.";
+      VLOG(3) << "New job received.";
       // Find the first minion that can do this new job.
       for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
       {
         if (it->type == jobType)
         {
           // Append the minion's address to the message and forward it to the network.
-          VLOG(1) << "Found a minion to do the work, sending on.";
+          VLOG(3) << "Found a minion to do the work, sending on.";
           Message r = Message(msgJobFromRequester);
           for (const auto &a : it->address)
             r.address.push_back(a);
@@ -157,13 +149,13 @@ namespace stateline
           //Add job to WIP vector for that worker
           std::string worker = it->address.back();
           workerToJobMap_[worker].push_back(msgJobFromRequester);
-          VLOG(1) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
+          VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
           pendingMinions_.erase(it); // TODO: we can just label it as removed
           return;
         }
       }
 
-      VLOG(1) << "Couldn't find a minion to complete, adding to job queue.";
+      VLOG(3) << "Couldn't find a minion to complete, adding to job queue.";
       // No minions can do this job, add it to the pending job queue
       pendingJobs_.push_back(job);
     }
@@ -178,7 +170,7 @@ namespace stateline
       {
         bool match = s.address.back() == worker;
         if (match)
-        VLOG(1) << "Removing " << addressAsString(s.address) << " from request queue.";
+        VLOG(3) << "Removing " << addressAsString(s.address) << " from request queue.";
         return match;
       };
       auto wjBegin = std::remove_if(pendingMinions_.begin(), pendingMinions_.end(), requestPred);
@@ -190,7 +182,7 @@ namespace stateline
       for (auto const& j : workerToJobMap_[worker])
       {
         std::string jobType = j.data[0];
-        VLOG(1) << "Requeueing " << j << "onto queue";
+        VLOG(3) << "Requeueing " << j << "onto queue";
         pendingJobs_.push_front({jobType, j});
       }
 
@@ -224,13 +216,11 @@ namespace stateline
       //remove job from work in progress queue
       auto remPred = [&](const Message& s)
       {
-        VLOG(3) << "Matching return work with WIP queue: " << r << " vs " << s;
         bool match = true;
         // we only match the back set of addresses because we don't care about
         // who did the job, only who sent it.
         for (uint i=0; i<r.address.size();i++)
         {
-          VLOG(3) << "substring:" << r.address[i] << " vs " << s.address[i];
           match = match && (r.address[i] == s.address[i]);
         }
         if (match)

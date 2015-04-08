@@ -10,15 +10,49 @@
 
 #include "comms/socket.hpp"
 
+#include <sstream>
+#include <iomanip>
 #include <glog/logging.h>
-
-#include "comms/transport.hpp"
-#include "comms/serial.hpp"
 
 namespace stateline
 {
   namespace comms
   {
+    std::string receiveString(zmq::socket_t & socket)
+    {
+      zmq::message_t message;
+      std::string result = "";
+      try
+      {
+        socket.recv(&message);
+        result = std::string(static_cast<char*>(message.data()), message.size());
+      }
+      catch(const zmq::error_t& e) 
+      {
+        VLOG(1) << "ZMQ receive has thrown with type " << e.what();
+        throw;
+      }
+      return result;
+    }
+
+    bool sendString(zmq::socket_t & socket, const std::string & string)
+    {
+      // Taken from zhelpers.hpp
+      zmq::message_t message(string.size());
+      memcpy(message.data(), string.data(), string.size());
+
+      return socket.send(message);
+    }
+
+    bool sendStringPart(zmq::socket_t & socket, const std::string & string)
+    {
+      // Taken from zhelpers.hpp
+      zmq::message_t message(string.size());
+      memcpy(message.data(), string.data(), string.size());
+
+      return socket.send(message, ZMQ_SNDMORE);
+    }
+
     Socket::Socket(zmq::context_t& context, int type, const std::string& name)
       : socket_(context, type),
         name_(name),
@@ -45,7 +79,7 @@ namespace stateline
 
     void Socket::send(const Message& m)
     {
-      VLOG(4) << "Socket " << name_ << " sending " << m;
+      VLOG(5) << "Socket " << name_ << " sending " << m;
 
       // Remember we're using the vector as a stack, so iterate through the
       // address in reverse.
@@ -58,7 +92,7 @@ namespace stateline
       sendStringPart(socket_, "");
 
       // Send subject, then data if there is any
-      auto subjectString = detail::serialise<std::uint32_t>(m.subject);
+      auto subjectString = std::to_string(m.subject);
       uint dataSize = m.data.size();
       if (dataSize > 0)
       {
@@ -96,9 +130,8 @@ namespace stateline
 
       // We've just read the delimiter, so now get subject
       auto subjectString = receiveString(socket_);
-      const char* chars = subjectString.c_str();
       //the underlying representation is (explicitly) an int so fairly safe
-      Subject subject = (Subject)detail::unserialise<std::uint32_t>(subjectString);
+      Subject subject = (Subject)std::stoi(subjectString);
       std::vector<std::string> data;
       while (true)
       {
@@ -110,8 +143,8 @@ namespace stateline
         data.push_back(receiveString(socket_));
       }
 
-      Message message{address, subject, data};
-      VLOG(4) << "Socket " << name_ << " received " << message;
+      Message message{std::move(address), subject, std::move(data)};
+      VLOG(5) << "Socket " << name_ << " received " << message;
       return message;
     }
 
@@ -121,8 +154,26 @@ namespace stateline
       onFailedSend_ = sendCallback;
     }
 
-    void Socket::setLinger(int l){
+    void Socket::setLinger(int l)
+    {
       socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
+    }
+
+    std::string Socket::name() const
+    {
+      return name_;
+    }
+
+    void Socket::setIdentifier()
+    {
+      // Inspired by zhelpers.hpp
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      std::uniform_int_distribution<> dis(0, 0x10000);
+      std::stringstream ss;
+      ss << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << dis(gen) << "-" << std::setw(4) << std::setfill('0')
+          << dis(gen);
+      setIdentifier(ss.str());
     }
 
     void Socket::setIdentifier(const std::string& id)

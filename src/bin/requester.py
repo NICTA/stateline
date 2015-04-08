@@ -2,10 +2,10 @@ import zmq
 import random
 import uuid
 
-HELLO = b'\x00\x00\x00\x00b'
-HEARTBEAT = b'\x01\x00\x00\x00b'
-WORK = b'\x02\x00\x00\x00b'
-GOODBYE = b'\x03\x00\x00\x00b'
+HELLO = b'0'
+HEARTBEAT = b'1'
+WORK = b'2'
+GOODBYE = b'3'
 
 
 ctx = zmq.Context()

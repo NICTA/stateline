@@ -17,7 +17,6 @@
 #include <future>
 // Project
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/socket.hpp"
 
 namespace stateline

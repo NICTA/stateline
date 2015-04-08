@@ -9,7 +9,6 @@
 //!
 
 #include "comms/worker.hpp"
-#include "comms/serial.hpp"
 #include "comms/thread.hpp"
 
 #include <cstdlib>
@@ -32,7 +31,7 @@ namespace stateline
       // Initialise the local sockets
       minion_.bind(WORKER_SOCKET_ADDR);
       heartbeat_.bind(CLIENT_HB_SOCKET_ADDR);
-      network_.setIdentifier(randomSocketID());
+      network_.setIdentifier();
       network_.connect("tcp://" + settings.address);
 
       LOG(INFO) << "Worker connecting to " << settings.address;
@@ -67,7 +66,6 @@ namespace stateline
     void Worker::start()
     {
       // Initialise the connection
-      LOG(INFO)<< "Connecting to server...";
       network_.send(Message(HELLO));
       // Should be a Hello back from the delegator
       Message reply = network_.receive();

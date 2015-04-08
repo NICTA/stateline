@@ -1,9 +1,9 @@
 #pragma once
 
 #include <functional>
+#include <zmq.hpp>
 
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 
 namespace stateline
 {
@@ -24,7 +24,9 @@ namespace stateline
         Message receive();
         void setFallback(const std::function<void(const Message& m)>& sendCallback);
         void setLinger(int l);
+        void setIdentifier();
         void setIdentifier(const std::string& id);
+        std::string name() const;
 
       private:
         zmq::socket_t socket_;

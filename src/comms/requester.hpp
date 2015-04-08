@@ -18,7 +18,6 @@
 
 #include "comms/datatypes.hpp"
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/delegator.hpp"
 
 namespace stateline

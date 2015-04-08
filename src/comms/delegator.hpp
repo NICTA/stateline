@@ -20,7 +20,6 @@
 
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/serverheartbeat.hpp"
 

@@ -64,9 +64,7 @@ namespace stateline
           msPollRate_(settings.msPollRate),
           running_(running)
     {
-      LOG(INFO) << "Starting server HB constructor";
       socket_.connect(SERVER_HB_SOCKET_ADDR);
-      LOG(INFO) << "server HB Connected";
 
       // Specify functionality
       auto rcvHello = [&](const Message& m) { insertClient(m, clients_, lastHeartbeats_); };
@@ -86,12 +84,10 @@ namespace stateline
       router_.bind(CLIENT_SOCKET, GOODBYE, rcvGoodbye);
       router_.bind(CLIENT_SOCKET, HEARTBEAT, rcvHeartbeat);
       router_.bindOnPoll(onPoll);
-      LOG(INFO) << "server HB constructor finished";
     }
 
     void ServerHeartbeat::start()
     {
-      LOG(INFO) << "starting server HB";
       lastSendTime_ = std::chrono::high_resolution_clock::now();
       router_.poll(msPollRate_, running_);
     }
