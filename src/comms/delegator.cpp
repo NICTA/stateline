@@ -101,6 +101,7 @@ namespace stateline
       PendingMinion minion{jobTypes, msgRequestFromMinion.address};
 
       VLOG(3) << "Received new work request from minion";
+      // TODO: refactor to use std::find_if
       // Find the first job that can be given to the minion.
       for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
@@ -131,35 +132,41 @@ namespace stateline
 
     void Delegator::newJob(const Message& msgJobFromRequester)
     {
-      std::string jobType = msgJobFromRequester.data[0];
+      std::set<std::string> jobTypes;
+      boost::split(jobTypes, msgRequestFromRequester.data[0], boost::is_any_of(":"));
 
-      PendingJob job {jobType, msgJobFromRequester};
-
-      VLOG(3) << "New job received.";
-      // Find the first minion that can do this new job.
-      for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
+      for (const auto& jobType : jobTypes)
       {
-        if (it->types.count(jobType))
+        PendingJob job{jobType, msgJobFromRequester};
+
+        VLOG(3) << "New job received.";
+
+        // TODO: refactor to use std::find_if
+        // Find the first minion that can do this new job.
+        for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
         {
-          // Append the minion's address to the message and forward it to the network.
-          VLOG(3) << "Found a minion to do the work, sending on.";
-          Message r = Message(msgJobFromRequester);
-          for (const auto &a : it->address)
-            r.address.push_back(a);
+          if (it->types.count(jobType))
+          {
+            // Append the minion's address to the message and forward it to the network.
+            VLOG(3) << "Found a minion to do the work, sending on.";
+            Message r = Message(msgJobFromRequester);
+            for (const auto &a : it->address)
+              r.address.push_back(a);
 
-          network_.send(r);
-          //Add job to WIP vector for that worker
-          std::string worker = it->address.back();
-          workerToJobMap_[worker].push_back(msgJobFromRequester);
-          VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
-          pendingMinions_.erase(it); // TODO: we can just label it as removed
-          return;
+            network_.send(r);
+            //Add job to WIP vector for that worker
+            std::string worker = it->address.back();
+            workerToJobMap_[worker].push_back(msgJobFromRequester);
+            VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
+            pendingMinions_.erase(it); // TODO: we can just label it as removed
+            return;
+          }
         }
-      }
 
-      VLOG(3) << "Couldn't find a minion to complete, adding to job queue.";
-      // No minions can do this job, add it to the pending job queue
-      pendingJobs_.push_back(job);
+        VLOG(3) << "Couldn't find a minion to complete, adding to job queue.";
+        // No minions can do this job, add it to the pending job queue
+        pendingJobs_.push_back(job);
+      }
     }
 
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)

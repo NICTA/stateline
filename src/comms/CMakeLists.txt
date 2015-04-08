@@ -14,6 +14,8 @@ TARGET_LINK_LIBRARIES(router messages socket)
 # Server specific libraries
 ADD_LIBRARY(delegator delegator.cpp)
 TARGET_LINK_LIBRARIES(delegator messages router)
+ADD_LIBRARY(requester requester.cpp)
+TARGET_LINK_LIBRARIES(requester messages router)
 ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
 TARGET_LINK_LIBRARIES(serverheartbeat messages)
 
