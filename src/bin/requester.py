@@ -18,7 +18,7 @@ socket.connect(addr)
 print("connected.")
 
 i= 3
-jobType = b'gravity' 
+jobType = b'gravity'
 subject = WORK
 batchID = chr(i).encode() # is just a string so can be whatevs
 data = b"harro prease"

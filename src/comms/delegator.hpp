@@ -108,7 +108,7 @@ namespace stateline
 
         struct PendingMinion
         {
-          std::string type;
+          std::set<std::string> types;
           Address address;
         };
 

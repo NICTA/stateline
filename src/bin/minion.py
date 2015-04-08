@@ -17,9 +17,9 @@ print("connecting to ", addr)
 socket.connect(addr)
 print("connected.")
         
-jobType = b'gravity'
+jobTypes = b'gravity:mag:mt'
 subject = WORK
-msg = [b"", subject, jobType]
+msg = [b"", subject, jobTypes]
 print("sending message", msg)
 socket.send_multipart(msg)
 print("sent. Receiving...")
@@ -30,8 +30,10 @@ address = r[0:2]
 #do some work
 print("doing work...")
 time.sleep(10)
-rmsg = address + [b"", WORK, b"result_data", jobType]
+
+rmsg = address + [b"", WORK, b"result_data", r[3]]
 print("sending result...")
 socket.send_multipart(rmsg)
 
 import IPython; IPython.embed(); import sys; sys.exit()
+
