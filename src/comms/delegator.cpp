@@ -9,6 +9,7 @@
 #include "comms/delegator.hpp"
 
 #include <string>
+#include <boost/algorithm/string.hpp>
 
 #include "comms/datatypes.hpp"
 #include "comms/thread.hpp"
@@ -94,15 +95,16 @@ namespace stateline
 
     void Delegator::sendJob(const Message& msgRequestFromMinion)
     {
-      std::string jobType = msgRequestFromMinion.data[0];
+      std::set<std::string> jobTypes;
+      boost::split(jobTypes, msgRequestFromMinion.data[0], boost::is_any_of(":"));
 
-      PendingMinion minion {jobType, msgRequestFromMinion.address};
+      PendingMinion minion{jobTypes, msgRequestFromMinion.address};
 
       VLOG(3) << "Received new work request from minion";
       // Find the first job that can be given to the minion.
       for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
       {
-        if (it->type == jobType)
+        if (jobTypes.count(it->type))
         {
           // Append the minion's address to the job and forward it to the network.
           Message r = it->job;
@@ -137,7 +139,7 @@ namespace stateline
       // Find the first minion that can do this new job.
       for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
       {
-        if (it->type == jobType)
+        if (it->types.count(jobType))
         {
           // Append the minion's address to the message and forward it to the network.
           VLOG(3) << "Found a minion to do the work, sending on.";
