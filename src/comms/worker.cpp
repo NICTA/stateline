@@ -20,11 +20,14 @@ namespace stateline
   {
 
     Worker::Worker(zmq::context_t& context, const WorkerSettings& settings)
-      : minion_(context, ZMQ_ROUTER, "toMinion"),
+      : context_(context),
+        minion_(context, ZMQ_ROUTER, "toMinion"),
         heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
         network_(context, ZMQ_DEALER, "toNetwork"),
         router_("main", {&minion_, &heartbeat_, &network_}),
-        running_(true)
+        msPollRate_(settings.msPollRate),
+        hbSettings_(settings.heartbeat),
+        running_(false)
     {
       // Initialise the local sockets
       minion_.bind(WORKER_SOCKET_ADDR);
@@ -55,6 +58,16 @@ namespace stateline
       router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
       router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
       router_.bind(NETWORK_SOCKET, GOODBYE, forwardToHB);
+    }
+
+    Worker::~Worker()
+    {
+      running_ = false;
+    }
+
+    void Worker::start()
+    {
+      running_ = true;
 
       // Initialise the connection
       LOG(INFO)<< "Connecting to server...";
@@ -64,18 +77,9 @@ namespace stateline
       // TODO: explicit time-out here and error
       LOG(INFO)<< "Connection to server initialised";
 
-      // Start the heartbeat thread
-      // TODO should we store the future returned by this function
-      // so we can wait for the client heartbeat to finish when we terminate?
-      startInThread<ClientHeartbeat>(std::ref(context), settings.heartbeat);
-
-      // Start the router and heartbeating
-      router_.poll(settings.msPollRate, running_);
-    }
-
-    Worker::~Worker()
-    {
-      running_ = false;
+      // Start the heartbeat thread and router
+      startInThread<ClientHeartbeat>(std::ref(context_), std::cref(hbSettings_));
+      router_.poll(msPollRate_, running_);
     }
 
   }

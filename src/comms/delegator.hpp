@@ -51,6 +51,8 @@ namespace stateline
         //!
         ~Delegator();
 
+        void start();
+
         // //! Return a reference to the context object owned by the delegator.
         // //! this allows a requester to use inproc sockets and connect.
         // //!
@@ -111,6 +113,8 @@ namespace stateline
           Address address;
         };
 
+        zmq::context_t& context_; 
+
         // Sockets
         Socket requester_;
         Socket heartbeat_;
@@ -120,6 +124,9 @@ namespace stateline
         std::deque<PendingJob> pendingJobs_;
         std::deque<PendingMinion> pendingMinions_;
         std::map<std::string, std::vector<Message>> workerToJobMap_;
+
+        uint msPollRate_;
+        HeartbeatSettings hbSettings_;
 
         bool running_;
     };

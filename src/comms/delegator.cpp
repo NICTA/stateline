@@ -19,11 +19,14 @@ namespace stateline
   namespace comms
   {
     Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings)
-        : requester_(context, ZMQ_ROUTER, "toRequester"),
+        : context_(context),
+          requester_(context, ZMQ_ROUTER, "toRequester"),
           heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
           network_(context, ZMQ_ROUTER, "toNetwork"),
           router_("main", {&requester_, &heartbeat_, &network_}),
-          running_(true)
+          msPollRate_(settings.msPollRate),
+          hbSettings_(settings.heartbeat),
+          running_(false)
     {
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
@@ -63,17 +66,20 @@ namespace stateline
       router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
       router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
-
-      // Start the heartbeat thread
-      startInThread<ServerHeartbeat>(std::ref(context), settings.heartbeat);
-
-      // Start the router and heartbeating
-      router_.poll(settings.msPollRate, running_);
     }
 
     Delegator::~Delegator()
     {
       running_ = false;
+    }
+
+    void Delegator::start()
+    {
+      running_ = true;
+
+      // Start the heartbeat thread and router
+      startInThread<ServerHeartbeat>(std::ref(context_), std::cref(hbSettings_));
+      router_.poll(msPollRate_, running_);
     }
 
     void Delegator::connectWorker(const Message& msgHelloWorker)

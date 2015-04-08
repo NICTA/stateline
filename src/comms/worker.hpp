@@ -53,11 +53,18 @@ namespace stateline
       //!
       ~Worker();
 
+      void start();
+
     private:
+      zmq::context_t& context_; 
+
       Socket minion_;
       Socket heartbeat_;
       Socket network_;
       SocketRouter router_;
+
+      uint msPollRate_;
+      HeartbeatSettings hbSettings_;
 
       bool running_;
     };
