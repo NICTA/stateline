@@ -9,7 +9,8 @@
 ADD_LIBRARY(messages messages.cpp)
 ADD_LIBRARY(transport transport.cpp)
 ADD_LIBRARY(router router.cpp)
-TARGET_LINK_LIBRARIES(router transport messages)
+ADD_LIBRARY(socket socket.cpp)
+TARGET_LINK_LIBRARIES(router transport messages socket)
 
 
 # Server specific libraries

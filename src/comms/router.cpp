@@ -25,12 +25,13 @@ namespace stateline
 
     SocketRouter::SocketRouter(const std::string& name, const std::vector<Socket*>& sockets)
       : name_(name),
-        sockets_(sockets)
+        sockets_(sockets),
+        callbacks_((uint)Subject::Size * sockets.size(), nullptr) // TODO: add default callback to throw exception
     {
-      for (auto& s : sockets_)
+      for (auto s : sockets_)
       {
         s->setLinger(0);
-        pollList_.push_back({s, 0, ZMQ_POLLIN, 0});
+        pollList_.push_back({s->socket_, 0, ZMQ_POLLIN, 0});
       }
     }
 
@@ -46,6 +47,7 @@ namespace stateline
 
     void SocketRouter::bind(uint socketIndex, const Subject& s, const Callback& f)
     {
+      //auto g = [&]() { VLOG(4) << "Socket " << sockets_[socketIndex]->name() << " 
       callbacks_[index(socketIndex, s)] = f;
     }
 
@@ -105,6 +107,7 @@ namespace stateline
     // this is an int because -1 indicates no timeout
     void SocketRouter::poll(int msWait, bool& running)
     {
+      VLOG(1) << "Router " << name_ << "'s poll thread has started";
       while (running)
       {
         // block until a message arrives
@@ -112,9 +115,11 @@ namespace stateline
         // figure out which socket it's from
         for (uint i = 0; i < pollList_.size(); i++)
         {
+            VLOG(4) << "Polling " << i;
           bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
           if (newMsg)
           {
+            VLOG(4) << "Router " << name_ << " received new message";
             Message msg = sockets_[i]->receive();
             callbacks_[index(i, msg.subject)](msg);
             // receive(*(sockets[i]), *(handlers_[i]), index);

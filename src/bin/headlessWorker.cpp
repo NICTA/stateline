@@ -25,6 +25,7 @@
 #include "comms/worker.hpp"
 #include "app/signal.hpp"
 #include "stats/mixture.hpp"
+#include "comms/thread.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;
@@ -68,9 +69,9 @@ int main(int ac, char *av[])
   // only sends out one job type, we can just set it to the default job type
   // of 0. In cases where there are more than one job type, the vector should
   // contain the job types that this worker wants to handle.
-  sl::comms::Worker worker(settings);
-  
-  
+  zmq::context_t context(1);
+  startInThread<sl::comms::Worker>(std::ref(context), std::cref(settings));
+
   while(!sl::global::interruptedBySignal)
   {
     std::this_thread::sleep_for(ch::milliseconds(500));

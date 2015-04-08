@@ -24,6 +24,7 @@
 #include "app/signal.hpp"
 #include "app/commandline.hpp"
 #include "comms/delegator.hpp"
+#include "comms/thread.hpp"
 
 // Alias namespaces for conciseness
 namespace sl = stateline;
@@ -60,7 +61,7 @@ int main(int ac, char *av[])
   // settings.heartbeat.msRate = 100000;
   // settings.heartbeat.msTimeout = 200000;
   zmq::context_t context(1);
-  sl::comms::Delegator delegator(context, settings);
+  startInThread<sl::comms::Delegator>(std::ref(context), std::cref(settings));
 
   while(!sl::global::interruptedBySignal)
   {
