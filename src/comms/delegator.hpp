@@ -42,7 +42,7 @@ namespace stateline
         //!
         //! \param settings The configuration object.
         //!
-        Delegator(const DelegatorSettings& settings, zmq::context_t& context);
+        Delegator(zmq::contex_t& context, const DelegatorSettings& settings);
 
         // Delegators can't be copied.
         Delegator(const Delegator &other) = delete;
@@ -111,18 +111,16 @@ namespace stateline
           Address address;
         };
 
-        // Polling times
-        int msNetworkPoll_;
         // Sockets
-        zmq::context_t* context_;
+        Socket requester_;
+        Socket heartbeat_;
+        Socket network_;
         SocketRouter router_;
 
         std::deque<PendingJob> pendingJobs_;
-        std::vector<PendingMinion> pendingMinions_;
+        std::deque<PendingMinion> pendingMinions_;
         std::map<std::string, std::vector<Message>> workerToJobMap_;
 
-        // Heartbeating System
-        ServerHeartbeat* heartbeat_;
         bool running_;
     };
 

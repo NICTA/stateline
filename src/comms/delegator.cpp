@@ -17,40 +17,25 @@ namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const DelegatorSettings& settings)
-        : msNetworkPoll_(settings.msPollRate),
-          router_("main"),
-          running_(true)
+    Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings)
+        : requester_(context, ZMQ_ROUTER, "toRequester"),
+          heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
+          network_(context, ZMQ_ROUTER, "toNetwork"),
+          router_("main", {&requester_, &heartbeat_, &network_}),
+          running_(true),
     {
-      namespace ph = std::placeholders;
-
-      context_ = new zmq::context_t(1);
-      heartbeat_ = new ServerHeartbeat(*context_, settings.heartbeat);
-
-      std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(*context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_ROUTER));
-
       // Initialise the local sockets
-      requester->bind(DELEGATOR_SOCKET_ADDR.c_str());
-      heartbeat->bind(SERVER_HB_SOCKET_ADDR.c_str());
+      requester_.bind(DELEGATOR_SOCKET_ADDR);
+      heartbeat_.bind(SERVER_HB_SOCKET_ADDR);
+      network_.setFallback([&](const Message& m) { sendFailed(m); });
+      network_.bind("tcp://*:" + std::to_string(settings.port));
 
-      // Initialise the network socket
-      std::string address = "tcp://*:" + std::to_string(settings.port);
-      network->bind(address.c_str());
-      LOG(INFO)<< "Delegator listening on " << address;
-
-      // Pass the sockets to the router
-      router_.add_socket(SocketID::REQUESTER, requester);
-      router_.add_socket(SocketID::HEARTBEAT, heartbeat);
-      router_.add_socket(SocketID::NETWORK, network);
-
-      VLOG(3) << "Attaching functionality to router";
+      LOG(INFO) << "Delegator listening on " << address;
 
       // Specify the Delegator functionality
-      auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
-      auto fDisconnect = std::bind(&Delegator::disconnectWorker, this, ph::_1);
-      auto fNewWorker = [&] (const Message &m)
+      auto fNewJob = [&](const Message& m) { newJob(m); };
+      auto fDisconnect = [&](const Message& m) { disconnectWorker(m); }
+      auto fNewWorker = [&](const Message &m)
       {
         //forwarding to HEARTBEAT
         router_.send(SocketID::HEARTBEAT, m);
@@ -60,47 +45,34 @@ namespace stateline
         // Polite to reply
         router_.send(SocketID::NETWORK, Message({worker}, HELLO));
       };
-      
-      auto fSwapJobs = [&](const Message &m)
-      {
-        jobSwap(m);
-      };
 
-      auto fSendFailed = std::bind(&Delegator::sendFailed, this, ph::_1);
+      auto fSwapJobs = [&](const Message &m) { jobSwap(m); };
+      auto fForwardToHB = [&](const Message& m) { heartbeat_.send(m); };
+      auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
+      auto fForwardToHBAndDisconnect = [&](const Message& m)
+        { fForwardToHB(m); fDisonnect(m); };
 
-      auto fForwardToHB = [this] (const Message&m) 
-      { 
-        router_.send(SocketID::HEARTBEAT, m);
-      };
+      // Bind functionality to the router
+      const uint REQUESTER_SOCKET = 0, HB_SOCKET = 1, NETWORK_SOCKET = 2;
 
-      auto fForwardToNetwork = [this] (const Message&m) { this->router_.send(SocketID::NETWORK,m); };
+      router_.bind(REQUESTER_SOCKET, WORK, fNewJob);
+      router_.bind(NETWORK_SOCKET, HELLO, fNewWorker);
+      router_.bind(NETWORK_SOCKET, WORK, fSwapJobs);
+      router_.bind(NETWORK_SOCKET, HEARTBEAT, fForwardToHB);
+      router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
+      router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
+      router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
 
-      // Bind these functions to the router
-      router_(SocketID::REQUESTER).onRcvWORK.connect(fNewJob);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fNewWorker);
-      router_(SocketID::NETWORK).onRcvWORK.connect(fSwapJobs);
-      router_(SocketID::NETWORK).onFailedSend.connect(fSendFailed);
-      router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fDisconnect);
-      router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
-      router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
+      // Start the heartbeat thread
+      startInThread<ServerHeartbeat>(context_, settings.heartbeat);
 
-      VLOG(3) << "Functionality assignment complete";
-
-      VLOG(2) << "Starting the Routers";
-      router_.start(msNetworkPoll_, running_);
+      // Start the router and heartbeating
+      router_.poll(settings.msPollRate, running_);
     }
 
     Delegator::~Delegator()
     {
       running_ = false;
-      VLOG(1) << "Deleting context";
-      delete context_;
-      VLOG(1) << "Context deleted";
-      VLOG(1) << "Deleting heartbeat";
-      delete heartbeat_;
-      VLOG(1) << "heartbeat deleted";
     }
 
     void Delegator::connectWorker(const Message& msgHelloWorker)
@@ -252,7 +224,7 @@ namespace stateline
           VLOG(3) << "Job found-- removing from WIP queue";
         return match;
       };
-         
+
       auto remBegin = std::remove_if(workerToJobMap_[worker].begin(), workerToJobMap_[worker].end(), remPred);
       auto remEnd = workerToJobMap_[worker].end();
       workerToJobMap_[worker].erase(remBegin, remEnd);

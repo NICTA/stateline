@@ -44,8 +44,8 @@ namespace stateline
       //!
       //! \param settings The configuration object.
       //!
-      Worker(const WorkerSettings& settings, zmq::context_t& context);
- 
+      Worker(zmq::context_t& context, const WorkerSettings& settings);
+
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
 
@@ -54,16 +54,10 @@ namespace stateline
       ~Worker();
 
     private:
-      // Context for all local sockets
-      zmq::context_t& context_;
-      SocketRouter router_;
-
       Socket minion_;
       Socket heartbeat_;
       Socket network_;
-
-      // Heartbeating System
-      ClientHeartbeat* heartbeat_;
+      SocketRouter router_;
 
       bool running_;
     };

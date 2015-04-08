@@ -19,42 +19,38 @@ namespace stateline
   namespace comms
   {
 
-    Worker::Worker(const WorkerSettings& settings, zmq::context_t& context)
-      : context_(context), 
-      minion_(context, ZMQ_ROUTER, "toMinion"), 
-      heartbeat_(context, ZMQ_PAIR, "toHBRouter"), 
-      network_(context, ZMQ_DEALER, "toNetwork"),
-      router_("main", {&minion_, &heartbeat_, &network_}), 
-      running_(true)
+    Worker::Worker(zmq::context_t& context, const WorkerSettings& settings)
+      : minion_(context, ZMQ_ROUTER, "toMinion"),
+        heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
+        network_(context, ZMQ_DEALER, "toNetwork"),
+        router_("main", {&minion_, &heartbeat_, &network_}),
+        running_(true)
     {
-      
-      minion_.bind(WORKER_SOCKET_ADDR.c_str());
-      heartbeat_.bind(CLIENT_HB_SOCKET_ADDR.c_str());
-      auto networkSocketID = stateline::comms::randomSocketID();
-      network_.setIdentifier(networkSocketID);
-      std::string address = "tcp://" + settings.address;
-      LOG(INFO)<< "Worker connecting to " << address;
-      network_.connect(address);
+      // Initialise the local sockets
+      minion_.bind(WORKER_SOCKET_ADDR);
+      heartbeat_.bind(CLIENT_HB_SOCKET_ADDR);
+      network_.setIdentifier(randomSocketID());
+      network_.connect("tcp://" + settings.address);
+
+      LOG(INFO) << "Worker connecting to " << address;
 
       // Specify the Worker functionality
-      auto forwardToMinion = [&] (const Message&m)
-      {minion_.send(m);};
-      auto forwardToHB = [&] (const Message&m)
-      {heartbeat_.send(m);};
-      auto fForwardToNetwork = [&] (const Message&m)
-      {network_.send(m);};
-      auto fDisconnect = [&] (const Message&m)
-      { 
+      auto forwardToMinion = [&](const Message&m) { minion_.send(m); };
+      auto forwardToHB = [&](const Message& m) { heartbeat_.send(m); };
+      auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
+      auto fDisconnect = [&](const Message& m)
+      {
         LOG(INFO)<< "Worker disconnecting from server";
         exit(EXIT_SUCCESS);
       };
 
       // Just the order we gave them to the router
       const uint MINION_SOCKET=0,HB_SOCKET=1,NETWORK_SOCKET=2;
+
       // Bind functionality to the router
       router_.bind(MINION_SOCKET, WORK, forwardToNetwork);
       router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
-      router_bind(HB_SOCKET, GOODBYE, disconnect);
+      router_.bind(HB_SOCKET, GOODBYE, disconnect);
       router_.bind(NETWORK_SOCKET, WORK, forwardToMinion);
       router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
       router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
@@ -67,22 +63,22 @@ namespace stateline
       Message reply = network_.receive();
       // TODO: explicit time-out here and error
       LOG(INFO)<< "Connection to server initialised";
-      
-      // Start the heartbeat system
+
+      // Start the heartbeat thread
       // TODO this has to use our templated thread starter
-      startInThread<ClientHeartbeat>(*context_, settings.heartbeat);
+      // TODO should we store the future returned by this function
+      // so we can wait for the client heartbeat to finish when we terminate?
+      startInThread<ClientHeartbeat>(context_, settings.heartbeat);
       // heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
-      
+
       // Start the router and heartbeating
       router_.poll(settings.msPollRate, running_);
-
     }
 
     Worker::~Worker()
     {
       running_ = false;
-      // delete heartbeat_;
     }
-  
+
   }
 }
