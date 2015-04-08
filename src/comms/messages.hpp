@@ -33,7 +33,8 @@ namespace stateline
       //JOB = 3,
       //JOBSWAP = 4,
       WORK = 2,
-      GOODBYE = 3
+      GOODBYE = 3,
+      Size
     };
 
     //! Define valid messages to send between delegators and workers.

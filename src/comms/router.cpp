@@ -18,30 +18,19 @@ namespace stateline
 {
   namespace comms
   {
-    std::ostream& operator<<(std::ostream& os, const SocketID& id)
+    uint index(uint socketIndex, const Subject& s)
     {
-      switch(id)
-      {
-        case SocketID::REQUESTER: os << "REQUESTER"; break;
-        case SocketID::MINION: os << "MINION"; break;
-        case SocketID::WORKER: os << "WORKER"; break;
-        case SocketID::NETWORK: os << "NETWORK"; break;
-        case SocketID::HEARTBEAT: os << "HEARTBEAT"; break;
-        case SocketID::ALPHA: os << "ALPHA"; break;
-        case SocketID::BETA: os << "BETA"; break;
-        default: os << "UNKNOWN";
-      }
-
-      return os;
+      return (uint)Subject::Size * socketIndex + (uint)s;
     }
 
-    SocketRouter::SocketRouter(const std::string& name, std::initializer_list<Socket*> sockets)
-      : name_(name), sockets_(sockets)
+    SocketRouter::SocketRouter(const std::string& name, const std::vector<Socket*>& sockets)
+      : name_(name),
+        sockets_(sockets)
     {
-      for (auto s : sockets_)
+      for (auto& s : sockets_)
       {
         s->setLinger(0);
-        pollList_.push_back( {s, 0, ZMQ_POLLIN, 0 });
+        pollList_.emplace_back(s, 0, ZMQ_POLLIN, 0);
       }
     }
 
@@ -55,12 +44,7 @@ namespace stateline
       // VLOG(1) << "Waiting complete";
     }
 
-    uint index(uint socketIndex, const Subject& s)
-    {
-      uint i = (uint)Subject::Size * socketIndex + (uint)s;
-    }
-
-    void SocketRouter::bind(const Callback& f, const Subject& s, uint socketIndex)
+    void SocketRouter::bind(const Subject& s, uint socketIndex, const Callback& f)
     {
       callbacks_[index(socketIndex, s)] = f;
     }
@@ -124,15 +108,15 @@ namespace stateline
       while (running)
       {
         // block until a message arrives
-        zmq::poll(&(pollList[0]), pollList.size(), msWait);
+        zmq::poll(&(pollList_[0]), pollList_.size(), msWait);
         // figure out which socket it's from
-        for (uint i = 0; i < pollList.size(); i++)
+        for (uint i = 0; i < pollList_.size(); i++)
         {
-          bool newMsg = pollList[i].revents & ZMQ_POLLIN;
+          bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
           if (newMsg)
           {
-            SocketID index = indexMap_.right.at(i);
-            d_[index(i, msg.subject)](msg);
+            uint index = indexMap_.right.at(i);
+            callbacks_[index(i, msg.subject)](msg);
             // receive(*(sockets[i]), *(handlers_[i]), index);
           }
         }

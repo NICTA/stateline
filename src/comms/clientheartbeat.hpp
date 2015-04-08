@@ -42,14 +42,12 @@ namespace stateline
       ~ClientHeartbeat();
 
     private:
-      const uint msFrequency_;
-      const int msPollingFrequency_;
-      const uint msTimeout_;
+      Socket socket_;
       SocketRouter router_;
+
       hrc::time_point lastSendTime_;
       hrc::time_point lastReceivedTime_;
       bool running_;
-      Socket socket_;
     };
   } // namespace comms
 } // namespace stateline

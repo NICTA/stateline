@@ -1,7 +1,7 @@
-// Project
+#pragma once
+
 #include "comms/messages.hpp"
 #include "comms/transport.hpp"
-
 
 namespace stateline
 {
@@ -24,7 +24,7 @@ namespace stateline
         // Options
         void setFallback(const std::function<void(const Message& m)>& sendCallback); 
         void setLinger(int l){
-          socket.setsockopt(ZMQ_LINGER, &l, sizeof(int));
+          socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
           }
         void setIdentity(const std::string& id);
 

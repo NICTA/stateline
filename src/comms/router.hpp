@@ -37,27 +37,25 @@ namespace stateline
       public:
         //! Create a new socket router.
         //!
-        SocketRouter(const std::string& name, std::vector<Socket*> sockets);
+        SocketRouter(const std::string& name, const std::vector<Socket*>& sockets);
 
         //! Clean up resources used by the socket router.
         //!
         ~SocketRouter();
 
-        void bind(const Subject& s, uint socketIndex, Callback f);
+        void bind(const Subject& s, uint socketIndex, const Callback& f);
 
-        void bindOnPoll(std::function<void(void)> f);
+        void bindOnPoll(const std::function<void(void)>& f);
 
         //! Start the router polling with a polling loop frequency
         void poll(int msPerPoll, bool& running);
 
       private:
-
-        // Member variables
-        std::vector<Socket*> sockets_;
+        std::string name_;
+        std::vector<Socket*> sockets_; // TODO: do we need to store the sockets?
         std::vector<zmq::pollitem_t> pollList_;
         std::vector<Callback> callbacks_;
         std::function<void(void)> onPoll_;
-        std::string name_;
     };
 
   } // namespace stateline
