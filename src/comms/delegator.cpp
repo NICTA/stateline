@@ -38,22 +38,20 @@ namespace stateline
       LOG(INFO) << "Delegator listening on tcp://*:" + std::to_string(settings.port);
 
       // Specify the Delegator functionality
-      auto newRequest = [&] (const Message& m) {newRequest{}};
-
-      auto fNewJob = [&](const Message& m) { newJob(m); };
       auto fDisconnect = [&](const Message& m) { disconnectWorker(m); };
       auto fNewWorker = [&](const Message &m)
       {
         //forwarding to HEARTBEAT
         heartbeat_.send(m);
-        std::string worker = m.address.back();
-        if (workerToJobMap_.count(worker) == 0)
+        std::string worker = m.address.front();
+        if (workers_.count(worker) == 0)
           connectWorker(m);
         // Polite to reply
         network_.send({{worker}, HELLO});
       };
 
-      auto fRcvRequest = [&](const Message &m) { onRcvRequest(m); };
+      auto fRcvRequest = [&](const Message &m) { receiveRequest(m); };
+      auto fRcvResult = [&](const Message &m) { receiveResult(m); };
       auto fForwardToHB = [&](const Message& m) { heartbeat_.send(m); };
       auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
       auto fForwardToHBAndDisconnect = [&](const Message& m)
@@ -83,12 +81,14 @@ namespace stateline
       future.wait();
     }
 
-    void Delegator::connectWorker(const Message& msgHelloWorker)
+    void Delegator::connectWorker(const Message& msg)
     {
       // Worker can now be 'connected'
       // add jobtypes
-      Worker w(msgHelloWorker.address); 
-      std::string id = worker.address.front();
+      std::vector<std::string> jobTypes; 
+      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+      Worker w {msg.address, jobTypes, {}}; 
+      std::string id = w.address.front();
       workers_.insert(std::make_pair(id,w));
       LOG(INFO)<< " Worker " << id << " connected.";
     }
@@ -99,13 +99,13 @@ namespace stateline
       return std::to_string(n++);
     }
 
-    void Delegator::onRcvRequest(const Message& msg)
+    void Delegator::receiveRequest(const Message& msg)
     {
       std::string id = boost::algorithm::join(msg.address, ":");
       std::vector<std::string> jobTypes; 
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
-      Request r {};
-      requests_.insert(std::make_pair(id, req));
+      Request r {msg.address, jobTypes, std::vector<std::string>(jobTypes.size()), 0};
+      requests_.insert(std::make_pair(id, r));
       uint idx=0;
       for (auto const& t : jobTypes)
       {
@@ -115,51 +115,41 @@ namespace stateline
       }
     }
 
-    void Delegator::onRcvResult(const Message& msg)
+    void Delegator::receiveResult(const Message& msg)
     {
       std::string worker = msg.address.front();
       std::string jobID = msg.data[0];
-      std::string requesterID = jobs_[jobID].requester; 
+      Job& j = workers_[worker].workInProgress[jobID];
+      
+      // add receipts
+      Request& r = requests_[j.requesterID];
+      r.results[j.requesterIndex] = msg.data[1];
+      r.nDone++;
+      
+      if (r.nDone == r.jobTypes.size())
+      {
+        requester_.send({r.address, REQUEST, r.results});
+        requests_.erase(j.requesterID);
+      }
       
       //remove job from work in progress store
       workers_[worker].workInProgress.erase(jobID);
-      
-      // add receipts
-      Requester& r = requesters_[requesterID];
-      r.results[jobs_[jobID].idx] = msg.data[1];
-      r.nDone++;
-      if (r.nDone == r.jobTypes.size())
-      {
-        fulfillRequest(r);
-        requesters_.erase(requesterID);
-      }
     }
-
 
     void Delegator::onPoll()
     {
       //stand-in SUPER simple
-      if (workers_.size() == 0) return;
-
-      static uint wIdx=0;
-      wIdx = min(wIdx, workers_.size()-1);
-      while(jobQueue_.size() > 0)
+      Job& j = jobQueue_.front();
+      for (auto const& w : workers_)
       {
-        Job j = jobQueue.front();
-        while (true)
+        if (w.second.jobTypes.count(j.type))
         {
-          Worker& w = workers_[wIdx];
-          if (w.jobTypes.count(j.type))
-          {
-            network_.send(Message({w.address, JOB, j.data}));
-            w.workInProgress.insert(std::make_pair(j.id, j));
-            jobQueue.pop_front();
-            break;
-          }
-          wIdx = (wIdx+1) % workers_.size();
+          network_.send(Message({w.second.address, JOB, j.data}));
+          w.second.workInProgress.insert(std::make_pair(j.id, j));
+          jobQueue.pop_front();
+          break;
         }
       }
-
     }
 
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
