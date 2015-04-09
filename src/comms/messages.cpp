@@ -26,6 +26,8 @@ namespace stateline
       {
         case HELLO: return "HELLO";
         case HEARTBEAT: return "HEARTBEAT";
+        case REQUEST: return "REQUEST";
+        case JOB: return "JOB";
         case WORK: return "WORK";
         case GOODBYE: return "GOODBYE";
         default: return "UNKNOWN";

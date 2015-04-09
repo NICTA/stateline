@@ -34,6 +34,27 @@ namespace stateline
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.
     //!
+    
+    struct Request
+    {
+    };
+
+    struct Job
+    {
+    };
+
+    struct Result
+    {
+    };
+
+
+    struct Worker
+    {
+      std::vector<std::string> address;
+      std::map<std::string, Job> workInProgress;
+    };
+
+
     class Delegator
     {
       public:
@@ -51,16 +72,9 @@ namespace stateline
         ~Delegator();
 
         void start();
-
-        // //! Return a reference to the context object owned by the delegator.
-        // //! this allows a requester to use inproc sockets and connect.
-        // //!
-        // //! \return a reference to the zmq::context_t object
-        // //!
-        // zmq::context_t& zmqContext()
-        // {
-        //   return *context_;
-        // }
+        
+        
+        void receiveRequest(const Message& m);
 
         //! Connect a worker that has previously been sent a problem spec.
         //!
@@ -90,27 +104,11 @@ namespace stateline
         //!
         //! \param m The JOBSWAP message.
         //!
-        void jobSwap(const Message& m);
+        void receiveResult(const Message& m);
 
-        //! Receive a new job from the requesters, and add it to the queue or
-        //! send it directly to an idle worker.
-        //!
-        //! \param m The JOBSWAP message.
-        //!
-        void newJob(const Message& m);
+
 
       private:
-        struct PendingJob
-        {
-          std::string type;
-          Message job;
-        };
-
-        struct PendingMinion
-        {
-          std::map<std::string> types;
-          Address address;
-        };
 
         zmq::context_t& context_; 
 
@@ -120,9 +118,7 @@ namespace stateline
         Socket network_;
         SocketRouter router_;
 
-        std::deque<PendingJob> pendingJobs_;
-        std::deque<PendingMinion> pendingMinions_;
-        std::map<std::string, std::vector<Message>> workerToJobMap_;
+        std::map<std::string, Request> requests_;
 
         uint msPollRate_;
         HeartbeatSettings hbSettings_;
