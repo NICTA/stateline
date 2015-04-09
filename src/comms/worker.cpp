@@ -50,10 +50,10 @@ namespace stateline
       const uint MINION_SOCKET=0,HB_SOCKET=1,NETWORK_SOCKET=2;
 
       // Bind functionality to the router
-      router_.bind(MINION_SOCKET, WORK, forwardToNetwork);
+      router_.bind(MINION_SOCKET, RESULT, forwardToNetwork);
       router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, disconnect);
-      router_.bind(NETWORK_SOCKET, WORK, forwardToMinion);
+      router_.bind(NETWORK_SOCKET, JOB, forwardToMinion);
       router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
       router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
       router_.bind(NETWORK_SOCKET, GOODBYE, forwardToHB);

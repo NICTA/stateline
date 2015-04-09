@@ -28,7 +28,7 @@ namespace stateline
         case HEARTBEAT: return "HEARTBEAT";
         case REQUEST: return "REQUEST";
         case JOB: return "JOB";
-        case WORK: return "WORK";
+        case RESULT: return "RESULT";
         case GOODBYE: return "GOODBYE";
         default: return "UNKNOWN";
       }

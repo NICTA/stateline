@@ -37,10 +37,18 @@ namespace stateline
     
     struct Request
     {
+      std::vector<std::string> address;
+      std::set<std::string> jobTypes;
+      std::vector<std::string> results;
+      uint nDone;
     };
 
     struct Job
     {
+      std::string type;
+      std::string id;
+      std::string requesterID;
+      uint requesterIndex;
     };
 
     struct Result
@@ -51,6 +59,7 @@ namespace stateline
     struct Worker
     {
       std::vector<std::string> address;
+      std::set<std::string> jobTypes;
       std::map<std::string, Job> workInProgress;
     };
 
@@ -72,7 +81,11 @@ namespace stateline
         ~Delegator();
 
         void start();
-        
+      
+      
+      private:
+    
+        void onPoll();
         
         void receiveRequest(const Message& m);
 
@@ -108,7 +121,6 @@ namespace stateline
 
 
 
-      private:
 
         zmq::context_t& context_; 
 
@@ -118,7 +130,9 @@ namespace stateline
         Socket network_;
         SocketRouter router_;
 
+        std::map<std::string, Worker> workers_;
         std::map<std::string, Request> requests_;
+        std::deque<Job> jobQueue_;
 
         uint msPollRate_;
         HeartbeatSettings hbSettings_;
