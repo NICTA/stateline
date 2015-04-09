@@ -30,8 +30,10 @@ namespace stateline
     {
       HELLO = 0,
       HEARTBEAT = 1,
-      WORK = 2,
-      GOODBYE = 3,
+      REQUEST =2,
+      JOB = 3,
+      RESULT = 4,
+      GOODBYE = 5,
       Size
     };
 

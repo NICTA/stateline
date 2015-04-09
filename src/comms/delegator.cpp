@@ -38,6 +38,8 @@ namespace stateline
       LOG(INFO) << "Delegator listening on tcp://*:" + std::to_string(settings.port);
 
       // Specify the Delegator functionality
+      auto newRequest = [&] (const Message& m) {newRequest{}};
+
       auto fNewJob = [&](const Message& m) { newJob(m); };
       auto fDisconnect = [&](const Message& m) { disconnectWorker(m); };
       auto fNewWorker = [&](const Message &m)
@@ -51,7 +53,7 @@ namespace stateline
         network_.send({{worker}, HELLO});
       };
 
-      auto fSwapJobs = [&](const Message &m) { jobSwap(m); };
+      auto fRcvRequest = [&](const Message &m) { onRcvRequest(m); };
       auto fForwardToHB = [&](const Message& m) { heartbeat_.send(m); };
       auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
       auto fForwardToHBAndDisconnect = [&](const Message& m)
@@ -60,9 +62,9 @@ namespace stateline
       // Bind functionality to the router
       const uint REQUESTER_SOCKET = 0, HB_SOCKET = 1, NETWORK_SOCKET = 2;
 
-      router_.bind(REQUESTER_SOCKET, WORK, fNewJob);
+      router_.bind(REQUESTER_SOCKET, REQUEST, fRcvRequest);
       router_.bind(NETWORK_SOCKET, HELLO, fNewWorker);
-      router_.bind(NETWORK_SOCKET, WORK, fSwapJobs);
+      router_.bind(NETWORK_SOCKET, RESULT, fRcvResult);
       router_.bind(NETWORK_SOCKET, HEARTBEAT, fForwardToHB);
       router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
       router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
@@ -84,166 +86,99 @@ namespace stateline
     void Delegator::connectWorker(const Message& msgHelloWorker)
     {
       // Worker can now be 'connected'
-      std::string worker = msgHelloWorker.address.back();
-      VLOG(1) << "worker " << worker <<  " ready";
-      if (workerToJobMap_.count(worker) == 0)
-      {
-        workerToJobMap_.insert(std::make_pair(worker, std::vector<Message>()));
-      }
-      LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
+      // add jobtypes
+      Worker w(msgHelloWorker.address); 
+      std::string id = worker.address.front();
+      workers_.insert(std::make_pair(id,w));
+      LOG(INFO)<< " Worker " << id << " connected.";
     }
 
-    void Delegator::sendJob(const Message& msgRequestFromMinion)
+    std::string nextJobID()
     {
-      std::set<std::string> jobTypes;
-      boost::split(jobTypes, msgRequestFromMinion.data[0], boost::is_any_of(":"));
-
-      PendingMinion minion{jobTypes, msgRequestFromMinion.address};
-
-      VLOG(3) << "Received new work request from minion";
-      // TODO: refactor to use std::find_if
-      // Find the first job that can be given to the minion.
-      for (auto it = pendingJobs_.begin(); it != pendingJobs_.end(); ++it)
-      {
-        if (jobTypes.count(it->type))
-        {
-          // Append the minion's address to the job and forward it to the network.
-          Message r = it->job;
-
-          // Append new address to the minion.
-          for (const auto &a : msgRequestFromMinion.address)
-            r.address.push_back(a);
-
-          VLOG(3) << "Found existing job for minion, sending...";
-          network_.send(r);
-          //Add job to WIP vector for that worker
-          std::string worker = r.address.back();
-          workerToJobMap_[worker].push_back(it->job);
-          VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
-          pendingJobs_.erase(it); // TODO: we can just label it as removed
-          return;
-        }
-      }
-
-      VLOG(3) << "No work for minion, pushing to pending queue";
-      // This minion can't do any job yet, add it to the pending minion queue.
-      pendingMinions_.push_back(minion);
+      static uint n=0;
+      return std::to_string(n++);
     }
 
-    void Delegator::newJob(const Message& msgJobFromRequester)
+    void Delegator::onRcvRequest(const Message& msg)
     {
-      std::set<std::string> jobTypes;
-      boost::split(jobTypes, msgRequestFromRequester.data[0], boost::is_any_of(":"));
-
-      for (const auto& jobType : jobTypes)
+      std::string id = boost::algorithm::join(msg.address, ":");
+      std::vector<std::string> jobTypes; 
+      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+      Request r {};
+      requests_.insert(std::make_pair(id, req));
+      uint idx=0;
+      for (auto const& t : jobTypes)
       {
-        PendingJob job{jobType, msgJobFromRequester};
+        Job j = {t, nextJobID(), id, idx};
+        jobQueue_.push_back(j);
+        idx++;
+      }
+    }
 
-        VLOG(3) << "New job received.";
+    void Delegator::onRcvResult(const Message& msg)
+    {
+      std::string worker = msg.address.front();
+      std::string jobID = msg.data[0];
+      std::string requesterID = jobs_[jobID].requester; 
+      
+      //remove job from work in progress store
+      workers_[worker].workInProgress.erase(jobID);
+      
+      // add receipts
+      Requester& r = requesters_[requesterID];
+      r.results[jobs_[jobID].idx] = msg.data[1];
+      r.nDone++;
+      if (r.nDone == r.jobTypes.size())
+      {
+        fulfillRequest(r);
+        requesters_.erase(requesterID);
+      }
+    }
 
-        // TODO: refactor to use std::find_if
-        // Find the first minion that can do this new job.
-        for (auto it = pendingMinions_.begin(); it != pendingMinions_.end(); ++it)
+
+    void Delegator::onPoll()
+    {
+      //stand-in SUPER simple
+      if (workers_.size() == 0) return;
+
+      static uint wIdx=0;
+      wIdx = min(wIdx, workers_.size()-1);
+      while(jobQueue_.size() > 0)
+      {
+        Job j = jobQueue.front();
+        while (true)
         {
-          if (it->types.count(jobType))
+          Worker& w = workers_[wIdx];
+          if (w.jobTypes.count(j.type))
           {
-            // Append the minion's address to the message and forward it to the network.
-            VLOG(3) << "Found a minion to do the work, sending on.";
-            Message r = Message(msgJobFromRequester);
-            for (const auto &a : it->address)
-              r.address.push_back(a);
-
-            network_.send(r);
-            //Add job to WIP vector for that worker
-            std::string worker = it->address.back();
-            workerToJobMap_[worker].push_back(msgJobFromRequester);
-            VLOG(3) << "Worker now has " << workerToJobMap_[worker].size() << " jobs in progress";
-            pendingMinions_.erase(it); // TODO: we can just label it as removed
-            return;
+            network_.send(Message({w.address, JOB, j.data}));
+            w.workInProgress.insert(std::make_pair(j.id, j));
+            jobQueue.pop_front();
+            break;
           }
+          wIdx = (wIdx+1) % workers_.size();
         }
-
-        VLOG(3) << "Couldn't find a minion to complete, adding to job queue.";
-        // No minions can do this job, add it to the pending job queue
-        pendingJobs_.push_back(job);
       }
+
     }
 
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
     {
-      //most recently appended address
-      std::string worker = goodbyeFromWorker.address.back();
+      //first address
+      std::string worker = goodbyeFromWorker.address.front();
 
-      //remove the worker's minions from all the request queues
-      auto requestPred = [&](const PendingMinion& s)
-      {
-        bool match = s.address.back() == worker;
-        if (match)
-        VLOG(3) << "Removing " << addressAsString(s.address) << " from request queue.";
-        return match;
-      };
-      auto wjBegin = std::remove_if(pendingMinions_.begin(), pendingMinions_.end(), requestPred);
-      auto wjEnd = pendingMinions_.end();
-      pendingMinions_.erase(wjBegin, wjEnd);
-
-      //remove all the worker's jobs from work in progress queue 
-      //and push them back onto the (appropriate) job queue
-      for (auto const& j : workerToJobMap_[worker])
-      {
-        std::string jobType = j.data[0];
-        VLOG(3) << "Requeueing " << j << "onto queue";
-        pendingJobs_.push_front({jobType, j});
-      }
-
-      // disconnect the worker
-      VLOG(1) << "Disconnecting " << worker;
-      workerToJobMap_.erase(worker);
-
-      LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
+      Worker& w = workers_[worker];
+      for (auto const& j : w.workInProgress)
+        jobQueue_.push_front(j);
+      workers_.erase(worker);
     }
 
     void Delegator::sendFailed(const Message& msgToWorker)
     {
-      LOG(INFO)<< "Failed to send to " << msgToWorker.address.back();
+      LOG(INFO)<< "Failed to send to " << msgToWorker.address.front();
       // messages to and from a worker both had that workers address at the
       // front so disconnect will work in both cases
       disconnectWorker(msgToWorker);
-    }
-
-    void Delegator::jobSwap(const Message& msgResultFromMinion)
-    {
-      Message r = msgResultFromMinion;
-      // Remove and store worker address
-      std::string worker = r.address.back();
-      r.address.pop_back();
-      // Remove and store minion address
-      std::string minion = r.address.back();
-      r.address.pop_back();
-      // Remove and store requested id for new job
-      std::string newJobType = r.data.back();
-      r.data.pop_back();
-      //remove job from work in progress queue
-      auto remPred = [&](const Message& s)
-      {
-        bool match = true;
-        // we only match the back set of addresses because we don't care about
-        // who did the job, only who sent it.
-        for (uint i=0; i<r.address.size();i++)
-        {
-          match = match && (r.address[i] == s.address[i]);
-        }
-        if (match)
-          VLOG(3) << "Job found-- removing from WIP queue";
-        return match;
-      };
-
-      auto remBegin = std::remove_if(workerToJobMap_[worker].begin(), workerToJobMap_[worker].end(), remPred);
-      auto remEnd = workerToJobMap_[worker].end();
-      workerToJobMap_[worker].erase(remBegin, remEnd);
-      // send it on to the requester
-      requester_.send(r);
-      // give the minion a new job
-      sendJob(Message( { minion, worker }, WORK, { newJobType }));
     }
 
   } // namespace stateline

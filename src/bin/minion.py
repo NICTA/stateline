@@ -31,7 +31,7 @@ address = r[0:2]
 print("doing work...")
 time.sleep(10)
 
-rmsg = address + [b"", WORK, b"result_data", r[3]]
+rmsg = address + [b"", WORK, r[3], b"result_data"]
 print("sending result...")
 socket.send_multipart(rmsg)
 
