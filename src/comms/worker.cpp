@@ -20,13 +20,14 @@ namespace stateline
 
     Worker::Worker(zmq::context_t& context, const WorkerSettings& settings, bool& running)
       : context_(context),
-        minion_(context, ZMQ_ROUTER, "toMinion"),
+        minion_(context, ZMQ_DEALER, "toMinion"),
         heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
         network_(context, ZMQ_DEALER, "toNetwork"),
         router_("main", {&minion_, &heartbeat_, &network_}),
         msPollRate_(settings.msPollRate),
         hbSettings_(settings.heartbeat),
-        running_(running)
+        running_(running),
+        minionWaiting_(true)
     {
       // Initialise the local sockets
       minion_.bind(WORKER_SOCKET_ADDR);
@@ -37,7 +38,34 @@ namespace stateline
       LOG(INFO) << "Worker connected!"; 
 
       // Specify the Worker functionality
-      auto forwardToMinion = [&](const Message&m) { minion_.send(m); };
+      //
+      auto onJobFromNetwork = [&] (const Message& m) { 
+        if (minionWaiting_) 
+        {
+          minion_.send(m);
+          minionWaiting_ = false;
+        }
+        else
+        {
+          queue_.push(m);
+        }
+      };
+
+      auto onResultFromMinion = [&] (const Message & m)
+      {
+        network_.send(m);
+        if (queue_.size() > 0)
+        {
+          minion_.send(queue_.front());
+          queue_.pop();
+        }
+        else
+        {
+          minionWaiting_ = true;
+        }
+      };
+
+
       auto forwardToHB = [&](const Message& m) { heartbeat_.send(m); };
       auto forwardToNetwork = [&](const Message& m) { network_.send({{},m.subject, m.data}); };
       auto disconnect = [&](const Message&)
@@ -50,11 +78,11 @@ namespace stateline
       const uint MINION_SOCKET=0,HB_SOCKET=1,NETWORK_SOCKET=2;
 
       // Bind functionality to the router
-      router_.bind(MINION_SOCKET, RESULT, forwardToNetwork);
+      router_.bind(MINION_SOCKET, RESULT, onResultFromMinion);
       router_.bind(MINION_SOCKET, HELLO, forwardToNetwork);
       router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, disconnect);
-      router_.bind(NETWORK_SOCKET, JOB, forwardToMinion);
+      router_.bind(NETWORK_SOCKET, JOB, onJobFromNetwork);
       router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
       router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
       router_.bind(NETWORK_SOCKET, GOODBYE, forwardToHB);

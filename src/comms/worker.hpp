@@ -13,6 +13,7 @@
 #pragma once
 
 #include <string>
+#include <queue>
 
 #include <glog/logging.h>
 #include <zmq.hpp>
@@ -66,6 +67,9 @@ namespace stateline
       HeartbeatSettings hbSettings_;
 
       bool& running_;
+
+      std::queue<Message> queue_;
+      bool minionWaiting_;
     };
 
     //! Forward a message to the delegator.

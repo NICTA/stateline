@@ -124,7 +124,6 @@ namespace stateline
       std::string jobID = msg.data[0];
       Job& j = workers_[worker].workInProgress[jobID];
       
-      // add receipts
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];
       r.nDone++;
@@ -134,7 +133,6 @@ namespace stateline
         requester_.send({r.address, REQUEST, r.results});
         requests_.erase(j.requesterID);
       }
-      
       //remove job from work in progress store
       workers_[worker].workInProgress.erase(jobID);
     }
@@ -149,7 +147,7 @@ namespace stateline
       {
         if (w.second.jobTypes.count(j.type))
         {
-          network_.send(Message({w.second.address, JOB, {data}}));
+          network_.send(Message({w.second.address, JOB, {j.type, data}}));
           w.second.workInProgress.insert(std::make_pair(j.id, j));
           jobQueue_.pop_front();
           break;
