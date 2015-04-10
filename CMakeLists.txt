@@ -39,6 +39,9 @@ SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Search variables for prereqs
 SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
+FIND_PACKAGE(benchmark)
+SET(BENCHMARK_SRC_DIR ${PREREQ_DIR}/src/benchmark-master)
+SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
@@ -104,6 +107,10 @@ SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
 ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
 TARGET_LINK_LIBRARIES(gtest logging)
+
+# Google Benchmark
+MESSAGE(STATUS "BENCHMARK directory: ${BENCHMARK_SRC_DIR}")
+LINK_DIRECTORIES(${BENCHMARK_SRC_DIR}/build/src)
 
 ##############################################################################
 # INCLUDE DIRECTORIES
@@ -175,6 +182,7 @@ ADD_SUBPROJECT(src/db)
 ADD_SUBPROJECT(src/infer)
 ADD_SUBPROJECT(src/likelihood)
 ADD_SUBPROJECT(src/bin)
+ADD_SUBPROJECT(benchmarks)
 
 ##############################################################################
 # Build final libraries for server and client
