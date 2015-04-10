@@ -27,9 +27,12 @@ socket.send_multipart([b"", HELLO, jobTypes])
 while True:
     print("trying to get some work")
     r = socket.recv_multipart()
+    subject = r[1] 
+    jobType = r[2]
+    uniqueID = r[3]
     print("Job received", r)
     time.sleep(3)
-    rmsg = [b"", RESULT, r[3], b"result_data"]
+    rmsg = [b"", RESULT, uniqueID, b"result_data"]
     print("sending ", rmsg)
     socket.send_multipart(rmsg)
 
