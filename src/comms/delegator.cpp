@@ -147,7 +147,7 @@ namespace stateline
       {
         if (w.second.jobTypes.count(j.type))
         {
-          network_.send(Message({w.second.address, JOB, {j.type, data}}));
+          network_.send(Message({w.second.address, JOB, {j.type, j.id, data}}));
           w.second.workInProgress.insert(std::make_pair(j.id, j));
           jobQueue_.pop_front();
           break;
