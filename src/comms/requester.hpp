@@ -57,10 +57,6 @@ namespace stateline
     private:
       // Communicates with another inproc socket in the delegator
       Socket socket_;
-
-      // Used to keep track of the batch submissions
-      std::map<std::string, std::vector<std::string>> batches_;
-      std::map<std::string, uint> batchLeft_;
     };
   } // namespace comms
 } // namespace stateline

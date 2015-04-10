@@ -32,14 +32,14 @@ namespace stateline
       minion_.bind(WORKER_SOCKET_ADDR);
       heartbeat_.bind(CLIENT_HB_SOCKET_ADDR);
       network_.setIdentifier();
-      network_.connect("tcp://" + settings.address);
-
       LOG(INFO) << "Worker connecting to " << settings.address;
+      network_.connect("tcp://" + settings.address);
+      LOG(INFO) << "Worker connected!"; 
 
       // Specify the Worker functionality
       auto forwardToMinion = [&](const Message&m) { minion_.send(m); };
       auto forwardToHB = [&](const Message& m) { heartbeat_.send(m); };
-      auto forwardToNetwork = [&](const Message& m) { network_.send(m); };
+      auto forwardToNetwork = [&](const Message& m) { network_.send({{},m.subject, m.data}); };
       auto disconnect = [&](const Message&)
       {
         LOG(INFO)<< "Worker disconnecting from server";
@@ -51,6 +51,7 @@ namespace stateline
 
       // Bind functionality to the router
       router_.bind(MINION_SOCKET, RESULT, forwardToNetwork);
+      router_.bind(MINION_SOCKET, HELLO, forwardToNetwork);
       router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, disconnect);
       router_.bind(NETWORK_SOCKET, JOB, forwardToMinion);
@@ -65,13 +66,6 @@ namespace stateline
 
     void Worker::start()
     {
-      // Initialise the connection
-      network_.send(Message(HELLO));
-      // Should be a Hello back from the delegator
-      Message reply = network_.receive();
-      // TODO: explicit time-out here and error
-      LOG(INFO)<< "Connection to server initialised";
-
       // Start the heartbeat thread and router
       auto future = startInThread<ClientHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
       router_.poll(msPollRate_, running_);

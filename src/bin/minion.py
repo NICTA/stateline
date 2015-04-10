@@ -5,8 +5,11 @@ import time
 
 HELLO = b'0'
 HEARTBEAT = b'1'
-WORK = b'2'
-GOODBYE = b'3'
+REQUEST = b'2'
+JOB = b'3'
+RESULT = b'4'
+GOODBYE = b'5'
+
 
 ctx = zmq.Context()
 socket = ctx.socket(zmq.DEALER)
@@ -18,13 +21,15 @@ socket.connect(addr)
 print("connected.")
         
 jobTypes = b'gravity:mag:mt'
-subject = WORK
+socket.send_multipart([b"", HELLO, jobTypes])
+
+r = socket.recv_multipart()
+print("Message received", r)
+
 msg = [b"", subject, jobTypes]
 print("sending message", msg)
 socket.send_multipart(msg)
 print("sent. Receiving...")
-r = socket.recv_multipart()
-print("Message received", r)
 
 address = r[0:2]
 #do some work

@@ -39,6 +39,7 @@ namespace stateline
     {
       std::vector<std::string> address;
       std::set<std::string> jobTypes;
+      std::string data;
       std::vector<std::string> results;
       uint nDone;
     };
