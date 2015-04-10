@@ -14,8 +14,8 @@ cd src
 wget -c http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz
 [ -d boost_1_55_0 ] || tar -xvf boost_1_55_0.tar.gz
 cd boost_1_55_0
-./bootstrap.sh --with-python=python3.3
-./b2 -j $(nproc) --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR cxxflags="-fPIC -I/usr/include/python3.3m"
+./bootstrap.sh
+./b2 -j $(nproc) --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR
 cd ..
 
 # Eigen 3.2.0
