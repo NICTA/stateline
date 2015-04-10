@@ -46,8 +46,6 @@ namespace stateline
         std::string worker = m.address.front();
         if (workers_.count(worker) == 0)
           connectWorker(m);
-        // Polite to reply
-        network_.send({{worker}, HELLO});
       };
 
       auto fRcvRequest = [&](const Message &m) { receiveRequest(m); };
@@ -67,6 +65,9 @@ namespace stateline
       router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
       router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
       router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
+
+      auto fOnPoll = [&] () {onPoll();};
+      router_.bindOnPoll(fOnPoll);
     }
 
     Delegator::~Delegator()
@@ -85,7 +86,7 @@ namespace stateline
     {
       // Worker can now be 'connected'
       // add jobtypes
-      std::vector<std::string> jobTypes; 
+      std::set<std::string> jobTypes; 
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
       Worker w {msg.address, jobTypes, {}}; 
       std::string id = w.address.front();
@@ -102,9 +103,10 @@ namespace stateline
     void Delegator::receiveRequest(const Message& msg)
     {
       std::string id = boost::algorithm::join(msg.address, ":");
-      std::vector<std::string> jobTypes; 
+      std::set<std::string> jobTypes; 
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
-      Request r {msg.address, jobTypes, std::vector<std::string>(jobTypes.size()), 0};
+      VLOG(2) << "New request Received, with " << jobTypes.size() << " jobs.";
+      Request r {msg.address, jobTypes, msg.data[1], std::vector<std::string>(jobTypes.size()), 0};
       requests_.insert(std::make_pair(id, r));
       uint idx=0;
       for (auto const& t : jobTypes)
@@ -113,6 +115,7 @@ namespace stateline
         jobQueue_.push_back(j);
         idx++;
       }
+      VLOG(2) << requests_.size() << " requests currently pending.";
     }
 
     void Delegator::receiveResult(const Message& msg)
@@ -139,14 +142,16 @@ namespace stateline
     void Delegator::onPoll()
     {
       //stand-in SUPER simple
+      if (jobQueue_.size() == 0) return;
       Job& j = jobQueue_.front();
-      for (auto const& w : workers_)
+      std::string& data = requests_[j.requesterID].data;
+      for (auto& w : workers_)
       {
         if (w.second.jobTypes.count(j.type))
         {
-          network_.send(Message({w.second.address, JOB, j.data}));
+          network_.send(Message({w.second.address, JOB, {data}}));
           w.second.workInProgress.insert(std::make_pair(j.id, j));
-          jobQueue.pop_front();
+          jobQueue_.pop_front();
           break;
         }
       }
@@ -159,7 +164,7 @@ namespace stateline
 
       Worker& w = workers_[worker];
       for (auto const& j : w.workInProgress)
-        jobQueue_.push_front(j);
+        jobQueue_.push_front(j.second);
       workers_.erase(worker);
     }
 

@@ -4,8 +4,10 @@ import uuid
 
 HELLO = b'0'
 HEARTBEAT = b'1'
-WORK = b'2'
-GOODBYE = b'3'
+REQUEST = b'2'
+JOB = b'3'
+RESULT = b'4'
+GOODBYE = b'5'
 
 
 ctx = zmq.Context()
@@ -17,12 +19,11 @@ print("connecting to " + addr)
 socket.connect(addr)
 print("connected.")
 
-i= 3
-jobType = b'gravity'
-subject = WORK
-batchID = chr(i).encode() # is just a string so can be whatevs
-data = b"harro prease"
-msg = [batchID, b"", subject, jobType, data]
+jobTypes = b'gravity:mag:mt'
+subject = REQUEST
+batchID = b'0'
+data = b"i am job data"
+msg = [batchID, b"", subject, jobTypes, data]
 print("sending message...", msg)
 socket.send_multipart(msg)
 print("message sent. recieving...")

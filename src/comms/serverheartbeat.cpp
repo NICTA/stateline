@@ -98,8 +98,10 @@ namespace stateline
 
     void insertClient(const Message& m, HBClients& clients, HBMap& lastHeartbeats)
     {
+      VLOG(1) << "HB system adding new client";
       clients.insert(m.address.back());
       lastHeartbeats.insert(std::pair<std::string, hrc::time_point>(m.address.back(), hrc::now()));
+      VLOG(1) << "HB system added " << m.address.back();
     }
 
     void deleteClient(const Message& m, HBClients& clients, HBMap& lastHeartbeats)
