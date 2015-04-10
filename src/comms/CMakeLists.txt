@@ -23,6 +23,4 @@ TARGET_LINK_LIBRARIES(worker messages router)
 ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
 TARGET_LINK_LIBRARIES(clientheartbeat messages)
 
-#ADD_TEST(test-delegator tests/delegator.cpp statelineserver statelineclient)
-#ADD_TEST(test-router tests/router.cpp statelineserver statelineclient)
-#ADD_TEST(test-transport tests/transport.cpp statelineserver statelineclient)
+ADD_TEST(test-message tests/message.cpp messages)
