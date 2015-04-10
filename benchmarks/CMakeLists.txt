@@ -1,0 +1,2 @@
+ADD_EXECUTABLE(benchmark-sockets sockets.cpp)
+TARGET_LINK_LIBRARIES(benchmark-sockets benchmark statelineserver statelineclient)
