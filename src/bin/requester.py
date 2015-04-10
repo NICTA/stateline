@@ -19,13 +19,14 @@ print("connecting to " + addr)
 socket.connect(addr)
 print("connected.")
 
-jobTypes = b'gravity:mag:mt'
-subject = REQUEST
-batchID = b'0'
-data = b"i am job data"
-msg = [batchID, b"", subject, jobTypes, data]
-print("sending message...", msg)
-socket.send_multipart(msg)
-print("message sent. recieving...")
-r = socket.recv_multipart()
-print("message recieved", r)
+
+for i in range(10):
+    jobTypes = b'gravity:mag:mt'
+    subject = REQUEST
+    batchID = str(i).encode()
+    data = b"i am job data"
+    msg = [batchID, b"", REQUEST, jobTypes, data]
+    print("sending ", msg)
+    socket.send_multipart(msg)
+    r = socket.recv_multipart()
+    print("received ", r)
