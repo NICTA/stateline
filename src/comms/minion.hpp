@@ -18,6 +18,7 @@
 // Prerequisites
 #include <glog/logging.h>
 #include <zmq.hpp>
+#include <Eigen/Eigen>
 // Project
 #include "comms/messages.hpp"
 #include "comms/worker.hpp"
@@ -45,14 +46,14 @@ namespace stateline
       //!
       //! \return The job to do.
       //!
-      std::pair<std::string, std::string> nextJob();
+      std::pair<std::string, Eigen::VectorXd> nextJob();
 
       //! Submits a result to the worker. Call this function
       //! after requesting a job with job().
       //!
       //! \param result The computed result.
       //!
-      void submitResult(const std::string& result);
+      void submitResult(double result);
 
     private:
       Socket socket_;

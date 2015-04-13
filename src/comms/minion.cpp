@@ -21,17 +21,26 @@ namespace stateline
       socket_.send({HELLO,{jobstring}});
     }
 
-    std::pair<std::string, std::string> Minion::nextJob()
+    std::pair<std::string, Eigen::VectorXd> Minion::nextJob()
     {
       VLOG(3) << "Minion waiting on next job";
-      stateline::comms::Message r = socket_.receive();  
+      stateline::comms::Message r = socket_.receive();
       currentJob_ = r.data[1];
-      return std::make_pair(r.data[0], r.data[2]);
+
+      // TODO Serialisation code
+      std::vector<std::string> sampleVectorStr;
+      boost::algorithm::split(sampleVectorStr, r.data[2], boost::is_any_of(":"));
+
+      Eigen::VectorXd sample(sampleVectorStr.size());
+      for (uint i = 0; i < sample.size(); i++)
+        sample(i) = std::stod(sampleVectorStr[i]);
+
+      return std::make_pair(r.data[0], sample);
     }
 
-    void Minion::submitResult(const std::string& result)
+    void Minion::submitResult(double result)
     {
-      socket_.send({RESULT,{currentJob_,result}});
+      socket_.send({RESULT,{currentJob_, std::to_string(result)}});
     }
 
   } // namespace comms
