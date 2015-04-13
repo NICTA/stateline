@@ -40,6 +40,16 @@ cd ..
 wget -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
 [ -d gtest-1.7.0 ] || unzip -o gtest-1.7.0.zip
 
+# google benchmark
+wget -c https://github.com/google/benchmark/archive/master.zip -O benchmark-master.zip
+[ -d benchmark-master ] || unzip -o benchmark-master.zip
+cd benchmark-master
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
+make install
+cd ../..
+
 # zeromq 4.0.3
 wget -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
 [ -d zeromq-4.0.3 ] || tar -xvf zeromq-4.0.3.tar.gz
