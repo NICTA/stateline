@@ -14,7 +14,7 @@ static void BM_SocketReqRepSendRecv(benchmark::State& state)
   comms::Socket req(ctx, ZMQ_REQ, "req");
   req.connect("tcp://localhost:5556");
 
-  std::vector<std::string> data = { "data" };
+  std::vector<std::string> data = { std::string(state.range_x(), ' ') };
 
   while (state.KeepRunning())
   {
@@ -23,8 +23,12 @@ static void BM_SocketReqRepSendRecv(benchmark::State& state)
     rep.send({ comms::WORK, data });
     req.receive();
   }
+
+  state.SetBytesProcessed(int64_t(state.iterations()) * data[0].size());
+  state.SetItemsProcessed(int64_t(state.iterations()) * 2);
 }
 
-BENCHMARK(BM_SocketReqRepSendRecv);
+// 1B to 1MB
+BENCHMARK(BM_SocketReqRepSendRecv)->Range(1, 1e6);
 
 BENCHMARK_MAIN()
