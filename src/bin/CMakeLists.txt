@@ -5,23 +5,23 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-# Macro for adding CPP demos
-FUNCTION(ADD_DEMO demoName library)
-  ADD_EXECUTABLE (${demoName} ${demoName}.cpp)
+# Macro for adding CPP binaries
+FUNCTION(ADD_BINARY name library)
+  ADD_EXECUTABLE (${name} ${name}.cpp)
 
-  SET_TARGET_PROPERTIES(${demoName} PROPERTIES
+  SET_TARGET_PROPERTIES(${name} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
 
-  TARGET_LINK_LIBRARIES(${demoName}
+  TARGET_LINK_LIBRARIES(${name}
     ${library}
     stats
     ${GLOG_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY})
-  INSTALL (TARGETS ${demoName} RUNTIME DESTINATION bin)
+  INSTALL (TARGETS ${name} RUNTIME DESTINATION bin)
 ENDFUNCTION()
 
-#ADD_DEMO(demoDelegator statelineserver)
-ADD_DEMO(headlessDelegator statelineserver)
-#ADD_DEMO(demoWorker statelineclient)
-ADD_DEMO(headlessWorker statelineclient)
+ADD_BINARY(stateline-sampler statelineserver)
+ADD_BINARY(stateline-server statelineserver)
+ADD_BINARY(stateline-client statelineclient)
+ADD_BINARY(demo-worker statelineclient)

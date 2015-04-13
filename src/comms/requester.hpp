@@ -13,6 +13,7 @@
 #pragma once
 
 #include <string>
+#include <Eigen/Eigen>
 
 #include "comms/datatypes.hpp"
 #include "comms/messages.hpp"
@@ -43,7 +44,7 @@ namespace stateline
       //! \param jobs The vector of jobs to compute
       //! \return The results of the job computations
       //!
-      void submit(uint id, const std::vector<std::string>& jobTypes, const std::string& data);
+      void submit(uint id, const std::vector<std::string>& jobTypes, const Eigen::VectorXd& data);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),
@@ -52,7 +53,7 @@ namespace stateline
       //!
       //! \returns A pair of the job id and the result
       //!
-      std::pair<uint, std::vector<std::string>> retrieve();
+      std::pair<uint, std::vector<double>> retrieve();
 
     private:
       // Communicates with another inproc socket in the delegator

@@ -13,8 +13,6 @@
 
 #include <Eigen/Dense>
 #include <glog/logging.h>
-#include "comms/workerinterface.hpp"
-
 
 namespace stateline
 {
@@ -58,18 +56,6 @@ namespace stateline
       SwapType swapType;
 
     };
-
-    using WorkerInterface = 
-      comms::WorkerInterface<const Eigen::VectorXd&, double>;
-
-    typedef std::function<std::vector<comms::JobData>(const Eigen::VectorXd &x)>
-      JobConstructFn;
-
-    typedef std::function<double(const std::vector<comms::ResultData> &)>
-      ResultEnergyFn;
-
-    std::vector<comms::JobData> singleJobConstruct(const Eigen::VectorXd &x);
-    double singleJobEnergy(const std::vector<comms::ResultData> &results);
 
   } // namespace mcmc 
 } // namespace stateline

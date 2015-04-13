@@ -41,7 +41,7 @@ po::options_description commandLineOptions()
   ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
   ("recover,r", po::bool_switch()->default_value(false), "Recover an existing chain")
   ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
-  ("time,t",po::value<uint>()->default_value(60), "Number of seconds the sampler will run for")
+  ("time,t",po::value<uint>()->default_value(5), "Number of seconds the sampler will run for")
   ;
   return opts;
 }
@@ -77,11 +77,6 @@ int main(int ac, char *av[])
 
   // The refresh rate of the tabular logging output in milliseconds.
   const int msRefresh = 1000;
-
-  // --------------------------------------------------------------------------
-  // Initialise the distribution we are sampling from
-  // --------------------------------------------------------------------------
-  Eigen::MatrixXd means = Eigen::MatrixXd::Random(ncomponents, ndims) * spacing;
  
   // --------------------------------------------------------------------------
   // Initialise logging and signal handling
@@ -120,7 +115,7 @@ int main(int ac, char *av[])
   // swap rates of various chains.
   sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default(); 
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
-  
+
   // --------------------------------------------------------------------------
   // Initialise the proposal function
   // --------------------------------------------------------------------------
@@ -128,58 +123,17 @@ int main(int ac, char *av[])
   // Since the distribution we are sampling from is Gaussian, we can use a
   // multivariate Gaussian as a proposal distribution to mix faster.
   sl::mcmc::GaussianCovProposal proposal(nstacks, nchains, ndims);
-  
+
   // We'll use the sample covariance of the chain as the covariance matrix
   // of the proposal distribution. To do this, we create a covariance estimator
   // that efficiently computes the sample covariance.
   sl::mcmc::CovarianceEstimator covEstimator(nstacks, nchains, ndims);
 
   // --------------------------------------------------------------------------
-  // Initialise the worker interface
+  // Initialise the requester
   // --------------------------------------------------------------------------
-  
-  // The worker interface is how the Stateline server interacts with workers.
-  // It allows the server to send jobs to workers, as well as retrieve results
-  // of jobs done by workers.
-
-  // When a worker first connects to the server, it receives both a global
-  // specification (global spec) and a job specification (job spec).
-  // The global spec specifies a string that is sent to all workers.
-  // The job spec specifies a string that is sent only to workers that handle
-  // a particular job type.
-
-  // We want to send the component means of the mixture to the workers so that
-  // they can evaluate the log likelihood. So we can use a convenient serialise
-  // method in Stateline to convert our mean matrix to a string.
-  std::string globalSpec = sl::serialise(means);
-
-  // Since there are no job types, we can just leave the job specs as an empty
-  // map. If there were different job types, then each entry in the map
-  // represents a job spec.
-  std::map<sl::comms::JobType, std::string> jobSpecs = {};
-
-  // When a sample needs to be evaluated by a worker, Stateline will first
-  // convert the sample into a list of JobData objects. Each object will then
-  // be sent to a worker to be evaluated. This is similar to the 'map' step
-  // of a map-reduce infrastructure.
-  //
-  // The conversion is done by a job construct function.
-  // Here, since we don't have multiple job types, we can just convert the
-  // sample directly into a singleton list of JobData.
-  sl::mcmc::JobConstructFn jobConstructFn = sl::mcmc::singleJobConstruct;
-
-  // Similarly, when the results from workers come back, there needs to be a
-  // result energy function to combine the results together into a single
-  // energy scalar value. Again, in map-reduce, this would be the 'reduce' step.
-  //
-  // Since we only send out one job per sample, we can just directly return
-  // the result of the JobResult.
-  sl::mcmc::ResultEnergyFn resultEnergyFn = sl::mcmc::singleJobEnergy;
-
-  // We can now create the worker interface.
-  uint port = vm["port"].as<uint>();
-  sl::mcmc::WorkerInterface workerInterface(globalSpec, jobSpecs,
-      jobConstructFn, resultEnergyFn, sl::DelegatorSettings::Default(port));
+  zmq::context_t ctx;
+  sl::comms::Requester requester(ctx);
 
   // --------------------------------------------------------------------------
   // Set up the chain array and recovery
@@ -194,6 +148,8 @@ int main(int ac, char *av[])
   sl::mcmc::ChainArray chains(nstacks, nchains,
       sl::mcmc::ChainSettings::Default(recover));
 
+  std::vector<std::string> jobTypes = { "job" };
+
   // If we did not recover, then we need to initialise the chain array with
   // initial parameters.
   if (!recover)
@@ -204,8 +160,10 @@ int main(int ac, char *av[])
       Eigen::VectorXd sample = Eigen::VectorXd::Random(ndims);
 
       // We now use the worker interface to evaluate this initial sample
-      workerInterface.submit(i, sample);
-      double energy = workerInterface.retrieve().second;
+      requester.submit(i, jobTypes, sample);
+
+      auto result = requester.retrieve();
+      double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
 
       // Initialise this chain with the evaluated sample
       chains.initialise(i, sample, energy,
@@ -219,7 +177,7 @@ int main(int ac, char *av[])
 
   // A sampler just takes the worker interface, chain array, proposal function,
   // and how often to attempt swaps.
-  sl::mcmc::Sampler sampler(workerInterface, chains, proposal, swapInterval);
+  sl::mcmc::Sampler sampler(requester, jobTypes, chains, proposal, swapInterval);
 
   // Stateline offers various auxiliary classes used for diagnostics and logging.
   // Here, we create a convergence test and standard output logging.

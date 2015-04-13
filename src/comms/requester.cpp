@@ -24,17 +24,30 @@ namespace stateline
       socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
     }
 
-    void Requester::submit(uint id, const std::vector<std::string>& jobTypes, const std::string& data)
+    void Requester::submit(uint id, const std::vector<std::string>& jobTypes, const Eigen::VectorXd& data)
     {
         std::string jtstring = boost::algorithm::join(jobTypes, ":");
-        socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, data }});
+
+        std::vector<std::string> dataVectorStr;
+        for (uint i = 0; i < data.size(); i++) {
+          dataVectorStr.push_back(std::to_string(data(i)));
+        }
+
+        socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, boost::algorithm::join(dataVectorStr, ":") }});
     }
 
-    std::pair<uint, std::vector<std::string>> Requester::retrieve()
+    std::pair<uint, std::vector<double>> Requester::retrieve()
     {
       Message r = socket_.receive();
       uint id = std::stoul(r.address[0]);
-      return std::make_pair(id, r.data);
+
+      std::vector<double> results;
+      for (const auto& x : r.data)
+      {
+        results.push_back(std::stod(x));
+      }
+
+      return std::make_pair(id, results);
     }
 
   } // namespace comms
