@@ -88,7 +88,10 @@ namespace stateline
       // add jobtypes
       std::set<std::string> jobTypes; 
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
-      Worker w {msg.address, jobTypes, {}}; 
+      std::map<std::string, boost::circular_buffer<uint>> times;
+      for (auto const& s : jobTypes)
+        times.insert(std::make_pair(s, boost::circular_buffer<uint>(10)));
+      Worker w {msg.address, jobTypes, {}, times}; 
       std::string id = w.address.front();
       workers_.insert(std::make_pair(id,w));
       LOG(INFO)<< " Worker " << id << " connected.";
@@ -111,7 +114,7 @@ namespace stateline
       uint idx=0;
       for (auto const& t : jobTypes)
       {
-        Job j = {t, nextJobID(), id, idx};
+        Job j = {t, nextJobID(), id, idx, {}}; //we're not starting with a job yet
         jobQueue_.push_back(j);
         idx++;
       }
@@ -123,7 +126,10 @@ namespace stateline
       std::string worker = msg.address.front();
       std::string jobID = msg.data[0];
       Job& j = workers_[worker].workInProgress[jobID];
-      
+      // timing information
+      auto elapsedTime = std::chrono::high_resolution_clock::now() - j.startTime;
+      uint usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
+      workers_[worker].times[j.type].push_back(usecs);
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];
       r.nDone++;
@@ -139,6 +145,10 @@ namespace stateline
 
     void Delegator::onPoll()
     {
+      // keep track of:
+      // -- how many jobs in progress
+      // -- how many seconds per job, per job type?
+
       //stand-in SUPER simple
       if (jobQueue_.size() == 0) return;
       Job& j = jobQueue_.front();
@@ -148,6 +158,7 @@ namespace stateline
         if (w.second.jobTypes.count(j.type))
         {
           network_.send(Message({w.second.address, JOB, {j.type, j.id, data}}));
+          j.startTime = std::chrono::high_resolution_clock::now();
           w.second.workInProgress.insert(std::make_pair(j.id, j));
           jobQueue_.pop_front();
           break;
