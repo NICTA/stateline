@@ -17,6 +17,7 @@
 
 #include <glog/logging.h>
 #include <zmq.hpp>
+#include <boost/circular_buffer.hpp>
 
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
@@ -50,6 +51,7 @@ namespace stateline
       std::string id;
       std::string requesterID;
       uint requesterIndex;
+      std::chrono::high_resolution_clock::time_point startTime;
     };
 
     struct Result
@@ -62,6 +64,7 @@ namespace stateline
       std::vector<std::string> address;
       std::set<std::string> jobTypes;
       std::map<std::string, Job> workInProgress;
+      std::map<std::string, boost::circular_buffer<uint>> times;
     };
 
 
