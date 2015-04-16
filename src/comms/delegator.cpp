@@ -143,29 +143,68 @@ namespace stateline
       workers_[worker].workInProgress.erase(jobID);
     }
 
-    void Delegator::onPoll()
+    uint timeForJob(const Worker& w, const std::string& jobType)
     {
-      // keep track of:
-      // -- how many jobs in progress
-      // -- how many seconds per job, per job type?
-
-      //stand-in SUPER simple
-      if (jobQueue_.size() == 0) return;
-      Job& j = jobQueue_.front();
-      std::string& data = requests_[j.requesterID].data;
-      for (auto& w : workers_)
-      {
-        if (w.second.jobTypes.count(j.type))
-        {
-          network_.send(Message({w.second.address, JOB, {j.type, j.id, data}}));
-          j.startTime = std::chrono::high_resolution_clock::now();
-          w.second.workInProgress.insert(std::make_pair(j.id, j));
-          jobQueue_.pop_front();
-          break;
-        }
-      }
+      auto& times = w.times[jobType];
+      uint totalTime = std::accumulate(times.begin(), times.end(), 0);
+      uint avg;
+      if (times.size() > 0)
+        avg = totalTime / times.size();
+      else
+        avg = 5; // very short initial guess to encourage testing
+      return avg;
     }
 
+    uint usTillDone(const Worker& w, const std::string& jobType)
+    {
+      uint t = 0;
+      for (auto const& i : w.workInProgress)
+        t += timeForJob(w, i.first);
+      //now add the expected time for the new job
+      t += timeForJob(w, jobType);
+      return t;
+    }
+
+    Worker* Delegator::bestWorker(const std::string& jobType, uint maxJobs)
+    {
+      Worker* best = nullptr;
+      uint bestTime = std::numeric_limits<uint>::max();
+      for (auto const& w : workers_)
+      {
+        if (w.workInProgress.size() < maxJobs) 
+        {
+          uint t = usTillDone(w, jobType);
+          if (t < bestTime)
+          {
+            best = &w;
+            bestTime = t;
+          }
+        }
+      }
+      return best;
+    }
+
+    void Delegator::onPoll()
+    {
+      const uint maxJobs = 10;
+      auto i = jobQueue_.begin();
+      while (i != jobQueue_.end())
+      {
+         Job& j = *i;
+         Worker& w = *(bestWorker(i->type, maxJobs));
+         if (w == nullptr)
+         {
+           i++;
+           continue;
+         }
+         std::string& data = requests_[j.requesterID].data;
+         network_.send(Message({w.second.address, JOB, {j.type, j.id, data}}));
+         j.startTime = std::chrono::high_resolution_clock::now();
+         w.second.workInProgress.insert(std::make_pair(j.id, j));
+         jobQueue.erase(i++);
+      }
+    }
+      
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
     {
       //first address
