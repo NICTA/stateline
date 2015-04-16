@@ -13,7 +13,7 @@
 
 #include <set>
 #include <string>
-#include <deque>
+#include <list>
 
 #include <glog/logging.h>
 #include <zmq.hpp>
@@ -136,7 +136,7 @@ namespace stateline
 
         std::map<std::string, Worker> workers_;
         std::map<std::string, Request> requests_;
-        std::deque<Job> jobQueue_;
+        std::list<Job> jobQueue_;
 
         uint msPollRate_;
         HeartbeatSettings hbSettings_;
