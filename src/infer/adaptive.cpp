@@ -15,38 +15,6 @@ namespace stateline
 {
   namespace mcmc
   {
-
-    SlidingWindowBetaSettings SlidingWindowBetaSettings::Default()
-    {
-      SlidingWindowBetaSettings settings;
-
-      settings.windowSize = 100000;
-      settings.betaFactor = 1.5;
-      settings.adaptionLength = 100000;
-      settings.nStepsPerAdapt = 2500;
-      settings.optimalSwapRate = 0.24;
-      settings.adaptRate = 0.2;
-      settings.minAdaptFactor = 0.8;
-      settings.maxAdaptFactor = 1.25;
-      return settings;
-    }
-    
-    SlidingWindowSigmaSettings SlidingWindowSigmaSettings::Default()
-    {
-      SlidingWindowSigmaSettings settings;
-
-      settings.windowSize = 100000;
-      settings.coldSigma = 1.0;
-      settings.sigmaFactor = 1.5;
-      settings.adaptionLength = 100000;
-      settings.nStepsPerAdapt = 2500;
-      settings.optimalAcceptRate = 0.24;
-      settings.adaptRate = 0.2;
-      settings.minAdaptFactor = 0.8;
-      settings.maxAdaptFactor = 1.25;
-      return settings;
-    }
-    
     SlidingWindowSigmaAdapter::SlidingWindowSigmaAdapter(uint nStacks, uint nChains, uint nDims, 
         const SlidingWindowSigmaSettings& settings)
       : nChains_(nChains),

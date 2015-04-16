@@ -12,6 +12,7 @@
 
 #include <Eigen/Core>
 #include <boost/circular_buffer.hpp>
+#include <json.hpp>
 #include "infer/datatypes.hpp"
 
 namespace stateline
@@ -45,12 +46,25 @@ namespace stateline
       //! The minimum multiplicative factor by which sigma can change in a
       //! single adaption
       double minAdaptFactor;
-      
+
       //! The maximum multiplicative factor by which sigma can change in a
       //! single adaption
       double maxAdaptFactor;
 
-      static SlidingWindowSigmaSettings Default();
+      SlidingWindowSigmaSettings(const nlohmann::json& config)
+      {
+        // TODO: defaults
+        auto sigmaConfig = config["sigmaAdaption"];
+        windowSize = sigmaConfig["windowSize"];
+        coldSigma = config["sigma"];
+        sigmaFactor = config["parallelTempering"]["sigmaFactor"];
+        adaptionLength = sigmaConfig["adaptionLength"];
+        nStepsPerAdapt = sigmaConfig["stepsPerAdapt"];
+        optimalAcceptRate = sigmaConfig["optimalAcceptRate"];
+        adaptRate = sigmaConfig["adaptRate"];
+        minAdaptFactor = sigmaConfig["adaptFactor"]["min"];
+        maxAdaptFactor = sigmaConfig["adaptFactor"]["max"];
+      }
     };
 
     class SlidingWindowSigmaAdapter
@@ -105,13 +119,24 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      static SlidingWindowBetaSettings Default();
+      SlidingWindowBetaSettings(const nlohmann::json& config)
+      {
+        // TODO: defaults
+        auto betaConfig = config["parallelTempering"]["betaAdaption"];
+        windowSize = betaConfig["windowSize"];
+        betaFactor = config["parallelTempering"]["betaFactor"];
+        adaptionLength = betaConfig["adaptionLength"];
+        nStepsPerAdapt = betaConfig["stepsPerAdapt"];
+        optimalSwapRate = betaConfig["optimalSwapRate"];
+        adaptRate = betaConfig["adaptRate"];
+        minAdaptFactor = betaConfig["adaptFactor"]["min"];
+        maxAdaptFactor = betaConfig["adaptFactor"]["max"];
+      }
     };
 
     class SlidingWindowBetaAdapter
     {
       public:
-        
         SlidingWindowBetaAdapter(uint nStacks, uint nChains, 
             const SlidingWindowBetaSettings& settings);
         

@@ -1,0 +1,39 @@
+{
+  "dimensionality": 1,
+  "boundaries": {
+    "min": [0.1],
+    "max": [1.0]
+  },
+  "duration": 60,
+  "sigma": 1.0,
+  "jobTypes": ["job"],
+  "sigmaAdaption": {
+    "windowSize": 100000,
+    "adaptionLength": 100000,
+    "stepsPerAdapt": 2500,
+    "optimalAcceptRate": 0.24,
+    "adaptRate": 0.2,
+    "adaptFactor": {
+      "min": 0.8,
+      "max": 1.25
+    }
+  },
+  "parallelTempering": {
+    "stacks": 0,
+    "chains": 5,
+    "sigmaFactor": 1.5,
+    "betaFactor": 1.5,
+    "swapInterval": 10,
+    "betaAdaption": {
+      "windowSize": 100000,
+      "adaptionLength": 100000,
+      "stepsPerAdapt": 2500,
+      "optimalSwapRate": 0.24,
+      "adaptRate": 0.2,
+      "adaptFactor": {
+        "min": 0.8,
+        "max": 1.25
+      }
+    }
+  }
+}

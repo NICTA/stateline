@@ -62,3 +62,8 @@ make -j$(nproc)
 cp libleveldb.a libleveldb.so libleveldb.so.1 libleveldb.so.1.15 $PREREQ_DIR/lib
 cp -r include/leveldb $PREREQ_DIR/include/
 cd ..
+
+# json
+wget -c https://github.com/nlohmann/json/archive/master.zip -O json-master.zip
+[ -d json-master ] || unzip -o json-master.zip
+cp json-master/src/json.hpp $PREREQ_DIR/include
