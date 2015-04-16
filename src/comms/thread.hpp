@@ -9,8 +9,15 @@ std::future<bool> startInThread(std::reference_wrapper<bool> running, Args&&... 
 {
   auto func = [=](Args&&... args) -> bool
   {
-    T obj(std::forward<Args>(args)..., running);
-    obj.start();
+    try
+    {
+      T obj(std::forward<Args>(args)..., running);
+      obj.start();
+    }
+    catch (const std::exception& ex)
+    {
+      LOG(FATAL) << "Exception thrown in child thread: " << ex.what();
+    }
     return true;
   };
 

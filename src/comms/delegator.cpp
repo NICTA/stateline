@@ -18,6 +18,41 @@ namespace stateline
 {
   namespace comms
   {
+    namespace
+    {
+      std::string nextJobID()
+      {
+        static uint n=0;
+        return std::to_string(n++);
+      }
+
+      // TODO: should this be a float?
+      uint timeForJob(const Delegator::Worker& w, const std::string& jobType)
+      {
+        auto& times = w.times.at(jobType);
+        uint totalTime = std::accumulate(std::begin(times), std::end(times), 0);
+        uint avg;
+        if (times.size() > 0)
+          avg = totalTime / times.size();
+        else
+          avg = 5; // very short initial guess to encourage testing
+        return avg;
+      }
+
+      // TODO: could we compute these lazily? i.e. each time a new job is assigned,
+      // we update the expected finishing time?
+      uint usTillDone(const Delegator::Worker& w, const std::string& jobType)
+      {
+        uint t = 0;
+        for (auto const& i : w.workInProgress)
+          t += timeForJob(w, i.second.type);
+        //now add the expected time for the new job
+        t += timeForJob(w, jobType);
+        return t;
+      }
+
+    }
+
     Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings, bool& running)
         : context_(context),
           requester_(context, ZMQ_ROUTER, "toRequester"),
@@ -88,19 +123,14 @@ namespace stateline
       // add jobtypes
       std::set<std::string> jobTypes; 
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
-      std::map<std::string, boost::circular_buffer<uint>> times;
-      for (auto const& s : jobTypes)
-        times.insert(std::make_pair(s, boost::circular_buffer<uint>(10)));
-      Worker w {msg.address, jobTypes, {}, times}; 
-      std::string id = w.address.front();
-      workers_.insert(std::make_pair(id,w));
-      LOG(INFO)<< " Worker " << id << " connected.";
-    }
 
-    std::string nextJobID()
-    {
-      static uint n=0;
-      return std::to_string(n++);
+      Worker w {msg.address, jobTypes, {}, {}};
+      for (auto const& s : jobTypes)
+        w.times.insert(std::make_pair(s, boost::circular_buffer<uint>(10)));
+
+      std::string id = w.address.front();
+      workers_.insert(std::make_pair(id, w));
+      LOG(INFO)<< " Worker " << id << " connected.";
     }
 
     void Delegator::receiveRequest(const Message& msg)
@@ -133,7 +163,7 @@ namespace stateline
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];
       r.nDone++;
-      
+
       if (r.nDone == r.jobTypes.size())
       {
         requester_.send({r.address, REQUEST, r.results});
@@ -143,40 +173,19 @@ namespace stateline
       workers_[worker].workInProgress.erase(jobID);
     }
 
-    uint timeForJob(const Worker& w, const std::string& jobType)
+    Delegator::Worker* Delegator::bestWorker(const std::string& jobType, uint maxJobs)
     {
-      auto& times = w.times[jobType];
-      uint totalTime = std::accumulate(times.begin(), times.end(), 0);
-      uint avg;
-      if (times.size() > 0)
-        avg = totalTime / times.size();
-      else
-        avg = 5; // very short initial guess to encourage testing
-      return avg;
-    }
-
-    uint usTillDone(const Worker& w, const std::string& jobType)
-    {
-      uint t = 0;
-      for (auto const& i : w.workInProgress)
-        t += timeForJob(w, i.first);
-      //now add the expected time for the new job
-      t += timeForJob(w, jobType);
-      return t;
-    }
-
-    Worker* Delegator::bestWorker(const std::string& jobType, uint maxJobs)
-    {
-      Worker* best = nullptr;
+      // TODO: can we do this using an STL algorithm?
+      Delegator::Worker* best = nullptr;
       uint bestTime = std::numeric_limits<uint>::max();
-      for (auto const& w : workers_)
+      for (auto& w : workers_)
       {
-        if (w.workInProgress.size() < maxJobs) 
+        if (w.second.jobTypes.count(jobType) && w.second.workInProgress.size() < maxJobs)
         {
-          uint t = usTillDone(w, jobType);
+          uint t = usTillDone(w.second, jobType);
           if (t < bestTime)
           {
-            best = &w;
+            best = &w.second;
             bestTime = t;
           }
         }
@@ -187,24 +196,30 @@ namespace stateline
     void Delegator::onPoll()
     {
       const uint maxJobs = 10;
-      auto i = jobQueue_.begin();
-      while (i != jobQueue_.end())
+      auto i = std::begin(jobQueue_);
+      while (i != std::end(jobQueue_))
       {
-         Job& j = *i;
-         Worker& w = *(bestWorker(i->type, maxJobs));
-         if (w == nullptr)
-         {
-           i++;
-           continue;
-         }
-         std::string& data = requests_[j.requesterID].data;
-         network_.send(Message({w.second.address, JOB, {j.type, j.id, data}}));
-         j.startTime = std::chrono::high_resolution_clock::now();
-         w.second.workInProgress.insert(std::make_pair(j.id, j));
-         jobQueue.erase(i++);
+        auto worker = bestWorker(i->type, maxJobs);
+        if (!worker)
+        {
+          ++i;
+          continue;
+        }
+
+        std::string& data = requests_[i->requesterID].data;
+        network_.send({worker->address, JOB, {i->type, i->id, data}});
+        i->startTime = std::chrono::high_resolution_clock::now();
+        worker->workInProgress.insert(std::make_pair(i->id, *i));
+
+        // TODO: could we avoid removing this? What if we just mark it as being removed,
+        // and ignore it when we're polling? We can reap these 'zombie' jobs whenever
+        // they get removed from the front of the queue (assuming there's no job starvation).
+        // This way, we can keep using a queue instead of a list, so we can get
+        // better performance through cache locality.
+        jobQueue_.erase(i++);
       }
     }
-      
+
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
     {
       //first address

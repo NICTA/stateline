@@ -35,37 +35,8 @@ namespace stateline
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.
     //!
-    
-    struct Request
-    {
-      std::vector<std::string> address;
-      std::set<std::string> jobTypes;
-      std::string data;
-      std::vector<std::string> results;
-      uint nDone;
-    };
 
-    struct Job
-    {
-      std::string type;
-      std::string id;
-      std::string requesterID;
-      uint requesterIndex;
-      std::chrono::high_resolution_clock::time_point startTime;
-    };
-
-    struct Result
-    {
-    };
-
-
-    struct Worker
-    {
-      std::vector<std::string> address;
-      std::set<std::string> jobTypes;
-      std::map<std::string, Job> workInProgress;
-      std::map<std::string, boost::circular_buffer<uint>> times;
-    };
+    // TODO: move this to inside Delegator as private members
 
 
     class Delegator
@@ -85,12 +56,44 @@ namespace stateline
         ~Delegator();
 
         void start();
-      
-      
+
       private:
-    
+        struct Request
+        {
+          std::vector<std::string> address;
+          std::set<std::string> jobTypes;
+          std::string data;
+          std::vector<std::string> results;
+          uint nDone;
+        };
+
+        struct Job
+        {
+          std::string type;
+          std::string id;
+          std::string requesterID;
+          uint requesterIndex;
+          std::chrono::high_resolution_clock::time_point startTime;
+        };
+
+        struct Result
+        {
+        };
+
+        // TODO: public for now, some free functions in delegator.cpp need it
+        // Either make those member functions or add them as friends
+      public:
+        struct Worker
+        {
+          std::vector<std::string> address;
+          std::set<std::string> jobTypes;
+          std::map<std::string, Job> workInProgress;
+          std::map<std::string, boost::circular_buffer<uint>> times;
+        };
+
+      private:
         void onPoll();
-        
+
         void receiveRequest(const Message& m);
 
         //! Connect a worker that has previously been sent a problem spec.
@@ -123,7 +126,8 @@ namespace stateline
         //!
         void receiveResult(const Message& m);
 
-
+        // TODO: does this need to be a member function?
+        Worker* bestWorker(const std::string& jobType, uint maxJobs);
 
 
         zmq::context_t& context_; 
