@@ -145,7 +145,7 @@ namespace stateline
         uint msPollRate_;
         HeartbeatSettings hbSettings_;
 
-        bool running_;
+        bool& running_;
     };
 
   } // namespace comms

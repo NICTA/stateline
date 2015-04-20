@@ -62,7 +62,7 @@ namespace stateline
 
       hrc::time_point lastSendTime_;
 
-      bool running_;
+      bool& running_;
     };
 
   } // namespace comms
