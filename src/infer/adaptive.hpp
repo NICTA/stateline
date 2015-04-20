@@ -51,20 +51,7 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      SlidingWindowSigmaSettings(const nlohmann::json& config)
-      {
-        // TODO: defaults
-        auto sigmaConfig = config["sigmaAdaption"];
-        windowSize = sigmaConfig["windowSize"];
-        coldSigma = config["sigma"];
-        sigmaFactor = config["parallelTempering"]["sigmaFactor"];
-        adaptionLength = sigmaConfig["adaptionLength"];
-        nStepsPerAdapt = sigmaConfig["stepsPerAdapt"];
-        optimalAcceptRate = sigmaConfig["optimalAcceptRate"];
-        adaptRate = sigmaConfig["adaptRate"];
-        minAdaptFactor = sigmaConfig["adaptFactor"]["min"];
-        maxAdaptFactor = sigmaConfig["adaptFactor"]["max"];
-      }
+      SlidingWindowSigmaSettings(const nlohmann::json& config);
     };
 
     class SlidingWindowSigmaAdapter
@@ -119,19 +106,7 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      SlidingWindowBetaSettings(const nlohmann::json& config)
-      {
-        // TODO: defaults
-        auto betaConfig = config["parallelTempering"]["betaAdaption"];
-        windowSize = betaConfig["windowSize"];
-        betaFactor = config["parallelTempering"]["betaFactor"];
-        adaptionLength = betaConfig["adaptionLength"];
-        nStepsPerAdapt = betaConfig["stepsPerAdapt"];
-        optimalSwapRate = betaConfig["optimalSwapRate"];
-        adaptRate = betaConfig["adaptRate"];
-        minAdaptFactor = betaConfig["adaptFactor"]["min"];
-        maxAdaptFactor = betaConfig["adaptFactor"]["max"];
-      }
+      SlidingWindowBetaSettings(const nlohmann::json& config);
     };
 
     class SlidingWindowBetaAdapter
