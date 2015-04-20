@@ -1,7 +1,8 @@
 //!
-//! \file comms/test/delegator.cpp
+//! \file comms/tests/message.cpp
 //! \author Lachlan McCalman
-//! \date 2014
+//! \author Darren Shen
+//! \date 2015
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
