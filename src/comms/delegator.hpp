@@ -146,6 +146,7 @@ namespace stateline
         HeartbeatSettings hbSettings_;
 
         bool& running_;
+        uint nextJobId_;
     };
 
   } // namespace comms
