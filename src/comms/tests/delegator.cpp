@@ -1,231 +1,149 @@
 //!
-//! \file comms/test/delegator.cpp
+//! \file comms/tests/message.cpp
 //! \author Lachlan McCalman
-//! \date 2014
+//! \author Darren Shen
+//! \date 2015
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
 #include <gtest/gtest.h>
 
-#include "comms/settings.hpp"
-#include "comms/messages.hpp"
-#include "comms/transport.hpp"
-#include "comms/router.hpp"
 #include "comms/delegator.hpp"
-#include "comms/serial.hpp"
 
-#include <Eigen/Core>
+#include "comms/socket.hpp"
+#include "comms/thread.hpp"
 
-using namespace stateline;
 using namespace stateline::comms;
-using namespace stateline::comms::detail;
 
-class Delegation: public testing::Test
+// Custom print for message to make it easier to debug
+namespace stateline
 {
-  protected:
-    std::unique_ptr<Delegator> pDelegator;
-
-    virtual void SetUp()
+  namespace comms
+  {
+    void PrintTo(const Message& m, std::ostream* os)
     {
-      DelegatorSettings settings;
-      settings.port = 5555;
-      settings.msPollRate = 100;
-      settings.heartbeat.msRate = 1000;
-      settings.heartbeat.msPollRate = 500;
-      settings.heartbeat.msTimeout = 3000;
-
-      std::string globalSpec = "globalSpec";
-      std::string perJobSpec1 = "jobSpec1";
-      std::string perJobSpec2 = "jobSpec2";
-
-      std::map<JobID, std::string> jobMsgs =
+      *os << "|";
+      for (const auto& addr : m.address)
       {
-        { 2, perJobSpec1 }, 
-        { 5, perJobSpec2 }
-      };
-
-      pDelegator.reset(new Delegator(globalSpec, jobMsgs, settings));
+        *os << addr << "|";
+      }
+      *os << m.subject << "|";
+      for (const auto& data : m.data)
+      {
+        *os << data << "|";
+      }
     }
-
-    virtual void TearDown()
-    {
-    }
-
-    ~Delegation()
-    {
-
-    }
-};
-
-TEST_F(Delegation, canSendAndReceiveSingleProblemSpec)
-{
-  Delegator& delegator(*pDelegator);
-
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
-  worker.connect("tcp://localhost:5555");
-  
-  // Send a job list to the delegator
-  std::vector<uint> jobList = { 2 };
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
-  auto rep = receive(worker);
-  send(worker, Message(HEARTBEAT));
-  Message expected(PROBLEMSPEC, { "globalSpec", "2", "jobSpec1" });
-  EXPECT_EQ(expected, rep);
+  }
 }
 
-TEST_F(Delegation, canSendAndReceiveMultiProblemSpec)
+TEST(Delegator, canSendHelloToDelegator)
 {
-  Delegator& delegator(*pDelegator);
+  zmq::context_t context{1};
+  bool running = true;
 
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
+  DelegatorSettings settings = DelegatorSettings::Default(5555);
+  settings.msPollRate = 100;
+  settings.heartbeat.msPollRate = 100;
+  auto delegatorFuture = stateline::startInThread<Delegator>(running, std::ref(context), std::ref(settings));
+
+  Socket worker{context, ZMQ_DEALER, "mockWorker"};
+  worker.setIdentifier("worker");
   worker.connect("tcp://localhost:5555");
 
-  // Send multiple jobs in one list (only the specs for 2 and 5 are valid)
-  std::vector<uint> jobList = { 1, 2, 5 };
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
-  auto rep = receive(worker);
-  send(worker, Message(HEARTBEAT));
-  Message expected(PROBLEMSPEC,
-      { "globalSpec", "1", "", "2", "jobSpec1", "5", "jobSpec2" });
-  EXPECT_EQ(expected.data, rep.data);
-  EXPECT_EQ(expected, rep);
+  Message hello{HELLO, { "A:B"}};
+  worker.send(hello);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  running = false;
+  delegatorFuture.wait();
 }
 
-TEST_F(Delegation, canSendAndReceiveJobRequest)
+TEST(Delegator, canSendAndReceiveSingleJobTypeMultipleTimes)
 {
-  Delegator& delegator(*pDelegator);
+  zmq::context_t context{1};
+  bool running = true;
 
-  // Fake requester 
-  zmq::socket_t requester(delegator.zmqContext(), ZMQ_DEALER);
-  auto requesterID = randomSocketID();
-  setSocketID(requesterID, requester);
+  DelegatorSettings settings = DelegatorSettings::Default(5555);
+  settings.msPollRate = 100;
+  settings.heartbeat.msPollRate = 100;
+  auto delegatorFuture = stateline::startInThread<Delegator>(running, std::ref(context), std::ref(settings));
+
+  Socket worker{context, ZMQ_DEALER, "mockWorker"};
+  worker.setIdentifier();
+  worker.connect("tcp://localhost:5555");
+
+  Socket requester{context, ZMQ_DEALER, "mockRequester"};
+  requester.setIdentifier();
   requester.connect(DELEGATOR_SOCKET_ADDR.c_str());
 
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
-  worker.connect("tcp://localhost:5555");
-  
-  // Send job data to worker
-  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
-
-  // Send job list to requester
-  std::vector<uint> jobList = { 2 };
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
-  receive(worker); // problemSpec
-
-  // Send job request to requester
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
-  auto rep = receive(worker); // job
-  Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA" });
-  EXPECT_EQ(expected, rep);
-}
-
-TEST_F(Delegation, canSendAndReceiveJobRequestWithMultipleJobTypes)
-{
-  Delegator& delegator(*pDelegator);
-
-  // Fake requester 
-  zmq::socket_t requester(delegator.zmqContext(), ZMQ_DEALER);
-  auto requesterID = randomSocketID();
-  setSocketID(requesterID, requester);
-  requester.connect(DELEGATOR_SOCKET_ADDR.c_str());
-
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
-  worker.connect("tcp://localhost:5555");
-
-  // Send job list to requester
-  std::vector<uint> jobList = { 2, 5 };
-  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
-  receive(worker); // problemSpec
-
-  // Send job request to requester
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
-  auto rep = receive(worker); // job
-  Message expected({ requesterID}, JOB, { serialise<std::uint32_t>(2), "JOBDATA"});
-  EXPECT_EQ(expected, rep);
-}
-
-TEST_F(Delegation, canSendResultsToRequester)
-{
-  Delegator& delegator(*pDelegator);
-
-  // Fake requester 
-  zmq::socket_t requester(delegator.zmqContext(), ZMQ_DEALER);
-  auto requesterID = randomSocketID();
-  setSocketID(requesterID, requester);
-  requester.connect(DELEGATOR_SOCKET_ADDR.c_str());
-
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
-  worker.connect("tcp://localhost:5555");
-
-  // Send job list to worker
-  std::vector<uint> jobList = { 2 };
-  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" }));
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(jobList) }));
-  receive(worker); // problemSpec
+  // Connect the worker
+  Message hello{HELLO, { "A" }};
+  worker.send(hello);
 
   // Send a job request
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2)}));
+  requester.send({{ "42" }, REQUEST, { "A", "Request 1" }});
 
-  // Receive a job and return a result
-  receive(worker); // job
-  send(worker, Message(
-        { requesterID, "minionAddress"}, JOBSWAP,
-        { serialise<std::uint32_t>(2), "Result", serialise<std::uint32_t>(2) }));
+  // Receive the request
+  auto job1 = worker.receive();
+  EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job1);
 
-  // Retrieve the result
-  auto rep = receive(requester);
-  Message expected(JOBSWAP, { serialise<std::uint32_t>(2), "Result" });
-  EXPECT_EQ(expected, rep);
+  // Send another job request
+  requester.send({{ "36" }, REQUEST, { "A", "Request 2" }});
+
+  // Receive the request
+  auto job2 = worker.receive();
+  EXPECT_EQ(Message(JOB, { "A", "1", "Request 2" }), job2);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  running = false;
+  delegatorFuture.wait();
 }
 
-TEST_F(Delegation, canRequestJobAfterJob)
+TEST(Delegator, canSendAndReceiveMultipleJobTypes)
 {
-  Delegator& delegator(*pDelegator);
+  zmq::context_t context{1};
+  bool running = true;
 
-  // Fake requester 
-  zmq::socket_t requester(delegator.zmqContext(), ZMQ_DEALER);
-  auto requesterID = randomSocketID();
-  setSocketID(requesterID, requester);
-  requester.connect(DELEGATOR_SOCKET_ADDR.c_str());
+  DelegatorSettings settings = DelegatorSettings::Default(5555);
+  settings.msPollRate = 100;
+  settings.heartbeat.msPollRate = 100;
+  auto delegatorFuture = stateline::startInThread<Delegator>(running, std::ref(context), std::ref(settings));
 
-  // Fake Worker
-  zmq::socket_t worker(delegator.zmqContext(), ZMQ_DEALER);
-  auto workerID = randomSocketID();
-  setSocketID(workerID, worker);
+  Socket worker{context, ZMQ_DEALER, "mockWorker"};
+  worker.setIdentifier();
   worker.connect("tcp://localhost:5555");
 
-  // Dialog
-  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA" })); 
-  send(worker, Message(HELLO, { serialise<std::uint32_t>(2) }));
-  receive(worker); // problemSpec
+  Socket requester{context, ZMQ_DEALER, "mockRequester"};
+  requester.setIdentifier();
+  requester.connect(DELEGATOR_SOCKET_ADDR.c_str());
 
-  send(worker, Message(JOBREQUEST, { serialise<std::uint32_t>(2) }));
-  receive(worker); // job
-  send(worker, Message(
-        { requesterID, "minionAddress"}, JOBSWAP,
-        { serialise<std::uint32_t>(2), "Result", serialise<std::uint32_t>(2) }));
-  receive(requester);
-  send(requester, Message(JOB, { serialise<std::uint32_t>(2), "JOBDATA2" }));
-  auto rep = receive(worker); // job
-  Message expected(
-      { requesterID, "minionAddress"}, JOB,
-      { serialise<std::uint32_t>(2), "JOBDATA2" });
-  EXPECT_EQ(expected, rep);
+  // Connect the worker
+  Message hello{HELLO, { "A:B" }};
+  worker.send(hello);
+
+  // Send a job request
+  requester.send({{ "42" }, REQUEST, { "A:B", "Request" }});
+
+  // Receive both of the requests
+  auto job1 = worker.receive();
+  auto job2 = worker.receive();
+
+  ASSERT_EQ(3U, job1.data.size());
+  ASSERT_EQ(3U, job2.data.size());
+
+  if (job1.data[0] == "A")
+  {
+    EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job1);
+    EXPECT_EQ(Message(JOB, { "B", "1", "Request" }), job2);
+  }
+  else
+  {
+    EXPECT_EQ(Message(JOB, { "B", "0", "Request" }), job1);
+    EXPECT_EQ(Message(JOB, { "A", "1", "Request" }), job2);
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  running = false;
+  delegatorFuture.wait();
 }
