@@ -18,10 +18,11 @@
 // Prerequisites
 #include <glog/logging.h>
 #include <zmq.hpp>
+#include <Eigen/Eigen>
 // Project
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/worker.hpp"
+#include "comms/socket.hpp"
 
 namespace stateline
 {
@@ -37,29 +38,26 @@ namespace stateline
       //! Create a new a minion.
       //!
       //! \param w The parent worker object it communicates with.
-      //! \param jobID The ID of the job that the minion will do.
+      //! \param jobTypes The job types that the minion will do
       //!
-      Minion(Worker& w, uint jobID);
+      Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes);
 
       //! Gets a job from the worker.
       //!
       //! \return The job to do.
       //!
-      JobData nextJob();
+      std::pair<std::string, Eigen::VectorXd> nextJob();
 
       //! Submits a result to the worker. Call this function
       //! after requesting a job with job().
       //!
       //! \param result The computed result.
       //!
-      void submitResult(const ResultData& result);
+      void submitResult(double result);
 
     private:
-      bool firstMessage_ = true;
-      Address requesterAddress_;
-      std::string jobTypeString_;
-      zmq::socket_t socket_;
-      std::string jobIDString_;
+      Socket socket_;
+      std::string currentJob_;
     };
   } // namespace comms
 } // namespace stateline

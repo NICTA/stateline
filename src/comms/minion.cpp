@@ -7,58 +7,40 @@
 //!
 
 #include "comms/minion.hpp"
-
-#include <cstdint>
-
-#include "comms/serial.hpp"
+#include <boost/algorithm/string.hpp>
 
 namespace stateline
 {
   namespace comms
   {
-    Minion::Minion(Worker& w, uint jobID)
-        : socket_(w.zmqContext(), ZMQ_DEALER),
-          jobIDString_(detail::serialise<std::uint32_t>(jobID))
+    Minion::Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes)
+        : socket_(context, ZMQ_DEALER, "toWorker")
     {
-      auto socketID = stateline::comms::randomSocketID();
-      stateline::comms::setSocketID(socketID, socket_);
       socket_.connect(WORKER_SOCKET_ADDR.c_str());
+      std::string jobstring = boost::algorithm::join(jobTypes, ":");
+      socket_.send({HELLO,{jobstring}});
     }
 
-    JobData Minion::nextJob()
+    std::pair<std::string, Eigen::VectorXd> Minion::nextJob()
     {
-      // Make sure we conform to the Stateline protocol
-      if (firstMessage_)
-      {
-        send(socket_, Message(stateline::comms::JOBREQUEST, { jobIDString_ }));
-        firstMessage_ = false;
-      }
       VLOG(3) << "Minion waiting on next job";
-      stateline::comms::Message r = receive(socket_);
-      requesterAddress_ = r.address;
-      std::string addrString = "Minion received address: ";
-      for (auto a : r.address)
-      {
-        addrString += a + "::";
-      }
-      VLOG(3) << addrString;
-      JobData j;
+      stateline::comms::Message r = socket_.receive();
+      currentJob_ = r.data[1];
 
-      // type, globalData, JobData IN THAT ORDER
-      j.type = detail::unserialise<std::uint32_t>(r.data[0]);
-      j.globalData = r.data[1];
-      j.jobData = r.data[2];
-      return j;
+      // TODO Serialisation code
+      std::vector<std::string> sampleVectorStr;
+      boost::algorithm::split(sampleVectorStr, r.data[2], boost::is_any_of(":"));
+
+      Eigen::VectorXd sample(sampleVectorStr.size());
+      for (uint i = 0; i < sample.size(); i++)
+        sample(i) = std::stod(sampleVectorStr[i]);
+
+      return std::make_pair(r.data[0], sample);
     }
 
-    void Minion::submitResult(const ResultData& result)
+    void Minion::submitResult(double result)
     {
-      // Order of data: Result type, result data, new job type request
-      Message m(requesterAddress_, JOBSWAP,
-          { detail::serialise<std::uint32_t>(result.type), result.data, jobIDString_ });
-
-      VLOG(3) << "Minion submitting " << m;
-      send(socket_, m);
+      socket_.send({RESULT,{currentJob_, std::to_string(result)}});
     }
 
   } // namespace comms

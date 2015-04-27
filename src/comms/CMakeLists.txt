@@ -7,25 +7,26 @@
 
 # Common libraries
 ADD_LIBRARY(messages messages.cpp)
-ADD_LIBRARY(transport transport.cpp)
 ADD_LIBRARY(router router.cpp)
-TARGET_LINK_LIBRARIES(router transport messages)
-
+TARGET_LINK_LIBRARIES(router ${ZMQ_LIBRARY})
+ADD_LIBRARY(socket socket.cpp)
+TARGET_LINK_LIBRARIES(router messages socket)
 
 # Server specific libraries
 ADD_LIBRARY(delegator delegator.cpp)
-TARGET_LINK_LIBRARIES(delegator transport messages router)
+TARGET_LINK_LIBRARIES(delegator messages router)
 ADD_LIBRARY(requester requester.cpp)
+TARGET_LINK_LIBRARIES(requester messages router)
+ADD_LIBRARY(minion minion.cpp)
+TARGET_LINK_LIBRARIES(minion messages router)
 ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
 TARGET_LINK_LIBRARIES(serverheartbeat messages)
 
 # Client specific libraries
 ADD_LIBRARY(worker worker.cpp)
-TARGET_LINK_LIBRARIES(worker transport messages router)
-ADD_LIBRARY(minion minion.cpp)
+TARGET_LINK_LIBRARIES(worker messages router)
 ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
 TARGET_LINK_LIBRARIES(clientheartbeat messages)
 
-ADD_TEST(test-delegator tests/delegator.cpp statelineserver statelineclient)
-ADD_TEST(test-router tests/router.cpp statelineserver statelineclient)
-ADD_TEST(test-transport tests/transport.cpp statelineserver statelineclient)
+ADD_TEST(test-message tests/message.cpp messages)
+ADD_TEST(test-router tests/router.cpp router)

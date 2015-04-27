@@ -13,6 +13,7 @@
 #pragma once
 
 #include <string>
+#include <queue>
 
 #include <glog/logging.h>
 #include <zmq.hpp>
@@ -20,16 +21,17 @@
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
 #include "comms/datatypes.hpp"
-#include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/clientheartbeat.hpp"
+#include "comms/socket.hpp"
 
 namespace stateline
 {
   namespace comms
   {
     //! Address that the minions connect their sockets to.
-    const std::string WORKER_SOCKET_ADDR = "inproc://worker";
+    // const std::string WORKER_SOCKET_ADDR = "inproc://worker";
+    const std::string WORKER_SOCKET_ADDR = "ipc:///tmp/sl_worker.socket";
 
     //! Worker object that takes jobs, forwards them to a minion
     //! then receives results from the minion and send them back
@@ -40,11 +42,10 @@ namespace stateline
     public:
       //! Build a new worker that can handle multiple types of jobs.
       //!
-      //! \param jobIDs A list of job IDs that the worker can do.
       //! \param settings The configuration object.
       //!
-      Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings);
- 
+      Worker(zmq::context_t& context, const WorkerSettings& settings, bool& running);
+
       // Workers can't be copied.
       Worker(const Worker &other) = delete;
 
@@ -52,56 +53,23 @@ namespace stateline
       //!
       ~Worker();
 
-      //! Return a ref to the context object owned by the worker.
-      //! This allows a minion to use inproc sockets and connect.
-      //!
-      //! \return A reference to the zmq::context_t object
-      //!
-      zmq::context_t& zmqContext()
-      {
-        return *context_;
-      }
-
-      //! Return a reference to the problemspec so that the minions can
-      //! instantiate their sockets.
-      //!
-      //! \return A reference to the worker-owned problemspec.
-      //!
-      const std::string& globalSpec()
-      {
-        return globalSpec_;
-      }
-
-      //! Return the individual job specifications for the minions.
-      //!
-      //! \return A reference to the worker-owned jobspec.
-      //!
-      const std::string& jobSpec(uint jobID)
-      {
-        return jobSpecs_[jobID];
-      }
-
-      //! Return a set of job IDs that are enabled.
-      //!
-      //! \return Set of jobs IDs that are enabled.
-      //!
-      const std::set<uint> jobsEnabled() const
-      {
-        return jobsEnabled_;
-      }
+      void start();
 
     private:
-      // Context for all local sockets
-      zmq::context_t* context_;
+      zmq::context_t& context_; 
+
+      Socket minion_;
+      Socket heartbeat_;
+      Socket network_;
       SocketRouter router_;
-      std::string globalSpec_;
-      std::set<uint> jobsEnabled_;
-      std::map<uint, std::string> jobSpecs_;
 
-      // Heartbeating System
-      ClientHeartbeat* heartbeat_;
+      uint msPollRate_;
+      HeartbeatSettings hbSettings_;
 
-      bool running_;
+      bool& running_;
+
+      std::queue<Message> queue_;
+      bool minionWaiting_;
     };
 
     //! Forward a message to the delegator.

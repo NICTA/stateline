@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include "comms/requester.hpp"
 #include "infer/datatypes.hpp"
 #include "infer/chainarray.hpp"
 
@@ -56,7 +57,8 @@ namespace stateline
     class Sampler
     {
       public:
-        Sampler(WorkerInterface& workerInterface, 
+        Sampler(comms::Requester& requester, 
+                std::vector<std::string> jobTypes,
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
@@ -73,7 +75,10 @@ namespace stateline
 
         void unlock(uint id);
 
-        WorkerInterface& workerInterface_;
+        comms::Requester& requester_;
+
+        std::vector<std::string> jobTypes_;
+
         // The MCMC chain wrapper
         ChainArray& chains_;
         

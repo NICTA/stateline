@@ -13,14 +13,14 @@
 
 #include <set>
 #include <string>
-#include <deque>
+#include <list>
 
 #include <glog/logging.h>
 #include <zmq.hpp>
+#include <boost/circular_buffer.hpp>
 
 #include "comms/settings.hpp"
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/serverheartbeat.hpp"
 
@@ -29,23 +29,24 @@ namespace stateline
   namespace comms
   {
     //! Address that the requesters connect their sockets to.
-    const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
+    // const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
+    const std::string DELEGATOR_SOCKET_ADDR = "ipc:///tmp/sl_delegator.socket";
 
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.
     //!
+
+    // TODO: move this to inside Delegator as private members
+
+
     class Delegator
     {
       public:
         //! Create a new delegator.
         //!
-        //! \param commonSpecData The serialised common problem specification.
-        //! \param jobSpecData The serialised problem specifications for each job.
         //! \param settings The configuration object.
         //!
-        Delegator(const std::string& commonSpecData,
-            const std::map<JobID, std::string>& jobSpecData,
-            const DelegatorSettings& settings);
+        Delegator(zmq::context_t& context, const DelegatorSettings& settings, bool& running);
 
         // Delegators can't be copied.
         Delegator(const Delegator &other) = delete;
@@ -54,20 +55,46 @@ namespace stateline
         //!
         ~Delegator();
 
-        //! Return a reference to the context object owned by the delegator.
-        //! this allows a requester to use inproc sockets and connect.
-        //!
-        //! \return a reference to the zmq::context_t object
-        //!
-        zmq::context_t& zmqContext()
+        void start();
+
+      private:
+        struct Request
         {
-          return *context_;
-        }
-        //! Initialise a worker by giving it the problem specification.
-        //! 
-        //! \param m The HELLO message the new worker sent.
-        //!
-        void sendWorkerProblemSpec(const Message& m);
+          std::vector<std::string> address;
+          std::set<std::string> jobTypes;
+          std::string data;
+          std::vector<std::string> results;
+          uint nDone;
+        };
+
+        struct Job
+        {
+          std::string type;
+          std::string id;
+          std::string requesterID;
+          uint requesterIndex;
+          std::chrono::high_resolution_clock::time_point startTime;
+        };
+
+        struct Result
+        {
+        };
+
+        // TODO: public for now, some free functions in delegator.cpp need it
+        // Either make those member functions or add them as friends
+      public:
+        struct Worker
+        {
+          std::vector<std::string> address;
+          std::set<std::string> jobTypes;
+          std::map<std::string, Job> workInProgress;
+          std::map<std::string, boost::circular_buffer<uint>> times;
+        };
+
+      private:
+        void onPoll();
+
+        void receiveRequest(const Message& m);
 
         //! Connect a worker that has previously been sent a problem spec.
         //!
@@ -93,48 +120,32 @@ namespace stateline
         //!
         void sendFailed(const Message& m);
 
-        //! Process a job request by sending a job to the worker
-        //! if available, otherwise add to a needs job queue.
-        //!
-        //! \param m The JOBREQUEST message.
-        //!
-        void jobRequest(const Message& m);
-
         //! Get a result from a worker, then swap it for a new job.
-        //! 
+        //!
         //! \param m The JOBSWAP message.
         //!
-        void jobSwap(const Message& m);
+        void receiveResult(const Message& m);
 
-        //! Receive a new job from the requesters, and add it to the queue or
-        //! send it directly to an idle worker.
-        //! 
-        //! \param m The JOBSWAP message.
-        //!
-        void newJob(const Message& m);
+        // TODO: does this need to be a member function?
+        Worker* bestWorker(const std::string& jobType, uint maxJobs);
 
-        //! Get the job IDs that this delegator wants done.
-        //!
-        std::vector<JobID> jobs() const;
 
-      private:
-        // Polling times
-        int msNetworkPoll_;
+        zmq::context_t& context_; 
+
         // Sockets
-        zmq::context_t* context_;
+        Socket requester_;
+        Socket heartbeat_;
+        Socket network_;
         SocketRouter router_;
-        // Cached for fast sending to each client
-        std::string commonSpecData_;
-        std::vector<std::string> jobSpecData_;
-        // Fault tolerance support
-        std::map<std::string, std::vector<Message>> workerToJobMap_;
-        // The queues for jobs
-        std::map<JobID, std::deque<Message>> jobQueues_;
-        std::map<JobID, std::deque<Address>> requestQueues_;
-        std::map<JobID, JobID> jobIdMap_;
-        // Heartbeating System
-        ServerHeartbeat* heartbeat_;
-        bool running_;
+
+        std::map<std::string, Worker> workers_;
+        std::map<std::string, Request> requests_;
+        std::list<Job> jobQueue_;
+
+        uint msPollRate_;
+        HeartbeatSettings hbSettings_;
+
+        bool& running_;
     };
 
   } // namespace comms
