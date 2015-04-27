@@ -60,7 +60,7 @@ int main(int ac, char *av[])
   // Initialise the worker
   // --------------------------------------------------------------------------
   std::string address = vm["address"].as<std::string>();
-  sl::WorkerSettings settings = sl::WorkerSettings::Default(address);
+  sl::comms::WorkerSettings settings = sl::comms::WorkerSettings::Default(address);
   settings.heartbeat.msRate = 100000;
   settings.heartbeat.msTimeout = 200000;
 
@@ -70,7 +70,7 @@ int main(int ac, char *av[])
   // contain the job types that this worker wants to handle.
   zmq::context_t* context = new zmq::context_t(1);
   bool running = true;
-  auto future = startInThread<sl::comms::Worker>(running, std::ref(*context), std::cref(settings));
+  auto future = sl::startInThread<sl::comms::Worker>(running, std::ref(*context), std::cref(settings));
 
   while(!sl::global::interruptedBySignal)
   {

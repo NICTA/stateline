@@ -57,13 +57,13 @@ int main(int ac, char *av[])
   sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
 
   uint port = vm["port"].as<uint>();
-  auto settings = sl::DelegatorSettings::Default(port);
+  auto settings = sl::comms::DelegatorSettings::Default(port);
   settings.heartbeat.msRate = 100000;
   settings.heartbeat.msTimeout = 200000;
   zmq::context_t* context = new zmq::context_t(1);
   LOG(INFO) << "\033[1;31mstarting delegator in thread\033[0m";
   bool running = true;
-  auto future = startInThread<sl::comms::Delegator>(running, std::ref(*context), std::cref(settings));
+  auto future = sl::startInThread<sl::comms::Delegator>(running, std::ref(*context), std::cref(settings));
   //sl::comms::Delegator delegator(context, settings);
   //delegator.start();
   LOG(INFO) << "started delegator in thread";
