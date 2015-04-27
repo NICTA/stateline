@@ -81,37 +81,51 @@ namespace stateline
     {
       VLOG(5) << "Socket " << name_ << " sending " << m;
 
-      // Remember we're using the vector as a stack, so iterate through the
-      // address in reverse.
-      for (auto it = m.address.rbegin(); it != m.address.rend(); ++it)
+      try
       {
-        sendStringPart(socket_, *it);
-      }
-
-      // Send delimiter
-      sendStringPart(socket_, "");
-
-      // Send subject, then data if there is any
-      auto subjectString = std::to_string(m.subject);
-      uint dataSize = m.data.size();
-      if (dataSize > 0)
-      {
-        // The subject
-        sendStringPart(socket_, subjectString);
-
-        // The data -- multipart
-        for (auto it = m.data.begin(); it != std::prev(m.data.end()); ++it)
+        // Remember we're using the vector as a stack, so iterate through the
+        // address in reverse.
+        for (auto it = m.address.rbegin(); it != m.address.rend(); ++it)
         {
           sendStringPart(socket_, *it);
         }
 
-        // final or only part
-        sendString(socket_, m.data.back());
+        // Send delimiter
+        sendStringPart(socket_, "");
+
+        // Send subject, then data if there is any
+        auto subjectString = std::to_string(m.subject);
+        uint dataSize = m.data.size();
+        if (dataSize > 0)
+        {
+          // The subject
+          sendStringPart(socket_, subjectString);
+
+          // The data -- multipart
+          for (auto it = m.data.begin(); it != std::prev(m.data.end()); ++it)
+          {
+            sendStringPart(socket_, *it);
+          }
+
+          // final or only part
+          sendString(socket_, m.data.back());
+        }
+        else
+        {
+          // The subject
+          sendString(socket_, subjectString);
+        }
       }
-      else
+      catch(...)
       {
-        // The subject
-        sendString(socket_, subjectString);
+        if (onFailedSend_)
+        {
+          onFailedSend_(m);
+        }
+        else
+        {
+          throw;
+        }
       }
     }
 
