@@ -162,7 +162,7 @@ namespace stateline
 
       if (r.nDone == r.jobTypes.size())
       {
-        requester_.send({r.address, REQUEST, r.results});
+        requester_.send({r.address, RESULT, r.results});
         requests_.erase(j.requesterID);
       }
       //remove job from work in progress store
