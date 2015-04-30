@@ -53,11 +53,12 @@ namespace stateline
       return socket.send(message, ZMQ_SNDMORE);
     }
 
-    Socket::Socket(zmq::context_t& context, int type, const std::string& name)
+    Socket::Socket(zmq::context_t& context, int type, const std::string& name, int linger)
       : socket_(context, type),
         name_(name),
         onFailedSend_(nullptr) // TODO: default on failed send
     {
+      setLinger(linger);
     }
 
     void Socket::connect(const std::string& address)

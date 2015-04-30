@@ -14,7 +14,7 @@ namespace stateline
     class Socket
     {
       public:
-        Socket(zmq::context_t& context, int type, const std::string& name);
+        Socket(zmq::context_t& context, int type, const std::string& name, int linger = -1);
         Socket(const Socket&) = delete;
         Socket& operator=(const Socket&) = delete;
 
