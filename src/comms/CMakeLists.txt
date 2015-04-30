@@ -8,7 +8,7 @@
 # Common libraries
 ADD_LIBRARY(messages messages.cpp)
 ADD_LIBRARY(router router.cpp)
-TARGET_LINK_LIBRARIES(router messages socket)
+TARGET_LINK_LIBRARIES(router messages socket ${ZMQ_LIBRARY})
 ADD_LIBRARY(socket socket.cpp)
 TARGET_LINK_LIBRARIES(socket messages ${ZMQ_LIBRARY})
 
@@ -30,3 +30,4 @@ TARGET_LINK_LIBRARIES(clientheartbeat messages)
 
 ADD_TEST(test-message tests/message.cpp messages)
 ADD_TEST(test-socket tests/socket.cpp socket)
+ADD_TEST(test-router tests/router.cpp router)
