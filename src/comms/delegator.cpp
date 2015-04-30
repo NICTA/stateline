@@ -20,12 +20,6 @@ namespace stateline
   {
     namespace
     {
-      std::string nextJobID()
-      {
-        static uint n=0;
-        return std::to_string(n++);
-      }
-
       // TODO: should this be a float?
       uint timeForJob(const Delegator::Worker& w, const std::string& jobType)
       {
@@ -61,7 +55,8 @@ namespace stateline
           router_("main", {&requester_, &heartbeat_, &network_}),
           msPollRate_(settings.msPollRate),
           hbSettings_(settings.heartbeat),
-          running_(running)
+          running_(running),
+          nextJobId_(0)
     {
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
@@ -144,8 +139,9 @@ namespace stateline
       uint idx=0;
       for (auto const& t : jobTypes)
       {
-        Job j = {t, nextJobID(), id, idx, {}}; //we're not starting with a job yet
+        Job j = {t, std::to_string(nextJobId_), id, idx, {}}; //we're not starting with a job yet
         jobQueue_.push_back(j);
+        nextJobId_++;
         idx++;
       }
       VLOG(2) << requests_.size() << " requests currently pending.";
