@@ -66,6 +66,7 @@ int main(int ac, char *av[])
   // --------------------------------------------------------------------------
   while (true)
   {
+    std::cout << "GETTING JOB..." << std::endl;
     auto job = minion.nextJob();
     std::cout << "GOT JOB: " << job.first << "; " << job.second << std::endl;
     auto jobType = job.first;

@@ -206,10 +206,12 @@ namespace stateline
         //!
         void recoverFromDisk(uint id);
 
-        mutable db::Database db_; // Mutable so that chain queries can be const
+        //mutable db::Database db_; // Mutable so that chain queries can be const
+        db::CSVChainArrayWriter writer_;
         uint nstacks_;
         uint nchains_;
         uint cacheLength_;
+        std::vector<uint> lengthOnDisk_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;

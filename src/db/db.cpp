@@ -22,6 +22,7 @@ namespace stateline
 {
   namespace db
   {
+    /*
     Database::Database(const DBSettings& s, bool recover)
         : cacheNumBytes_(s.cacheSizeMB * 1024 * 1024)
     {
@@ -130,7 +131,7 @@ namespace stateline
         delete db_;
         delete options_.block_cache;
       }
-    }
+    }*/
 
   } // namespace db
 } // namespace stateline

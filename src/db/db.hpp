@@ -12,15 +12,58 @@
 
 #include <string>
 #include <vector>
+#include <fstream>
+#include <cassert>
 
 #include "db/settings.hpp"
-#include "leveldb/db.h"
-#include "leveldb/write_batch.h"
+#include "infer/datatypes.hpp"
 
 namespace stateline
 {
   namespace db
   {
+    // Database reader interface
+    class CSVChainArrayReader
+    {
+    };
+
+    // Database writer interface
+    class CSVChainArrayWriter
+    {
+      public:
+        CSVChainArrayWriter(const std::string& directory, uint numChains)
+          : chainFiles_(numChains)
+        {
+          for (uint i = 0; i < numChains; i++)
+            chainFiles_[i].open(directory + "/" + std::to_string(i));
+        }
+
+        void append(int id, const std::vector<mcmc::State>& states)
+        {
+          // TODO: needs to be transactional
+          assert(id >= 0 && id < chainFiles_.size());
+
+          for (const auto& state : states)
+          {
+            chainFiles_[id] << "heh\n";
+          }
+
+          chainFiles_[id] << std::endl; // Flush to disk
+          lastLinePos_[id] = chainFiles_[id].tellg();
+        }
+
+        void replaceLast(int id, const State& state)
+        {
+          chainFiles_[id].seekg(lastLinePos_[id]);
+          chainFiles_ << "replaced\n";
+        }
+
+      private:
+        std::vector<std::fstream> chainFiles_;
+        std::vector<std::streamos> lastLinePos_;
+    };
+
+    /*
     class Database
     {
     public:
@@ -81,7 +124,7 @@ namespace stateline
       //! \param keys2 The second set of keys to swap. This must have the same length
       //!              as keys1.
       //!
-      void swap(const std::vector<std::string>& keys1, const std::vector<std::string>& keys2);
+      //void swap(const std::vector<std::string>& keys1, const std::vector<std::string>& keys2);
 
     private:
       DBSettings settings_;
@@ -91,6 +134,6 @@ namespace stateline
       leveldb::WriteOptions writeOptions_;
       leveldb::ReadOptions readOptions_;
 
-    };
+    };*/
   } // namespace db
 } // namespace stateline

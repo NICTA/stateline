@@ -234,25 +234,5 @@ int main(int ac, char *av[])
   // Finish any outstanding jobs
   sampler.flush();
 
-  // Output the samples of the coldest chains to CSV
-  std::ofstream out("output_chain.csv");
-
-  for (int i = 0; i < nstacks * nchains; i += nchains)
-  {
-    std::size_t length = chains.length(i);
-    for (std::size_t j = 0; j < length; j++)
-    {
-      Eigen::VectorXd sample = chains.state(i, j).sample;
-      for (Eigen::VectorXd::Index k = 0; k < ndims; k++)
-      {
-        if (k > 0) out << ",";
-        out << sample(k);
-      }
-      out << "\n";
-    }
-  }
-
-  LOG(INFO) << "Wrote output to output_chain.csv";
-
   return 0;
 }

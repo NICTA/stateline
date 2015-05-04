@@ -8,4 +8,4 @@
 ADD_LIBRARY(db db.cpp)
 TARGET_LINK_LIBRARIES(db ${GLOG_LIBRARY} ${LEVELDB_LIBRARY})
 
-ADD_TEST(test-db tests/db.cpp db ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+#ADD_TEST(test-db tests/db.cpp db ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
