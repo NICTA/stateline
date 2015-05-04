@@ -37,6 +37,15 @@ namespace stateline
   }
 }
 
+Message receiveIgnoreHBs(Socket& socket)
+{
+  while (true) {
+    Message m = socket.receive();
+    if (m.subject != HEARTBEAT)
+      return m;
+  }
+}
+
 class DelegatorTest : public testing::Test
 {
 public:
@@ -49,7 +58,7 @@ public:
     DelegatorSettings settings = DelegatorSettings::Default(5555);
     settings.msPollRate = 100;
     settings.heartbeat.msPollRate = 100;
-    settings.heartbeat.msTimeout = 1000;
+    settings.heartbeat.msTimeout = 500;
 
     running_ = true;
     delFuture_ = stateline::startInThread<::stateline::comms::Delegator>(running_, std::ref(context_), std::ref(settings));
@@ -86,12 +95,12 @@ TEST_F(DelegatorTest, canSendAndReceiveSingleJobTypeMultipleTimes)
 
   // Send a job request
   requester_.send({{ "42" }, REQUEST, { "A", "Request 1" }});
-  auto job1 = worker_.receive();
+  auto job1 = receiveIgnoreHBs(worker_);
   EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job1);
 
   // Send another job request
   requester_.send({{ "36" }, REQUEST, { "A", "Request 2" }});
-  auto job2 = worker_.receive();
+  auto job2 = receiveIgnoreHBs(worker_);
   EXPECT_EQ(Message(JOB, { "A", "1", "Request 2" }), job2);
 }
 
@@ -103,8 +112,8 @@ TEST_F(DelegatorTest, canSendAndReceiveMultipleJobTypes)
   requester_.send({{ "42" }, REQUEST, { "A:B", "Request" }});
 
   // Receive both of the requests
-  auto job1 = worker_.receive();
-  auto job2 = worker_.receive();
+  auto job1 = receiveIgnoreHBs(worker_);
+  auto job2 = receiveIgnoreHBs(worker_);
 
   ASSERT_EQ(3U, job1.data.size());
   ASSERT_EQ(3U, job2.data.size());
@@ -128,7 +137,7 @@ TEST_F(DelegatorTest, canReceiveResultForRequest)
 
   // Send a job request
   requester_.send({{ "42" }, REQUEST, { "A", "Request" }});
-  auto job = worker_.receive();
+  auto job = receiveIgnoreHBs(worker_);
   EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job);
 
   // Send the job result
@@ -153,8 +162,8 @@ TEST_F(DelegatorTest, requesterSendsBeforeWorkerSaysHello)
 
   // Worker connects
   worker_.send({ HELLO, { "A" }});
-  auto job1 = worker_.receive();
-  EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job1);
+  auto job = receiveIgnoreHBs(worker_);
+  EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job);
 }
 
 TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
@@ -164,10 +173,10 @@ TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
 
   // Receive the job. This worker does not send heartbeats and will timeout eventually.
   worker_.send({ HELLO, { "A" }});
-  worker_.receive();
+  receiveIgnoreHBs(worker_);
 
   // Wait for this worker to time out
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   // This new worker should get the job that was received by the dead worker.
   Socket newWorker{context_, ZMQ_DEALER, "mockNewWorker", 0};
@@ -179,11 +188,11 @@ TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
 
   // Wait for a job, this should unblock as soon as the heartbeat times out
   // and the previous worker considered dead.
-  auto job = newWorker.receive();
+  auto job = receiveIgnoreHBs(newWorker);
   EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job);
 
   // Send the job result
-  newWorker.send({RESULT, { "0", "Result" }});
+  newWorker.send({ RESULT, { "0", "Result" }});
 
   // Get the job result from the requester
   auto result = requester_.receive();
