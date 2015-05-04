@@ -12,6 +12,7 @@
 
 #include <Eigen/Core>
 #include <boost/circular_buffer.hpp>
+#include <json.hpp>
 #include "infer/datatypes.hpp"
 
 namespace stateline
@@ -45,12 +46,12 @@ namespace stateline
       //! The minimum multiplicative factor by which sigma can change in a
       //! single adaption
       double minAdaptFactor;
-      
+
       //! The maximum multiplicative factor by which sigma can change in a
       //! single adaption
       double maxAdaptFactor;
 
-      static SlidingWindowSigmaSettings Default();
+      SlidingWindowSigmaSettings(const nlohmann::json& config);
     };
 
     class SlidingWindowSigmaAdapter
@@ -105,13 +106,12 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      static SlidingWindowBetaSettings Default();
+      SlidingWindowBetaSettings(const nlohmann::json& config);
     };
 
     class SlidingWindowBetaAdapter
     {
       public:
-        
         SlidingWindowBetaAdapter(uint nStacks, uint nChains, 
             const SlidingWindowBetaSettings& settings);
         

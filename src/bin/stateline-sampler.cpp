@@ -16,6 +16,7 @@
 #include <functional>
 #include <fstream>
 #include <boost/program_options.hpp>
+#include <json.hpp>
 
 #include <chrono>
 
@@ -33,6 +34,7 @@ namespace sl = stateline;
 namespace ph = std::placeholders;
 namespace po = boost::program_options;
 namespace ch = std::chrono;
+using json = nlohmann::json;
 
 po::options_description commandLineOptions()
 {
@@ -41,7 +43,7 @@ po::options_description commandLineOptions()
   ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
   ("recover,r", po::bool_switch()->default_value(false), "Recover an existing chain")
   ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
-  ("time,t",po::value<uint>()->default_value(5), "Number of seconds the sampler will run for")
+  ("config,c",po::value<std::string>()->default_value("config.json"), "Path to configuration file")
   ;
   return opts;
 }
@@ -51,33 +53,36 @@ int main(int ac, char *av[])
   // --------------------------------------------------------------------------
   // Settings for the demo
   // --------------------------------------------------------------------------
-
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
 
-  // The number of Gaussian mixture components.
-  const int ncomponents = 3;
+  std::ifstream configFile(vm["config"].as<std::string>());
+  if (!configFile)
+  {
+    // TODO: use default settings?
+    LOG(FATAL) << "Could not find config file";
+  }
 
-  // How far apart the components are from each other
-  const double spacing = 4.0;
+  json config;
+  configFile >> config;
 
   // The number of dimensions in the problem.
-  const int ndims = 2;
+  const uint ndims = config["dimensionality"];
 
   // The number of stacks to run.
-  const int nstacks = 2;
+  const uint nstacks = config["parallelTempering"]["stacks"];
 
   // The number of chains per stack.
-  const int nchains = 5;
+  const uint nchains = config["parallelTempering"]["chains"];
 
   // The number of seconds to run MCMC for.
-  const int nsecs = vm["time"].as<uint>();
+  const uint nsecs = config["duration"];
 
   // The number of steps between each swap attempt.
-  const int swapInterval = 10;
+  const uint swapInterval = config["parallelTempering"]["swapInterval"];
 
   // The refresh rate of the tabular logging output in milliseconds.
   const int msRefresh = 1000;
- 
+
   // --------------------------------------------------------------------------
   // Initialise logging and signal handling
   // --------------------------------------------------------------------------
@@ -102,7 +107,7 @@ int main(int ac, char *av[])
   //
   // Here, we want an adaptive sigma, which varies the step size depending on
   // the acceptance rate.
-  sl::mcmc::SlidingWindowSigmaSettings sigmaSettings = sl::mcmc::SlidingWindowSigmaSettings::Default();
+  sl::mcmc::SlidingWindowSigmaSettings sigmaSettings(config);
   sl::mcmc::SlidingWindowSigmaAdapter sigmaAdapter(nstacks, nchains, ndims, sigmaSettings);
 
   // Stateline uses parallel-tempering by default, which involves running
@@ -113,7 +118,7 @@ int main(int ac, char *av[])
   //
   // Create an adaptive beta system, which varies the temperatures based on the
   // swap rates of various chains.
-  sl::mcmc::SlidingWindowBetaSettings betaSettings = sl::mcmc::SlidingWindowBetaSettings::Default(); 
+  sl::mcmc::SlidingWindowBetaSettings betaSettings(config);
   sl::mcmc::SlidingWindowBetaAdapter betaAdapter(nstacks, nchains, betaSettings);
 
   // --------------------------------------------------------------------------
@@ -148,7 +153,7 @@ int main(int ac, char *av[])
   sl::mcmc::ChainArray chains(nstacks, nchains,
       sl::mcmc::ChainSettings::Default(recover));
 
-  std::vector<std::string> jobTypes = { "job" };
+  std::vector<std::string> jobTypes = config["jobTypes"];
 
   // If we did not recover, then we need to initialise the chain array with
   // initial parameters.
@@ -183,11 +188,11 @@ int main(int ac, char *av[])
   // Here, we create a convergence test and standard output logging.
   sl::mcmc::EPSRDiagnostic diagnostic(nstacks, nchains, ndims);
   sl::mcmc::TableLogger logger(nstacks, nchains, msRefresh);
-  
+
   // --------------------------------------------------------------------------
   // Run the MCMC
   // --------------------------------------------------------------------------
-  
+
   // Record the starting time of the MCMC so we can stop the simulation once
   // the time limit is reached.
   auto startTime = ch::steady_clock::now();
