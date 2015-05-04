@@ -107,7 +107,6 @@ SET(Boost_USE_STATIC_RUNTIME ON)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
-                                       python3
                                        serialization)
 
 MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
@@ -117,9 +116,6 @@ FIND_PACKAGE(ZMQ REQUIRED)
 
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
-
-# Python
-FIND_PACKAGE(PythonInterp 3)
 
 # Leveldb
 FIND_PACKAGE(Leveldb)
@@ -223,8 +219,3 @@ install (TARGETS statelineserver
 install (TARGETS statelineclient
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)
-
-##############################################################################
-# Add python target
-##############################################################################
-#ADD_SUBPROJECT(python)
