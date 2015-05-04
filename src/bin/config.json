@@ -19,7 +19,7 @@
     }
   },
   "parallelTempering": {
-    "stacks": 0,
+    "stacks": 1,
     "chains": 5,
     "sigmaFactor": 1.5,
     "betaFactor": 1.5,
