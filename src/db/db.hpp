@@ -18,24 +18,26 @@
 #include "db/settings.hpp"
 #include "infer/datatypes.hpp"
 
+#include <iostream>
+
 namespace stateline
 {
   namespace db
   {
-    // Database reader interface
-    class CSVChainArrayReader
-    {
-    };
+    std::ostream& operator<<(std::ostream& os, const mcmc::State& s);
 
     // Database writer interface
     class CSVChainArrayWriter
     {
       public:
         CSVChainArrayWriter(const std::string& directory, uint numChains)
-          : chainFiles_(numChains)
+          : chainFiles_(numChains), lastLinePos_(numChains)
         {
-          for (uint i = 0; i < numChains; i++)
-            chainFiles_[i].open(directory + "/" + std::to_string(i));
+          for (uint i = 0; i < numChains; i++) {
+            chainFiles_[i].open(directory + "/" + std::to_string(i) + ".csv",
+                std::fstream::in | std::fstream::out | std::fstream::trunc);
+            assert(chainFiles_[i].is_open());
+          }
         }
 
         void append(int id, const std::vector<mcmc::State>& states)
@@ -45,22 +47,23 @@ namespace stateline
 
           for (const auto& state : states)
           {
-            chainFiles_[id] << "heh\n";
+            lastLinePos_[id] = chainFiles_[id].tellg();
+            chainFiles_[id] << state << "\n";
           }
 
-          chainFiles_[id] << std::endl; // Flush to disk
-          lastLinePos_[id] = chainFiles_[id].tellg();
+          chainFiles_[id] << std::flush; // Flush to disk
         }
 
-        void replaceLast(int id, const State& state)
+        void replaceLast(int id, const mcmc::State& state)
         {
+          // PRECONDITION: just flushed
           chainFiles_[id].seekg(lastLinePos_[id]);
-          chainFiles_ << "replaced\n";
+          chainFiles_[id] << state << "\n";
         }
 
       private:
         std::vector<std::fstream> chainFiles_;
-        std::vector<std::streamos> lastLinePos_;
+        std::vector<std::streampos> lastLinePos_;
     };
 
     /*

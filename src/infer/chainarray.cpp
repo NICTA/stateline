@@ -76,24 +76,18 @@ namespace stateline
 
     ChainArray::ChainArray(uint nStacks, uint nChains,
                            const ChainSettings& settings)
-        : //db_({settings.databasePath, settings.databaseCacheSizeMB}, settings.recoverFromDisk),
-          writer_(".", nStacks),
+        : writer_(".", nStacks),
           nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(settings.chainCacheLength),
           lengthOnDisk_(nStacks * nChains, 0),
           beta_(nStacks * nChains),
           sigma_(nStacks * nChains),
-          cache_(nStacks * nChains)
+          cache_(nStacks * nChains),
+          lastState_(nStacks * nChains)
     {
-      std::cout << "size: " << lengthOnDisk_.size() << std::endl;
       for (uint i=0; i < nstacks_*nchains_; i++)
         cache_[i].reserve(cacheLength_);
-
-      if (settings.recoverFromDisk)
-        recover();
-      else
-        init();
     }
 
     /*
@@ -112,51 +106,13 @@ namespace stateline
           flushToDisk(i);
       }
     }
-    
-    
-    void ChainArray::recover()
-    {
-      CHECK(false) << "Recovery not implemented";
-      /*
-      // Recover the dimensions of the chain array
-      nstacks_ = detail::getFromDb<detail::NSTACKS, std::uint32_t>(db_);
-      nchains_ = detail::getFromDb<detail::NCHAINS, std::uint32_t>(db_);
-
-      // Recover each of the chains
-      for (uint id = 0; id < nstacks_ * nchains_; ++id)
-      {
-        // Recover beta and sigma
-        VLOG(1) << "Recovering chain " << id << " from disk.";
-        beta_[id] = detail::getFromDb<detail::BETA, double>(db_, id);
-        beta_[id] = detail::getFromDb<detail::SIGMA, double>(db_, id);
-      }*/
-    }
-
-    void ChainArray::init()
-    {
-      /*
-      // Initialise the database
-      leveldb::WriteBatch batch;
-      detail::putToBatch<detail::NSTACKS, std::uint32_t>(batch, 0, 0, nstacks_);
-      detail::putToBatch<detail::NCHAINS, std::uint32_t>(batch, 0, 0, nchains_);
-      for (uint i = 0; i < nstacks_*nchains_; i++)
-        detail::putToBatch<detail::LENGTH, std::uint32_t>(batch, i, 0, 0);
-      db_.put(batch);*/
-    }
-
-    
-    //uint ChainArray::lengthOnDisk(uint id) const
-    //{
-      //return detail::getFromDb<detail::LENGTH, std::uint32_t>(db_, id);
-      //return lengthOnDisk_[id];
-    //}
 
     uint ChainArray::length(uint id) const
     {
       uint result = lengthOnDisk_[id] + cache_[id].size();
       return result;
     }
-    
+
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
       State newState = {sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt};
@@ -182,6 +138,7 @@ namespace stateline
       setSigma(id, sigma);
       setBeta(id, beta);
       cache_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
+      lastState_[id] = cache_[id].back();
     }
 
     void ChainArray::flushToDisk(uint id)
@@ -193,75 +150,39 @@ namespace stateline
       if (chainIndex(id) == 0)
       {
         uint newLength = diskLength + cacheLength;
-        std::cout << "flushing cache " << newLength << std::endl;
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
-        writer_.append(id, statesToBeSaved);
+        writer_.append(id / numChains(), statesToBeSaved);
         lengthOnDisk_[id] = newLength;
       }
 
       // Re-initialise the cache
-      cache_[id].clear();
+      if (!cache_[id].empty())
+      {
+        lastState_[id] = cache_[id].back();
+        cache_[id].clear();
+      }
     }
 
     State ChainArray::lastState(uint id) const
     {
-      uint idx = lengthOnDisk_[id] + cache_[id].size() - 1;
-      std::cout << "length on disk = " << lengthOnDisk_[id] << std::endl;
-      return state(id, idx);
-    }
-
-    State ChainArray::stateFromDisk(uint id, uint idx) const
-    {
-      /*
-      uint dlen = lengthOnDisk(id);
-      CHECK(idx < dlen) << "Can't access state " << idx << " in chain " << id << " from disk when " << dlen << " states stored on disk";
-      // Read the serialised state from disk
-      return detail::unarchiveString<State>(state);*/
-    }
-
-    State ChainArray::stateFromCache(uint id, uint idx) const
-    {
-      uint dlen = lengthOnDisk_[id];
-      uint cacheIdx = idx - dlen;
-      CHECK(cacheIdx < cache_[id].size()) << "Can't access state " << idx << " in chain " << id << ": index beyond cache boundary";
-      CHECK(cacheIdx >= 0) << "Can't access state " << idx << " in chain " << id << ": negative index into cache";
-      return cache_[id][cacheIdx];
-    }
-
-    State ChainArray::state(uint id, uint idx) const
-    {
-      uint dlen = lengthOnDisk_[id];
-      if (idx < dlen)
-        return stateFromDisk(id, idx);
-      else
-        return stateFromCache(id, idx);
-    }
-
-    std::vector<State> ChainArray::states(uint id, uint nburn, uint nthin) const
-    {
-      uint len = length(id);
-
-      std::vector<State> v;
-      v.reserve((len - nburn) / (nthin + 1) + 1);
-
-      for (uint i = nburn; i < len; i += nthin + 1)
-      {
-        v.push_back(state(id, i));
+      if (cache_[id].empty()) {
+        return lastState_[id];
+      } else {
+        return cache_[id].back();
       }
-
-      return v;
     }
-    
+
     void ChainArray::setLastState(uint id, const State& state)
     {
-      if (cache_[id].size() > 0)
+      if (!cache_[id].empty())
       {
         cache_[id].back() = state;
       }
       else
       {
-        db_.replaceLast(id, state);
+        writer_.replaceLast(id / numChains(), state);
+        lastState_[id] = state;
       }
     }
 
@@ -269,7 +190,7 @@ namespace stateline
     {
       uint hId = std::max(id1, id2);
       uint lId = std::min(id1, id2);
-      
+
       State stateh = lastState(hId);
       State statel = lastState(lId);
 

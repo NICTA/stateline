@@ -22,6 +22,13 @@ namespace stateline
 {
   namespace db
   {
+    std::ostream& operator<<(std::ostream& os, const mcmc::State& s)
+    {
+      for (uint i = 0; i < s.sample.size(); i++) {
+        os << s.sample(i) << ",";
+      }
+      os << s.sample << "," << s.energy << "," << s.sigma << "," << s.beta << "," << s.accepted << "," << (int)s.swapType;
+    }
     /*
     Database::Database(const DBSettings& s, bool recover)
         : cacheNumBytes_(s.cacheSizeMB * 1024 * 1024)
