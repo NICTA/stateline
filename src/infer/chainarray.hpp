@@ -173,7 +173,6 @@ namespace stateline
         bool isColdestInStack(uint id) const;
 
       private:
-        void setLengthOnDisk(uint id, uint length);
         void setLastState(uint id, const State& state);
 
         //! Recover a particular chain from disk.
