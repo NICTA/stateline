@@ -18,13 +18,9 @@ namespace stateline
 {
   namespace mcmc
   {
-    ChainSettings ChainSettings::Default(bool recoverFromDisk)
+    ChainSettings::ChainSettings()
+      : databasePath("chains"), chainCacheLength(10)
     {
-      ChainSettings settings;
-      settings.recoverFromDisk = recoverFromDisk;
-      //settings.chainCacheLength = 1000;
-      settings.chainCacheLength = 10; // For testing
-      return settings;
     }
 
     //! Returns true if we want to accept the MCMC step.
@@ -152,6 +148,7 @@ namespace stateline
         uint newLength = diskLength + cacheLength;
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
+        std::cout << "chain " << id << " is appending to " << id / numChains() << "..."<< std::endl;
         writer_.append(id / numChains(), statesToBeSaved);
         lengthOnDisk_[id] = newLength;
       }

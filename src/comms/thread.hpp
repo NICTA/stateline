@@ -7,13 +7,13 @@
 namespace stateline
 {
   template <class T, class...Args>
-  std::future<bool> startInThread(std::reference_wrapper<bool> running, Args&&... args)
+  std::future<bool> startInThread(bool& running, Args&&... args)
   {
-    auto func = [=](Args&&... args) -> bool
+    auto func = [&running](Args&&... args) -> bool
     {
       try
       {
-        T obj(std::forward<Args>(args)..., running);
+        T obj(std::forward<Args>(args)..., std::ref(running));
         obj.start();
       }
       catch (const std::exception& ex)

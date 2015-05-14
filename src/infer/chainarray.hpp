@@ -22,23 +22,16 @@ namespace stateline
     //!
     struct ChainSettings
     {
-      //! Read database state from disk
-      bool recoverFromDisk;
-
       //! Path to the folder directory containing the database.
       std::string databasePath;
 
       //
       uint chainCacheLength;
 
-      //! The size of the database cache in megabytes.
-      double databaseCacheSizeMB;
-
       //! Default settings
-      static ChainSettings Default(bool recoverFromDisk);
+      ChainSettings();
     };
-    
-    
+
     //! Manager for all the states and handle reading / writing from / to database.
     //!
     //! \section id The chain ID used by MCMC sampler.

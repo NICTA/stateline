@@ -1,12 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
-import triangle
+import sys
 
 samples = []
-with open('output_chain.csv', 'r') as csvfile:
+with open(sys.argv[1], 'r') as csvfile:
   reader = csv.reader(csvfile)
-  samples = list(reader)
+  for row in reader:
+      samples.append(row[:-5])
+      print(len(row))
 
-triangle.corner(np.asarray(samples, dtype=float))
-plt.show()
+ndims = len(samples[0])
+if ndims > 1:
+    import triangle
+
+    triangle.corner(np.asarray(samples, dtype=float))
+    plt.show()
+else:
+    plt.hist(np.asarray(samples, dtype=float).ravel())
+    plt.show()

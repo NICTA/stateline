@@ -21,9 +21,9 @@ FUNCTION(ADD_BINARY name library)
   INSTALL (TARGETS ${name} RUNTIME DESTINATION bin)
 ENDFUNCTION()
 
-ADD_BINARY(stateline-sampler statelineserver)
 ADD_BINARY(stateline-server statelineserver)
 ADD_BINARY(stateline-client statelineclient)
+ADD_BINARY(stateline statelineserver)
 ADD_BINARY(demo-worker statelineclient)
 
 # TODO: a bit fiddly

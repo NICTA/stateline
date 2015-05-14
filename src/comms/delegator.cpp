@@ -107,7 +107,7 @@ namespace stateline
     void Delegator::start()
     {
       // Start the heartbeat thread and router
-      auto future = startInThread<ServerHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
+      auto future = startInThread<ServerHeartbeat>(running_, std::ref(context_), std::cref(hbSettings_));
       router_.poll(msPollRate_, running_);
       future.wait();
     }
