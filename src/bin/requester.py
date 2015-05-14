@@ -20,11 +20,12 @@ socket.connect(addr)
 print("connected.")
 
 
-for i in range(10):
-    jobTypes = b'gravity:mag:mt'
+while True:
+    # jobTypes = b'gravity:mag:mt'
+    jobTypes = b'job'
     subject = REQUEST
-    batchID = str(i).encode()
-    data = b"i am job data"
+    batchID = str(0).encode()
+    data = str(random.random()).encode()
     msg = [batchID, b"", REQUEST, jobTypes, data]
     print("sending ", msg)
     socket.send_multipart(msg)
