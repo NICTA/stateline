@@ -73,10 +73,10 @@ void runWorker(zmq::context_t& context, const po::variables_map& vm, bool& runni
   std::vector<std::string> jobTypes = config["jobTypes"];
   sl::comms::Minion minion(context, jobTypes);
 
-  // Create the log likelihood function of the target distribution.
+  // Create the negative log likelihood function of the target distribution.
   auto nll = [&](const Eigen::VectorXd& x)
   {
-    return x.squaredNorm();
+    return 0.5 * x.squaredNorm();
   };
 
   // --------------------------------------------------------------------------
