@@ -12,7 +12,8 @@ RESULT = b'4'
 GOODBYE = b'5'
 
 def nll(x):
-    return x.dot(x)
+    # negative log likelihood of standard normal distribution
+    return 0.5 * x.dot(x)
 
 def handle_job(job_type, job_data):
     sample = list(map(float, job_data.split(b':')))
@@ -53,11 +54,13 @@ def main():
     client_proc = subprocess.Popen(['./stateline-client'])
     logging.info('Started client')
 
+    # Load configuration
     with open('config.json', 'r') as f:
         config = json.load(f)
 
     jobTypes = config['jobTypes']
 
+    # Start minion
     ctx = zmq.Context()
     socket = ctx.socket(zmq.DEALER)
     addr = "ipc:///tmp/sl_worker.socket"
