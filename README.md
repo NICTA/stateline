@@ -20,7 +20,6 @@ Stateline requires the following libraries as prerequisites:
 * google-test (gtest) 1.7.0
 * zeromq 4.0.3
 * cppzeromq 2358037407 (commit hash)
-* leveldb 1.15.0
 
 Building
 --------

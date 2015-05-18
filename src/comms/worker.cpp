@@ -95,7 +95,7 @@ namespace stateline
     void Worker::start()
     {
       // Start the heartbeat thread and router
-      auto future = startInThread<ClientHeartbeat>(std::ref(running_), std::ref(context_), std::cref(hbSettings_));
+      auto future = startInThread<ClientHeartbeat>(running_, std::ref(context_), std::cref(hbSettings_));
       router_.poll(msPollRate_, running_);
       future.wait();
     }
