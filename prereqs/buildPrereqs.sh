@@ -54,15 +54,6 @@ wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O cppzmq-master.zip
 [ -d cppzmq-master ] || unzip -o cppzmq-master.zip
 cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
 
-# leveldb
-wget -c https://leveldb.googlecode.com/files/leveldb-1.15.0.tar.gz
-[ -d leveldb-1.15.0 ] || tar -xvf leveldb-1.15.0.tar.gz
-cd leveldb-1.15.0
-make -j$(nproc)
-cp libleveldb.a libleveldb.so libleveldb.so.1 libleveldb.so.1.15 $PREREQ_DIR/lib
-cp -r include/leveldb $PREREQ_DIR/include/
-cd ..
-
 # json
 wget -c https://github.com/nlohmann/json/archive/master.zip -O json-master.zip
 [ -d json-master ] || unzip -o json-master.zip

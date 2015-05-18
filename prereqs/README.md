@@ -18,7 +18,6 @@ The project currently builds with the following libaries:
 * google-test (gtest) 1.7.0
 * zeromq 4.0.3
 * cppzeromq 2358037407 (commit hash)
-* leveldb 1.15.0
 
 
 There is a build script buildPrereqs.sh that should automatically download and
@@ -63,10 +62,3 @@ from zeromq src directory
 from cppzmq src directory
 -------------------------
     cp zmq.hpp $PREREQ_DIR/include
-
-from leveldb src directory
---------------------------
-    make -j 8
-    cp libleveldb.a libleveldb.so libleveldb.so.1 libleveldb.so.1.15 ../lib
-    cp -r include/leveldb ../include
-    cd ..
