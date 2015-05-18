@@ -219,7 +219,6 @@ int main(int ac, char *av[])
   LOG(INFO) << "started server in thread";
   LOG(INFO) << "\033[1;31mstarting sampler in thread\033[0m";
   auto samplerFuture = std::async(std::launch::async, runSampler, std::ref(*context), std::cref(vm), std::ref(running));
-  runSampler(*context, vm, running);
   LOG(INFO) << "started sampler in thread";
 
   while(!sl::global::interruptedBySignal && running)

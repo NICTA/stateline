@@ -27,6 +27,6 @@ ADD_BINARY(stateline statelineserver)
 ADD_BINARY(demo-worker statelineclient)
 
 # TODO: a bit fiddly
-ADD_CUSTOM_COMMAND(TARGET stateline-sampler
+ADD_CUSTOM_COMMAND(TARGET stateline
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/config.json ${STATELINE_BINARY_DIR}/config.json)

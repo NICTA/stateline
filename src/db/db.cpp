@@ -12,44 +12,28 @@
 #include "db/db.hpp"
 
 #include <glog/logging.h>
-#include <iomanip>
-#include <cstdlib>
-
-#include "leveldb/write_batch.h"
-#include "leveldb/cache.h"
-#include "leveldb/options.h"
-#include "leveldb/filter_policy.h"
 
 namespace stateline
 {
   namespace db
   {
-    /*
     std::ostream& operator<<(std::ostream& os, const mcmc::State& s)
     {
       for (uint i = 0; i < s.sample.size(); i++) {
         os << s.sample(i) << ",";
       }
-      //os << "1";
-      //os << s.energy << "," << s.sigma << "," << s.beta << "," << s.accepted << "," << (int)s.swapType;
+      os << s.energy << "," << s.sigma << "," << s.beta << "," << s.accepted << "," << (int)s.swapType;
       return os;
-    }*/
+    }
 
     CSVChainArrayWriter::CSVChainArrayWriter(const std::string& directory, uint numChains)
           : chainFiles_(numChains), lastLinePos_(numChains)
     {
       for (uint i = 0; i < numChains; i++) {
-        chainFiles_[i].open(directory + "/" + std::to_string(i) + ".csv");//,
-            ///*std::fstream::in |*/ std::fstream::out | std::fstream::trunc);
-        chainFiles_[i].exceptions(std::ios::failbit);
+        chainFiles_[i].open(directory + "/" + std::to_string(i) + ".csv",
+            std::fstream::in | std::fstream::out | std::fstream::trunc);
         assert(chainFiles_[i].good());
       }
-    }
-
-    CSVChainArrayWriter::~CSVChainArrayWriter()
-    {
-      for (int i = 0; i < chainFiles_.size(); i++)
-        chainFiles_[i].close();
     }
 
     void CSVChainArrayWriter::append(int id, const std::vector<mcmc::State>& states)
@@ -57,33 +41,21 @@ namespace stateline
       // TODO: needs to be transactional
       assert(id >= 0 && id < chainFiles_.size());
 
-      static int rand = 0;
-
-      //for (const auto& state : states)
-      for (int j = 0; j < states.size(); j++)
+      for (const auto& state : states)
       {
-        const mcmc::State& state = states[j];
-        //lastLinePos_[id] = chainFiles_[id].tellg();
-        //for (uint i = 0; i < state.sample.size(); i++) {
-        for (uint i = 0; i < 3; i++) {
-          rand = (rand * 3 + 17) % 997;
-          int a = rand;//state.sample(i);
-          //int a = 999;
-          chainFiles_[id] << std::to_string(a) << ",";
-          //chainFiles_[id] << a << ",";
-        }
-        chainFiles_[id] << "NEWLINE" << std::endl;
+        // Store the position of the last line
+        lastLinePos_[id] = chainFiles_[id].tellg();
+        chainFiles_[id] << state << "\n";
       }
 
-      chainFiles_[id] << "ENDFLUSH" << std::endl; // Flush to disk
-      //chainFiles_[id] << "ENDFLUSH\n";
+      chainFiles_[id] << std::flush;
     }
 
     void CSVChainArrayWriter::replaceLast(int id, const mcmc::State& state)
     {
       // PRECONDITION: just flushed
-      //chainFiles_[id].seekg(lastLinePos_[id]);
-      //chainFiles_[id] << state << "\n";
+      chainFiles_[id].seekg(lastLinePos_[id]);
+      chainFiles_[id] << state << "\n";
     }
 
   } // namespace db

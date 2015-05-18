@@ -86,14 +86,6 @@ namespace stateline
         cache_[i].reserve(cacheLength_);
     }
 
-    /*
-    ChainArray::ChainArray(ChainArray&& other)
-      :*db_(std::move(db_)), nstacks_(other.nstacks_), nchains_(other.nchains_),
-      cacheLength_(other.cacheLength_), beta_(std::move(other.beta_)), sigma_(std::move(other.sigma_)),
-      cache_(std::move(other.cache_))
-    {
-    }*/
-
     ChainArray::~ChainArray()
     {
       for (uint i = 0; i < nstacks_*nchains_; i++)
@@ -148,7 +140,6 @@ namespace stateline
         uint newLength = diskLength + cacheLength;
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
-        std::cout << "chain " << id << " is appending to " << id / numChains() << "..."<< std::endl;
         writer_.append(id / numChains(), statesToBeSaved);
         lengthOnDisk_[id] = newLength;
       }

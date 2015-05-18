@@ -8,7 +8,6 @@ with open(sys.argv[1], 'r') as csvfile:
   reader = csv.reader(csvfile)
   for row in reader:
       samples.append(row[:-5])
-      print(len(row))
 
 ndims = len(samples[0])
 if ndims > 1:
