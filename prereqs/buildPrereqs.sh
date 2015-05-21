@@ -14,8 +14,8 @@ cd src
 wget -c http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz
 [ -d boost_1_55_0 ] || tar -xvf boost_1_55_0.tar.gz
 cd boost_1_55_0
-./bootstrap.sh --with-python=python3.3
-./b2 -j $(nproc) --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR cxxflags="-fPIC -I/usr/include/python3.3m"
+./bootstrap.sh
+./b2 -j $(nproc) --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR
 cd ..
 
 # Eigen 3.2.0
@@ -54,11 +54,7 @@ wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O cppzmq-master.zip
 [ -d cppzmq-master ] || unzip -o cppzmq-master.zip
 cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
 
-# leveldb
-wget -c https://leveldb.googlecode.com/files/leveldb-1.15.0.tar.gz
-[ -d leveldb-1.15.0 ] || tar -xvf leveldb-1.15.0.tar.gz
-cd leveldb-1.15.0
-make -j$(nproc)
-cp libleveldb.a libleveldb.so libleveldb.so.1 libleveldb.so.1.15 $PREREQ_DIR/lib
-cp -r include/leveldb $PREREQ_DIR/include/
-cd ..
+# json
+wget -c https://github.com/nlohmann/json/archive/master.zip -O json-master.zip
+[ -d json-master ] || unzip -o json-master.zip
+cp json-master/src/json.hpp $PREREQ_DIR/include

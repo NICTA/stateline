@@ -9,7 +9,7 @@
 //!
 
 #include "comms/worker.hpp"
-#include "comms/serial.hpp"
+#include "comms/thread.hpp"
 
 #include <cstdlib>
 
@@ -17,107 +17,88 @@ namespace stateline
 {
   namespace comms
   {
-    void forwardToNetwork(const Message& m, SocketRouter& router)
-    {
-      VLOG(3) << "forwarding to delegator: " << m;
-      router.send(SocketID::NETWORK, m);
-    }
 
-    void forwardToMinion(const Message& m, SocketRouter& router)
+    Worker::Worker(zmq::context_t& context, const WorkerSettings& settings, bool& running)
+      : context_(context),
+        minion_(context, ZMQ_DEALER, "toMinion"),
+        heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
+        network_(context, ZMQ_DEALER, "toNetwork"),
+        router_("main", {&minion_, &heartbeat_, &network_}),
+        msPollRate_(settings.msPollRate),
+        hbSettings_(settings.heartbeat),
+        running_(running),
+        minionWaiting_(true)
     {
-      VLOG(3) << "forwarding to minion: " << m;
-      router.send(SocketID::MINION, m);
-    }
-
-    void disconnectFromServer(const Message& m)
-    {
-      LOG(INFO)<< "Worker disconnecting from server";
-      exit(EXIT_SUCCESS);
-    }
-
-    Worker::Worker(const std::vector<uint>& jobIDs, const WorkerSettings& settings)
-      : running_(true)
-    {
-      // Setup sockets 
-      context_ = new zmq::context_t(1);
-      
-      std::unique_ptr<zmq::socket_t> minion(new zmq::socket_t(*context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_DEALER));
-      minion->bind(WORKER_SOCKET_ADDR.c_str());
-      heartbeat->bind(CLIENT_HB_SOCKET_ADDR.c_str());
-      auto networkSocketID = stateline::comms::randomSocketID();
-      stateline::comms::setSocketID(networkSocketID, *(network));
-      std::string address = "tcp://" + settings.address;
-      LOG(INFO)<< "Worker connecting to " << address;
-      network->connect(address.c_str());
-      // Transfer sockets to the router
-      router_.add_socket(SocketID::MINION, minion);
-      router_.add_socket(SocketID::HEARTBEAT, heartbeat);
-      router_.add_socket(SocketID::NETWORK, network);
+      // Initialise the local sockets
+      minion_.bind(WORKER_SOCKET_ADDR);
+      heartbeat_.bind(CLIENT_HB_SOCKET_ADDR);
+      network_.setIdentifier();
+      LOG(INFO) << "Worker connecting to " << settings.address;
+      network_.connect("tcp://" + settings.address);
+      LOG(INFO) << "Worker connected!"; 
 
       // Specify the Worker functionality
-      auto onRcvJOBREQUEST = [&] (const Message&m)
-      { forwardToNetwork(m, this->router_);};
-      auto onRcvJOB = [&] (const Message&m)
-      { forwardToMinion(m, this->router_);};
-      auto onRcvJOBSWAP = [&] (const Message&m)
-      { forwardToNetwork(m, this->router_);};
+      //
+      auto onJobFromNetwork = [&] (const Message& m) { 
+        if (minionWaiting_) 
+        {
+          minion_.send(m);
+          minionWaiting_ = false;
+        }
+        else
+        {
+          queue_.push(m);
+        }
+      };
 
-      auto fForwardToHB = [&] (const Message&m)
-      { this->router_.send(SocketID::HEARTBEAT, m);};
-      auto fForwardToNetwork = [&] (const Message&m)
-      { this->router_.send(SocketID::NETWORK,m);};
-      auto fDisconnect = [&] (const Message&m)
-      { disconnectFromServer(m);};
+      auto onResultFromMinion = [&] (const Message & m)
+      {
+        network_.send(m);
+        if (queue_.size() > 0)
+        {
+          minion_.send(queue_.front());
+          queue_.pop();
+        }
+        else
+        {
+          minionWaiting_ = true;
+        }
+      };
+
+
+      auto forwardToHB = [&](const Message& m) { heartbeat_.send(m); };
+      auto forwardToNetwork = [&](const Message& m) { network_.send({{},m.subject, m.data}); };
+      auto disconnect = [&](const Message&)
+      {
+        LOG(INFO)<< "Worker disconnecting from server";
+        exit(EXIT_SUCCESS);
+      };
+
+      // Just the order we gave them to the router
+      const uint MINION_SOCKET=0,HB_SOCKET=1,NETWORK_SOCKET=2;
 
       // Bind functionality to the router
-      router_(SocketID::MINION).onRcvJOBREQUEST.connect(onRcvJOBREQUEST);
-      router_(SocketID::NETWORK).onRcvJOB.connect(onRcvJOB);
-      router_(SocketID::MINION).onRcvJOBSWAP.connect(onRcvJOBSWAP);
-
-      router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
-      router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
-      router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
-
-      // Initialise the connection and problemspec
-      router_.send(SocketID::NETWORK, Message(HELLO, { detail::serialise<std::uint32_t>(jobIDs) }));
-      auto msgProblemSpec = router_.receive(SocketID::NETWORK);
-      VLOG(3) << "Received " << msgProblemSpec;
-      globalSpec_ = msgProblemSpec.data[0];
-
-      // The rest of the messages are pairs of JobId and JobSpecs
-      uint njobs = (msgProblemSpec.data.size() - 1) / 2;
-      for (uint i = 0; i < njobs; i++)
-      {
-        // Index of the JobID for this job spec
-        uint index = 2 * i + 1;
-
-        uint jobid = std::stoi(msgProblemSpec.data[index]);
-        jobsEnabled_.insert(jobid);
-
-        std::string spec = msgProblemSpec.data[index + 1];
-        jobSpecs_.insert(std::make_pair(jobid, spec));
-      }
-
-      LOG(INFO)<< "Problem Specification Initialised";
-
-      // Start the router and heartbeating
-      router_.start(settings.msPollRate, running_);
-      
-      // Start the heartbeat system
-      heartbeat_ = new ClientHeartbeat(*context_, settings.heartbeat);
-
+      router_.bind(MINION_SOCKET, RESULT, onResultFromMinion);
+      router_.bind(MINION_SOCKET, HELLO, forwardToNetwork);
+      router_.bind(HB_SOCKET, HEARTBEAT, forwardToNetwork);
+      router_.bind(HB_SOCKET, GOODBYE, disconnect);
+      router_.bind(NETWORK_SOCKET, JOB, onJobFromNetwork);
+      router_.bind(NETWORK_SOCKET, HEARTBEAT, forwardToHB);
+      router_.bind(NETWORK_SOCKET, HELLO, forwardToHB);
+      router_.bind(NETWORK_SOCKET, GOODBYE, forwardToHB);
     }
 
     Worker::~Worker()
     {
-      running_ = false;
-      delete context_;
-      delete heartbeat_;
     }
-  
+
+    void Worker::start()
+    {
+      // Start the heartbeat thread and router
+      auto future = startInThread<ClientHeartbeat>(running_, std::ref(context_), std::cref(hbSettings_));
+      router_.poll(msPollRate_, running_);
+      future.wait();
+    }
+
   }
 }

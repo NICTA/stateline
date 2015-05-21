@@ -14,84 +14,87 @@
 
 namespace stateline
 {
-  //! Settings for controlling heartbeat threads.
-  //!
-  struct HeartbeatSettings
+  namespace comms
   {
-    //! The number of milliseconds between each heartbeat.
-    uint msRate;
-
-    //! The rate at which the heartbeat sockets are polled.
-    int msPollRate;
-
-    //! The heartbeat timeout in milliseconds.
-    uint msTimeout;
-
-    static HeartbeatSettings WorkerDefault()
+    //! Settings for controlling heartbeat threads.
+    //!
+    struct HeartbeatSettings
     {
-      HeartbeatSettings settings;
-      settings.msRate = 1000;
-      settings.msPollRate = 500;
-      settings.msTimeout = 3000;
-      return settings;
-    }
+      //! The number of milliseconds between each heartbeat.
+      uint msRate;
 
-    static HeartbeatSettings DelegatorDefault()
+      //! The rate at which the heartbeat sockets are polled.
+      int msPollRate;
+
+      //! The heartbeat timeout in milliseconds.
+      uint msTimeout;
+
+      static HeartbeatSettings WorkerDefault()
+      {
+        HeartbeatSettings settings;
+        settings.msRate = 1000;
+        settings.msPollRate = 500;
+        settings.msTimeout = 3000;
+        return settings;
+      }
+
+      static HeartbeatSettings DelegatorDefault()
+      {
+        HeartbeatSettings settings;
+        settings.msRate = 1000;
+        settings.msPollRate = 500;
+        settings.msTimeout = 5000;
+        return settings;
+      }
+    };
+
+    //! Settings to control the behaviour of delegators.
+    //!
+    struct DelegatorSettings
     {
-      HeartbeatSettings settings;
-      settings.msRate = 1000;
-      settings.msPollRate = 500;
-      settings.msTimeout = 5000;
-      return settings;
-    }
-  };
+      //! The rate at which the receive sockets are polled.
+      int msPollRate;
 
-  //! Settings to control the behaviour of delegators.
-  //!
-  struct DelegatorSettings
-  {
-    //! The rate at which the receive sockets are polled.
-    int msPollRate;
+      //! The port number that the delegator listens on.
+      uint port;
 
-    //! The port number that the delegator listens on.
-    uint port;
+      //! Settings for the heartbeat monitoring.
+      HeartbeatSettings heartbeat;
 
-    //! Settings for the heartbeat monitoring.
-    HeartbeatSettings heartbeat;
+      //! Default delegator settings
+      static DelegatorSettings Default(uint port)
+      {
+        DelegatorSettings settings;
+        settings.msPollRate = 10;
+        settings.port = port;
+        settings.heartbeat = HeartbeatSettings::DelegatorDefault();
+        return settings;
+      }
+    };
 
-    //! Default delegator settings
-    static DelegatorSettings Default(uint port)
+    //! Settings to control the behaviour of workers.
+    //!
+    struct WorkerSettings
     {
-      DelegatorSettings settings;
-      settings.msPollRate = 10;
-      settings.port = port;
-      settings.heartbeat = HeartbeatSettings::DelegatorDefault();
-      return settings;
-    }
-  };
+      //! The rate at which the receive sockets are polled.
+      int msPollRate;
 
-  //! Settings to control the behaviour of workers.
-  //!
-  struct WorkerSettings
-  {
-    //! The rate at which the receive sockets are polled.
-    int msPollRate;
+      //! The address of the delegator to connect to.
+      std::string address;
 
-    //! The address of the delegator to connect to.
-    std::string address;
+      //! Settings for the heartbeat monitoring.
+      HeartbeatSettings heartbeat;
 
-    //! Settings for the heartbeat monitoring.
-    HeartbeatSettings heartbeat;
-
-    //! Default delegator settings
-    static WorkerSettings Default(const std::string &address)
-    {
-      WorkerSettings settings;
-      settings.msPollRate = -1;
-      settings.address = address;
-      settings.heartbeat = HeartbeatSettings::WorkerDefault();
-      return settings;
-    }
-  };
+      //! Default delegator settings
+      static WorkerSettings Default(const std::string &address)
+      {
+        WorkerSettings settings;
+        settings.msPollRate = -1;
+        settings.address = address;
+        settings.heartbeat = HeartbeatSettings::WorkerDefault();
+        return settings;
+      }
+    };
+  }
 }
 

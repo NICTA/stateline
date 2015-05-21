@@ -22,23 +22,16 @@ namespace stateline
     //!
     struct ChainSettings
     {
-      //! Read database state from disk
-      bool recoverFromDisk;
-
       //! Path to the folder directory containing the database.
       std::string databasePath;
 
       //
       uint chainCacheLength;
 
-      //! The size of the database cache in megabytes.
-      double databaseCacheSizeMB;
-
       //! Default settings
-      static ChainSettings Default(bool recoverFromDisk);
+      ChainSettings();
     };
-    
-    
+
     //! Manager for all the states and handle reading / writing from / to database.
     //!
     //! \section id The chain ID used by MCMC sampler.
@@ -110,23 +103,6 @@ namespace stateline
         //!
         State lastState(uint id) const;
 
-        //! Return a particular state.
-        //!
-        //! \param id The id of the chain (see \ref id).
-        //! \param index The index of the state (0 for first state).
-        //! \return The most recent state in the chain.
-        //!
-        State state(uint id, uint index) const;
-
-        //! Return all states from a chain.
-        //!
-        //! \param id The id of the chain (see \ref id).
-        //! \param nburn The number of samples to discard in the beginning.
-        //! \param nthin The number of samples to discard for every sample used.
-        //! \return The most recent state in the chain.
-        //!
-        std::vector<State> states(uint id, uint nburn=0, uint nthin=0) const;
-
         //! Attempt to swap the states in two different chains.
         //!
         //! \param id1 The id of the first chain (see \ref id).
@@ -190,15 +166,7 @@ namespace stateline
         bool isColdestInStack(uint id) const;
 
       private:
-
-        void recover();
-        void init();
-        uint lengthOnDisk(uint id) const;
-        void setLengthOnDisk(uint id, uint length);
         void setLastState(uint id, const State& state);
-
-        State stateFromDisk(uint id, uint index) const;
-        State stateFromCache(uint id, uint index) const;
 
         //! Recover a particular chain from disk.
         //!
@@ -206,13 +174,16 @@ namespace stateline
         //!
         void recoverFromDisk(uint id);
 
-        mutable db::Database db_; // Mutable so that chain queries can be const
+        //mutable db::Database db_; // Mutable so that chain queries can be const
+        db::CSVChainArrayWriter writer_;
         uint nstacks_;
         uint nchains_;
         uint cacheLength_;
+        std::vector<uint> lengthOnDisk_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
+        std::vector<State> lastState_;
     };
 
   } // namespace mcmc

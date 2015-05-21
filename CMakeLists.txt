@@ -42,8 +42,18 @@ SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
 SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
-SET(LEVELDB_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
+
+# Installation
+install(DIRECTORY src/ DESTINATION "include/stateline"
+  FILES_MATCHING PATTERN "*.hpp")
+
+SET(LOCAL_INSTALL True)
+IF(LOCAL_INSTALL)
+  SET(CMAKE_INSTALL_PREFIX "${STATELINE_BINARY_DIR}/install")
+ENDIF(LOCAL_INSTALL)
+
+
 
 ##############################################################################
 # LOGGING (GLOG)
@@ -96,7 +106,6 @@ SET(Boost_USE_STATIC_RUNTIME ON)
 FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
                                        system
                                        filesystem
-                                       python3
                                        serialization)
 
 MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
@@ -106,12 +115,6 @@ FIND_PACKAGE(ZMQ REQUIRED)
 
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
-
-# Python
-FIND_PACKAGE(PythonInterp 3)
-
-# Leveldb
-FIND_PACKAGE(Leveldb)
 
 # Google Test
 MESSAGE(STATUS "GTEST directory: ${GTEST_SRC_DIR}")
@@ -194,9 +197,9 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-SET(STATELINE_COMMON router messages transport ${ZMQ_LIBRARY} logging)
+SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
-SET(STATELINE_CLIENT worker minion clientheartbeat)
+SET(STATELINE_CLIENT minion worker clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/logging.hpp)
 TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
@@ -206,7 +209,9 @@ ADD_LIBRARY(statelineclient src/app/worker.hpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
-##############################################################################
-# Add python target
-##############################################################################
-ADD_SUBPROJECT(python)
+install (TARGETS statelineserver
+         ARCHIVE DESTINATION lib
+         LIBRARY DESTINATION lib)
+install (TARGETS statelineclient
+         ARCHIVE DESTINATION lib
+         LIBRARY DESTINATION lib)

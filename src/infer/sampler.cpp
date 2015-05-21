@@ -17,7 +17,6 @@ namespace stateline
 {
   namespace mcmc
   {
-    
     // A function to bounce the MCMC proposal off the hard boundaries.
     Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,
         const Eigen::VectorXd& min, const Eigen::VectorXd& max)
@@ -104,11 +103,13 @@ namespace stateline
       sigL_[id] = cov.llt().matrixL();
     }
 
-    Sampler::Sampler(WorkerInterface& workerInterface, 
+    Sampler::Sampler(comms::Requester& requester, 
+                     std::vector<std::string> jobTypes,
                      ChainArray& chainArray,
                      const ProposalFunction& propFn,
                      uint swapInterval)
-      : workerInterface_(workerInterface),
+      : requester_(requester),
+        jobTypes_(std::move(jobTypes)),
         chains_(chainArray),
         propFn_(propFn),
         nstacks_(chains_.numStacks()),
@@ -138,10 +139,14 @@ namespace stateline
       haveFlushed_ = false;
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
-      uint id;
-      double energy;
-      // Wait a for reply
-      std::tie(id, energy) = workerInterface_.retrieve();
+
+      auto result = requester_.retrieve();
+      uint id = result.first;
+      double energy = 0.0;
+      for (const auto& r : result.second)
+      {
+        energy += r;
+      }
 
       numOutstandingJobs_--;
 
@@ -181,9 +186,13 @@ namespace stateline
       // Retrieve all outstanding job results.
       while (numOutstandingJobs_--)
       {
-        uint id;
-        double energy;
-        std::tie(id, energy) = workerInterface_.retrieve();
+        auto result = requester_.retrieve();
+        uint id = result.first;
+        double energy = 0.0;
+        for (const auto& r : result.second)
+        {
+          energy += r;
+        }
         chains_.append(id, propStates_[id], energy);
       }
 
@@ -195,7 +204,8 @@ namespace stateline
     void Sampler::propose(uint id)
     {
       propStates_[id] = propFn_(id, chains_.lastState(id).sample, chains_.sigma(id));
-      workerInterface_.submit(id, propStates_[id]);
+
+      requester_.submit(id, jobTypes_, propStates_[id]);
       numOutstandingJobs_++;
     }
 

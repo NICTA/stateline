@@ -9,294 +9,230 @@
 #include "comms/delegator.hpp"
 
 #include <string>
+#include <boost/algorithm/string.hpp>
 
 #include "comms/datatypes.hpp"
-#include "comms/serial.hpp"
+#include "comms/thread.hpp"
 
 namespace stateline
 {
   namespace comms
   {
-    Delegator::Delegator(const std::string& commonSpecData, 
-        const std::map<JobID, std::string>& jobSpecData,
-        const DelegatorSettings& settings)
-        : msNetworkPoll_(settings.msPollRate),
-          commonSpecData_(commonSpecData),
-          running_(true)
+    namespace
     {
-      namespace ph = std::placeholders;
-      
-      context_ = new zmq::context_t(1);
-      heartbeat_ = new ServerHeartbeat(*context_, settings.heartbeat);
-
-      std::unique_ptr<zmq::socket_t> requester(new zmq::socket_t(*context_, ZMQ_ROUTER));
-      std::unique_ptr<zmq::socket_t> heartbeat(new zmq::socket_t(*context_, ZMQ_PAIR));
-      std::unique_ptr<zmq::socket_t> network(new zmq::socket_t(*context_, ZMQ_ROUTER));
-
-      // Initialise the local sockets
-      requester->bind(DELEGATOR_SOCKET_ADDR.c_str());
-      heartbeat->bind(SERVER_HB_SOCKET_ADDR.c_str());
-
-      // Initialise the network socket
-      std::string address = "tcp://*:" + std::to_string(settings.port);
-      network->bind(address.c_str());
-      LOG(INFO)<< "Delegator listening on " << address;
-
-      // Pass the sockets to the router
-      router_.add_socket(SocketID::REQUESTER, requester);
-      router_.add_socket(SocketID::HEARTBEAT, heartbeat);
-      router_.add_socket(SocketID::NETWORK, network);
-
-      // Map external job IDs to internal consecutive IDs
-      JobID internalJobId = 0;
-      for (auto &jobSpec : jobSpecData)
+      // TODO: should this be a float?
+      uint timeForJob(const Delegator::Worker& w, const std::string& jobType)
       {
-        // Map the JobID given in the spec to an internal ID
-        jobIdMap_[jobSpec.first] = internalJobId;
-
-        // Copy the corresponding spec into our internal spec vector which uses
-        // contiguous ID values.
-        jobSpecData_.push_back(jobSpec.second);
-        internalJobId++;
+        auto& times = w.times.at(jobType);
+        uint totalTime = std::accumulate(std::begin(times), std::end(times), 0);
+        uint avg;
+        if (times.size() > 0)
+          avg = totalTime / times.size();
+        else
+          avg = 5; // very short initial guess to encourage testing
+        return avg;
       }
 
-      VLOG(3) << "Attaching functionality to router";
-      // // Specify the Delegator functionality
-      auto fInit = std::bind(&Delegator::sendWorkerProblemSpec, this, ph::_1);
-      auto fConnect = std::bind(&Delegator::connectWorker, this, ph::_1);
-      auto fNewJob = std::bind(&Delegator::newJob, this, ph::_1);
-
-      auto fDisconnect = std::bind(&Delegator::disconnectWorker, this, ph::_1);
-      auto fSwapJobs = std::bind(&Delegator::jobSwap, this, ph::_1);
-      auto fSendFailed = std::bind(&Delegator::sendFailed, this, ph::_1);
-
-      auto fForwardToHB = [&] (const Message&m)
+      // TODO: could we compute these lazily? i.e. each time a new job is assigned,
+      // we update the expected finishing time?
+      uint usTillDone(const Delegator::Worker& w, const std::string& jobType)
       {
-        this->router_.send(SocketID::HEARTBEAT, m);};
-      auto fForwardToNetwork = [this] (const Message&m)
+        uint t = 0;
+        for (auto const& i : w.workInProgress)
+          t += timeForJob(w, i.second.type);
+        //now add the expected time for the new job
+        t += timeForJob(w, jobType);
+        return t;
+      }
+
+    }
+
+    Delegator::Delegator(zmq::context_t& context, const DelegatorSettings& settings, bool& running)
+        : context_(context),
+          requester_(context, ZMQ_ROUTER, "toRequester"),
+          heartbeat_(context, ZMQ_PAIR, "toHBRouter"),
+          network_(context, ZMQ_ROUTER, "toNetwork"),
+          router_("main", {&requester_, &heartbeat_, &network_}),
+          msPollRate_(settings.msPollRate),
+          hbSettings_(settings.heartbeat),
+          running_(running),
+          nextJobId_(0)
+    {
+      // Initialise the local sockets
+      requester_.bind(DELEGATOR_SOCKET_ADDR);
+      heartbeat_.bind(SERVER_HB_SOCKET_ADDR);
+      network_.setFallback([&](const Message& m) { sendFailed(m); });
+      std::string address = "tcp://*:" + std::to_string(settings.port);
+      network_.bind(address);
+
+      LOG(INFO) << "Delegator listening on tcp://*:" + std::to_string(settings.port);
+
+      // Specify the Delegator functionality
+      auto fDisconnect = [&](const Message& m) { disconnectWorker(m); };
+      auto fNewWorker = [&](const Message &m)
       {
-        this->router_.send(SocketID::NETWORK,m);};
+        //forwarding to HEARTBEAT
+        heartbeat_.send(m);
+        std::string worker = m.address.front();
+        if (workers_.count(worker) == 0)
+          connectWorker(m);
+      };
 
-      // // Bind these functions to the router
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fInit);
-      router_(SocketID::NETWORK).onRcvHELLO.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvJOBREQUEST.connect(fConnect);
-      router_(SocketID::REQUESTER).onRcvJOB.connect(fNewJob);
-      router_(SocketID::NETWORK).onRcvJOBSWAP.connect(fSwapJobs);
-      router_(SocketID::NETWORK).onFailedSend.connect(fSendFailed);
-      router_(SocketID::NETWORK).onRcvHEARTBEAT.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fForwardToHB);
-      router_(SocketID::NETWORK).onRcvGOODBYE.connect(fDisconnect);
-      router_(SocketID::HEARTBEAT).onRcvHEARTBEAT.connect(fForwardToNetwork);
-      router_(SocketID::HEARTBEAT).onRcvGOODBYE.connect(fDisconnect);
+      auto fRcvRequest = [&](const Message &m) { receiveRequest(m); };
+      auto fRcvResult = [&](const Message &m) { receiveResult(m); };
+      auto fForwardToHB = [&](const Message& m) { heartbeat_.send(m); };
+      auto fForwardToNetwork = [&](const Message& m) { network_.send(m); };
+      auto fForwardToHBAndDisconnect = [&](const Message& m)
+        { fForwardToHB(m); fDisconnect(m); };
 
-      VLOG(3) << "Functionality assignment complete";
-      
-      VLOG(2) << "Starting the Routers";
-      router_.start(msNetworkPoll_, running_);
+      // Bind functionality to the router
+      const uint REQUESTER_SOCKET = 0, HB_SOCKET = 1, NETWORK_SOCKET = 2;
+
+      router_.bind(REQUESTER_SOCKET, REQUEST, fRcvRequest);
+      router_.bind(NETWORK_SOCKET, HELLO, fNewWorker);
+      router_.bind(NETWORK_SOCKET, RESULT, fRcvResult);
+      router_.bind(NETWORK_SOCKET, HEARTBEAT, fForwardToHB);
+      router_.bind(NETWORK_SOCKET, GOODBYE, fForwardToHBAndDisconnect);
+      router_.bind(HB_SOCKET, HEARTBEAT, fForwardToNetwork);
+      router_.bind(HB_SOCKET, GOODBYE, fDisconnect);
+
+      auto fOnPoll = [&] () {onPoll();};
+      router_.bindOnPoll(fOnPoll);
     }
 
     Delegator::~Delegator()
     {
-      running_ = false;
-      VLOG(1) << "Deleting context";
-      delete context_;
-      VLOG(1) << "Context deleted";
-      VLOG(1) << "Deleting heartbeat";
-      delete heartbeat_;
-      VLOG(1) << "heartbeat deleted";
     }
 
-    void Delegator::sendWorkerProblemSpec(const Message& msgHelloFromWorker)
+    void Delegator::start()
     {
-      // we're not actully going to add the worker to the 'connected'
-      // list until it comes back with a jobrequest! has to solve the
-      // problemspec first...
-      //most recently appended address
-      LOG(INFO)<< "Initialising worker " << msgHelloFromWorker.address.back();
-
-      // Get the job IDs that this worker offers to do
-      std::vector<JobID> jobs;
-      detail::unserialise<std::uint32_t>(msgHelloFromWorker.data[0], jobs);
-
-      std::vector<std::string> repData;
-      repData.push_back(commonSpecData_);
-
-      for (auto job : jobs)
-      {
-        VLOG(1) << "Worker offered to solve job with ID " << job;
-
-        if (jobIdMap_.count(job))
-        {
-          VLOG(1) << "\t and we have a spec for it! " << job;
-          repData.push_back(std::to_string(job));
-          repData.push_back(jobSpecData_[jobIdMap_[job]]);
-        }
-        else
-        {
-          // Send back an empty string as the spec
-          repData.push_back(std::to_string(job));
-          repData.push_back("");
-        }
-      }
-
-      //Send back problemspec
-      router_.send(SocketID::NETWORK,
-          Message(msgHelloFromWorker.address, PROBLEMSPEC, repData));
+      // Start the heartbeat thread and router
+      auto future = startInThread<ServerHeartbeat>(running_, std::ref(context_), std::cref(hbSettings_));
+      router_.poll(msPollRate_, running_);
+      future.wait();
     }
 
-    void Delegator::connectWorker(const Message& msgJobRequestFromMinion)
+    void Delegator::connectWorker(const Message& msg)
     {
-      // Worker has just completed the problemspec so can now be 'connected'
-      std::string worker = msgJobRequestFromMinion.address.back();
-      std::string minion = msgJobRequestFromMinion.address.front();
-      VLOG(1) << "minion " << worker << ":" << minion << " ready";
-      if (workerToJobMap_.count(worker) == 0)
-      {
-        workerToJobMap_.insert(std::make_pair(worker, std::vector<Message>()));
-      }
-      LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
-      // this message actually came from a minion, so make sure we send a job
-      // to them
-      sendJob(msgJobRequestFromMinion);
+      // Worker can now be 'connected'
+      // add jobtypes
+      std::set<std::string> jobTypes; 
+      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+
+      Worker w {msg.address, jobTypes, {}, {}};
+      for (auto const& s : jobTypes)
+        w.times.insert(std::make_pair(s, boost::circular_buffer<uint>(10)));
+
+      std::string id = w.address.front();
+      workers_.insert(std::make_pair(id, w));
+      LOG(INFO)<< " Worker " << id << " connected.";
     }
 
-    void Delegator::sendJob(const Message& msgRequestFromMinion)
+    void Delegator::receiveRequest(const Message& msg)
     {
-      uint id = detail::unserialise<std::uint32_t>(msgRequestFromMinion.data[0]);
-
-      std::deque<Message>& queue = jobQueues_[id];
-      if (!queue.empty())
+      std::string id = boost::algorithm::join(msg.address, ":");
+      std::set<std::string> jobTypes; 
+      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+      VLOG(2) << "New request Received, with " << jobTypes.size() << " jobs.";
+      Request r {msg.address, jobTypes, msg.data[1], std::vector<std::string>(jobTypes.size()), 0};
+      requests_.insert(std::make_pair(id, r));
+      uint idx=0;
+      for (auto const& t : jobTypes)
       {
-        std::string worker = msgRequestFromMinion.address.back();
-        //send a job from the job queue
-        Message r = queue.front();
-        // keep where the job came from, add new destination
-        for (auto const& a : msgRequestFromMinion.address)
-        {
-          r.address.push_back(a);
-        }
-        router_.send(SocketID::NETWORK, r);
-        workerToJobMap_[worker].push_back(queue.front());
-        queue.pop_front();
+        Job j = {t, std::to_string(nextJobId_), id, idx, {}}; //we're not starting with a job yet
+        jobQueue_.push_back(j);
+        nextJobId_++;
+        idx++;
       }
-      else
-      {
-        // Add the minion to the request queue
-        requestQueues_[id].push_back(msgRequestFromMinion.address);
-      }
+      VLOG(2) << requests_.size() << " requests currently pending.";
     }
 
-    void Delegator::newJob(const Message& msgJobFromRequester)
+    void Delegator::receiveResult(const Message& msg)
     {
-      uint id = detail::unserialise<std::uint32_t>(msgJobFromRequester.data[0]);
+      std::string worker = msg.address.front();
+      std::string jobID = msg.data[0];
+      Job& j = workers_[worker].workInProgress[jobID];
+      // timing information
+      auto elapsedTime = std::chrono::high_resolution_clock::now() - j.startTime;
+      uint usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
+      workers_[worker].times[j.type].push_back(usecs);
+      Request& r = requests_[j.requesterID];
+      r.results[j.requesterIndex] = msg.data[1];
+      r.nDone++;
 
-      std::deque<std::vector<std::string>>& queue = requestQueues_[id];
-
-      //forward straight to minion if there's one waiting
-      if (!queue.empty())
+      if (r.nDone == r.jobTypes.size())
       {
-        Message r = msgJobFromRequester;
-        // append the address of this minion
-        for (auto const& a : queue.front())
-        {
-          r.address.push_back(a);
-        }
-        // send the job
-        router_.send(SocketID::NETWORK, r);
-        // add to WIP list
-        std::string worker = r.address.back();
-        workerToJobMap_[worker].push_back(msgJobFromRequester);
-        // Remove the minion from the request queue 
-        queue.pop_front();
+        requester_.send({r.address, RESULT, r.results});
+        requests_.erase(j.requesterID);
       }
-      else
+      //remove job from work in progress store
+      workers_[worker].workInProgress.erase(jobID);
+    }
+
+    Delegator::Worker* Delegator::bestWorker(const std::string& jobType, uint maxJobs)
+    {
+      // TODO: can we do this using an STL algorithm?
+      Delegator::Worker* best = nullptr;
+      uint bestTime = std::numeric_limits<uint>::max();
+      for (auto& w : workers_)
       {
-        jobQueues_[id].push_back(msgJobFromRequester);
+        if (w.second.jobTypes.count(jobType) && w.second.workInProgress.size() < maxJobs)
+        {
+          uint t = usTillDone(w.second, jobType);
+          if (t < bestTime)
+          {
+            best = &w.second;
+            bestTime = t;
+          }
+        }
+      }
+      return best;
+    }
+
+    void Delegator::onPoll()
+    {
+      const uint maxJobs = 10;
+      auto i = std::begin(jobQueue_);
+      while (i != std::end(jobQueue_))
+      {
+        auto worker = bestWorker(i->type, maxJobs);
+        if (!worker)
+        {
+          ++i;
+          continue;
+        }
+
+        std::string& data = requests_[i->requesterID].data;
+        network_.send({worker->address, JOB, {i->type, i->id, data}});
+        i->startTime = std::chrono::high_resolution_clock::now();
+        worker->workInProgress.insert(std::make_pair(i->id, *i));
+
+        // TODO: could we avoid removing this? What if we just mark it as being removed,
+        // and ignore it when we're polling? We can reap these 'zombie' jobs whenever
+        // they get removed from the front of the queue (assuming there's no job starvation).
+        // This way, we can keep using a queue instead of a list, so we can get
+        // better performance through cache locality.
+        jobQueue_.erase(i++);
       }
     }
 
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
     {
-      //most recently appended address
-      std::string worker = goodbyeFromWorker.address.back();
+      //first address
+      std::string worker = goodbyeFromWorker.address.front();
 
-      //remove the worker's minions from all the request queues
-      uint id = 0;
-      for (auto& queue : requestQueues_)
-      {
-        auto requestPred = [&](const std::vector<std::string>& s)
-        {
-          bool match = s.back() == worker;
-          if (match)
-          VLOG(1) << "Removing " << addressAsString(s) << " from request queue " << id;
-          return match;
-        };
-        auto wjBegin = std::remove_if(queue.second.begin(), queue.second.end(), requestPred);
-        auto wjEnd = queue.second.end();
-        queue.second.erase(wjBegin, wjEnd);
-        id++;
-      }
-
-      //remove all the worker's jobs from work in progress queue 
-      //and push them back onto the (appropriate) job queue
-      for (auto const& j : workerToJobMap_[worker])
-      {
-        uint id = detail::unserialise<std::uint32_t>(j.data[0]);
-        VLOG(1) << "Requeueing " << j << "onto queue " << id;
-        jobQueues_[id].push_front(j);
-      }
-
-      // disconnect the worker
-      VLOG(1) << "Disconnecting " << worker;
-      workerToJobMap_.erase(worker);
-
-      LOG(INFO)<< workerToJobMap_.size() << " Workers currently connected.";
+      Worker& w = workers_[worker];
+      for (auto const& j : w.workInProgress)
+        jobQueue_.push_front(j.second);
+      workers_.erase(worker);
     }
 
     void Delegator::sendFailed(const Message& msgToWorker)
     {
-      LOG(INFO)<< "Failed to send to " << msgToWorker.address.back();
+      LOG(INFO)<< "Failed to send to " << msgToWorker.address.front();
       // messages to and from a worker both had that workers address at the
       // front so disconnect will work in both cases
       disconnectWorker(msgToWorker);
-    }
-
-    void Delegator::jobSwap(const Message& msgResultFromMinion)
-    {
-      Message r = msgResultFromMinion;
-      // Remove and store worker address
-      std::string worker = r.address.back();
-      r.address.pop_back();
-      // Remove and store minion address
-      std::string minion = r.address.back();
-      r.address.pop_back();
-      // Remove and store requested id for new job
-      std::string id = r.data.back();
-      r.data.pop_back();
-      //remove job from work in progress queue
-      auto remPred = [&](const Message& s)
-      {
-        bool match = r.address == s.address;
-        if (match)
-        VLOG(3) << "removing " << s << " from WIP queue";
-        return match;
-      };
-      auto remBegin = std::remove_if(workerToJobMap_[worker].begin(), workerToJobMap_[worker].end(), remPred);
-      auto remEnd = workerToJobMap_[worker].end();
-      workerToJobMap_[worker].erase(remBegin, remEnd);
-      // send it on to the requester
-      router_.send(SocketID::REQUESTER, r);
-      // give the minion a new job
-      sendJob(Message( { minion, worker }, JOBSWAP, { id }));
-    }
-
-    std::vector<JobID> Delegator::jobs() const
-    {
-      std::vector<JobID> jobs;
-      for (auto job : jobIdMap_)
-        jobs.push_back(job.first);
-      return jobs;
     }
 
   } // namespace stateline

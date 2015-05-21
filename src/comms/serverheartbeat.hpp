@@ -10,10 +10,13 @@
 
 #pragma once
 
+#include <set>
+#include <map>
+
 #include "comms/messages.hpp"
-#include "comms/transport.hpp"
 #include "comms/router.hpp"
 #include "comms/settings.hpp"
+#include "comms/socket.hpp"
 
 namespace stateline
 {
@@ -40,21 +43,26 @@ namespace stateline
       //! \param context The ZMQ context.
       //! \param settings Heartbeat settings.
       //!
-      ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings);
+      ServerHeartbeat(zmq::context_t& context, const HeartbeatSettings& settings, bool& running);
+
+      void start();
 
       //! Cleanup resources used by the heartbeat thread.
       //!
       ~ServerHeartbeat();
 
     private:
-      const uint msFrequency_;
-      const int msPollingFrequency_;
-      const uint msTimeout_;
+      Socket socket_;
       SocketRouter router_;
+
+      uint msPollRate_;
+
       HBClients clients_;
       HBMap lastHeartbeats_;
+
       hrc::time_point lastSendTime_;
-      bool running_;
+
+      bool& running_;
     };
 
   } // namespace comms
