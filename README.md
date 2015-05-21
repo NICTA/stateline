@@ -20,6 +20,7 @@ Stateline requires the following libraries as prerequisites:
 * google-test (gtest) 1.7.0
 * zeromq 4.0.3
 * cppzeromq 2358037407 (commit hash)
+* nlohmann json (commit 58d7342)
 
 Building
 --------
@@ -27,12 +28,11 @@ The simplest way to get Stateline running is to run the `fetch-all.sh` script in
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline && bash fetch-all.sh
-$ cd build/debug && make -j8
-$ make run-test-all
+$ cd stateline && ./fetch-all.sh
+$ cd build/debug && make
 ```
 
-This will automatically download the necessary dependencies into a build folder. It will also automatically create and configure separate folders for `debug` and `release` builds. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions, e.g. for building in release mode.
+This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
 
 Running C++ Demo
 ----------------
@@ -47,13 +47,13 @@ $ ./stateline --config=cpp-demo-config.json
 Run a Stateline worker in Terminal 2:
 
 ```bash
-$ ./demoWorker
+$ ./demo-worker
 ```
 
 Now, in your build directory, you should see a folder called cpp-demo-chains. This folder contains samples from the demo MCMC. Running
 
 ```bash
-$ python vis.py cpp-demo-chains/0.csv
+$ python vis.py cpp-demo-output/0.csv
 ```
 
 will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [triangle-plot](https://github.com/dfm/triangle.py) module.
@@ -77,7 +77,7 @@ $ python demo-worker.py
 And again, running
 
 ```bash
-$ python vis.py python-demo-chains/0.csv
+$ python vis.py python-demo-output/0.csv
 ```
 
 will launch a Python script that visualises the samples of the first chain.
