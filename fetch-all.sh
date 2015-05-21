@@ -5,10 +5,8 @@ export PREREQ_DIR=$STATELINE_SOURCE_DIR/build/prereqs
 
 mkdir build
 cd build
-mkdir prereqs
-cd ..
-cp prereqs/buildPrereqs.sh build/prereqs
-cd build/prereqs
+cp -r ../prereqs .
+cd prereqs
 ./buildPrereqs.sh
 cd ..
 
