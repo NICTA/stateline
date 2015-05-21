@@ -35,5 +35,9 @@
         "max": 1.25
       }
     }
+  },
+  "output": {
+    "directory": "cpp-demo-output",
+    "cacheLength": 20
   }
 }

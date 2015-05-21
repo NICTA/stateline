@@ -28,20 +28,20 @@ The simplest way to get Stateline running is to run the `fetch-all.sh` script in
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
 $ cd stateline && bash fetch-all.sh
-$ cd build && make -j8
+$ cd build/debug && make -j8
 $ make run-test-all
 ```
 
-This will automatically download the necessary dependencies into a build folder. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+This will automatically download the necessary dependencies into a build folder. It will also automatically create and configure separate folders for `debug` and `release` builds. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions, e.g. for building in release mode.
 
 Running C++ Demo
 ----------------
-To see Stateline in action, open two terminals and run the following commands in the build directory:
+To see Stateline in action, open two terminals and run the following commands in a build directory:
 
 Run the Stateline server in Terminal 1:
 
 ```bash
-$ ./stateline --config=demo-cpp-config.json
+$ ./stateline --config=cpp-demo-config.json
 ```
 
 Run a Stateline worker in Terminal 2:
@@ -56,16 +56,16 @@ Now, in your build directory, you should see a folder called cpp-demo-chains. Th
 $ python vis.py cpp-demo-chains/0.csv
 ```
 
-will run a Python script that visualises the samples.
+will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [triangle-plot](https://github.com/dfm/triangle.py) module.
 
 Running Python Demo
 -------------------
-There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. Again, open two terminals and run the following commands in the build directory:
+There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. Again, open two terminals and run the following commands in a build directory:
 
 Run the Stateline server in Terminal 1:
 
 ```bash
-$ ./stateline --config=demo-python-config.json
+$ ./stateline --config=python-demo-config.json
 ```
 
 Run a Stateline worker in Terminal 2:
@@ -80,7 +80,7 @@ And again, running
 $ python vis.py python-demo-chains/0.csv
 ```
 
-will run a Python script that visualises the samples.
+will launch a Python script that visualises the samples of the first chain.
 
 Documentation
 -------------
@@ -91,7 +91,7 @@ Documentation can be found in the
 $ make doc
 ```
 
-int the build directory. Please ensure Doxygen is installed. Finally, there are demos for python and C++ in the src/bin folder.
+in a build directory. Please ensure Doxygen is installed. Finally, there are demos for python and C++ in the src/bin folder.
 
 Licence
 -------

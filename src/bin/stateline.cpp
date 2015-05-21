@@ -124,7 +124,10 @@ void runSampler(zmq::context_t& context, const po::variables_map& vm, bool& runn
   // --------------------------------------------------------------------------
 
   // Create a chain array.
-  sl::mcmc::ChainArray chains(nstacks, nchains, sl::mcmc::ChainSettings());
+  sl::mcmc::ChainSettings chainSettings;
+  chainSettings.databasePath = config["output"]["directory"].get<std::string>();
+  chainSettings.chainCacheLength = config["output"]["cacheLength"];
+  sl::mcmc::ChainArray chains(nstacks, nchains, chainSettings);
 
   std::vector<std::string> jobTypes = config["jobTypes"];
 

@@ -40,7 +40,7 @@ po::options_description commandLineOptions()
   opts.add_options()
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
-    ("config,c",po::value<std::string>()->default_value("config.json"), "Path to configuration file")
+    ("config,c",po::value<std::string>()->default_value("cpp-demo-config.json"), "Path to configuration file")
     ;
   return opts;
 }

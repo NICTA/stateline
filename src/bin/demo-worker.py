@@ -55,7 +55,7 @@ def main():
     logging.info('Started client')
 
     # Load configuration
-    with open('config.json', 'r') as f:
+    with open('python-demo-config.json', 'r') as f:
         config = json.load(f)
 
     jobTypes = config['jobTypes']

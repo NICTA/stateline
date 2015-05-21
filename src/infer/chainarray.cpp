@@ -72,7 +72,7 @@ namespace stateline
 
     ChainArray::ChainArray(uint nStacks, uint nChains,
                            const ChainSettings& settings)
-        : writer_(".", nStacks),
+        : writer_(settings.databasePath, nStacks),
           nstacks_(nStacks),
           nchains_(nChains),
           cacheLength_(settings.chainCacheLength),
