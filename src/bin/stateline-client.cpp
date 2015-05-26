@@ -20,12 +20,12 @@
 #include <thread>
 #include <boost/program_options.hpp>
 
-#include "app/logging.hpp"
-#include "app/commandline.hpp"
-#include "comms/worker.hpp"
-#include "app/signal.hpp"
-#include "stats/mixture.hpp"
-#include "comms/thread.hpp"
+#include "../app/logging.hpp"
+#include "../app/commandline.hpp"
+#include "../comms/worker.hpp"
+#include "../app/signal.hpp"
+#include "../stats/mixture.hpp"
+#include "../comms/thread.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;

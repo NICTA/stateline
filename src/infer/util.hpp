@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "infer/datatypes.hpp"
+#include "../infer/datatypes.hpp"
 
 namespace stateline
 {

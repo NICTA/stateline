@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "stats/normal.hpp"
+#include "normal.hpp"
 
 namespace stateline
 {

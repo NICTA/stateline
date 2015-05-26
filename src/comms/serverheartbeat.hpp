@@ -13,10 +13,10 @@
 #include <set>
 #include <map>
 
-#include "comms/messages.hpp"
-#include "comms/router.hpp"
-#include "comms/settings.hpp"
-#include "comms/socket.hpp"
+#include "messages.hpp"
+#include "router.hpp"
+#include "settings.hpp"
+#include "socket.hpp"
 
 namespace stateline
 {

@@ -15,9 +15,9 @@
 #include <string>
 #include <Eigen/Eigen>
 
-#include "comms/datatypes.hpp"
-#include "comms/messages.hpp"
-#include "comms/socket.hpp"
+#include "datatypes.hpp"
+#include "messages.hpp"
+#include "socket.hpp"
 
 namespace stateline
 {

@@ -19,10 +19,10 @@
 #include <zmq.hpp>
 #include <boost/circular_buffer.hpp>
 
-#include "comms/settings.hpp"
-#include "comms/messages.hpp"
-#include "comms/router.hpp"
-#include "comms/serverheartbeat.hpp"
+#include "settings.hpp"
+#include "messages.hpp"
+#include "router.hpp"
+#include "serverheartbeat.hpp"
 
 namespace stateline
 {

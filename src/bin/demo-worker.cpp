@@ -22,12 +22,12 @@
 #include <json.hpp>
 #include <fstream>
 
-#include "app/commandline.hpp"
-#include "app/logging.hpp"
-#include "app/signal.hpp"
-#include "stats/normal.hpp"
-#include "comms/minion.hpp"
-#include "comms/worker.hpp"
+#include "../app/commandline.hpp"
+#include "../app/logging.hpp"
+#include "../app/signal.hpp"
+#include "../stats/normal.hpp"
+#include "../comms/minion.hpp"
+#include "../comms/worker.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;

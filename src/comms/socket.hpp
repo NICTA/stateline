@@ -3,7 +3,7 @@
 #include <functional>
 #include <zmq.hpp>
 
-#include "comms/messages.hpp"
+#include "messages.hpp"
 
 namespace stateline
 {

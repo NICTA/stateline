@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include "stats/multivariate.hpp"
-#include "stats/normal.hpp"
+#include "multivariate.hpp"
+#include "normal.hpp"
 
 namespace stateline
 {

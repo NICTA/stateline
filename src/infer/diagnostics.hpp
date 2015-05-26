@@ -12,7 +12,7 @@
 
 #include <Eigen/Dense>
 
-#include "infer/datatypes.hpp"
+#include "../infer/datatypes.hpp"
 
 namespace stateline
 {

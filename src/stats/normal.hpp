@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "stats/multivariate.hpp"
+#include "multivariate.hpp"
 
 namespace stateline
 {

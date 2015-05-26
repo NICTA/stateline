@@ -19,12 +19,12 @@
 
 #include <chrono>
 
-#include "app/logging.hpp"
-#include "app/serial.hpp"
-#include "app/signal.hpp"
-#include "app/commandline.hpp"
-#include "comms/delegator.hpp"
-#include "comms/thread.hpp"
+#include "../app/logging.hpp"
+#include "../app/serial.hpp"
+#include "../app/signal.hpp"
+#include "../app/commandline.hpp"
+#include "../comms/delegator.hpp"
+#include "../comms/thread.hpp"
 
 // Alias namespaces for conciseness
 namespace sl = stateline;

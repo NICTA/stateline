@@ -13,7 +13,7 @@
 #include <Eigen/Core>
 #include <boost/circular_buffer.hpp>
 #include <json.hpp>
-#include "infer/datatypes.hpp"
+#include "../infer/datatypes.hpp"
 
 namespace stateline
 {

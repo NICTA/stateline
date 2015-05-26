@@ -17,15 +17,15 @@
 
 #include <chrono>
 
-#include "comms/delegator.hpp"
-#include "infer/sampler.hpp"
-#include "infer/adaptive.hpp"
-#include "infer/diagnostics.hpp"
-#include "infer/logging.hpp"
-#include "app/logging.hpp"
-#include "app/serial.hpp"
-#include "app/signal.hpp"
-#include "app/commandline.hpp"
+#include "../comms/delegator.hpp"
+#include "../infer/sampler.hpp"
+#include "../infer/adaptive.hpp"
+#include "../infer/diagnostics.hpp"
+#include "../infer/logging.hpp"
+#include "../app/logging.hpp"
+#include "../app/serial.hpp"
+#include "../app/signal.hpp"
+#include "../app/commandline.hpp"
 
 // Alias namespaces for conciseness
 namespace sl = stateline;

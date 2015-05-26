@@ -15,8 +15,8 @@
 #include <fstream>
 #include <cassert>
 
-#include "db/settings.hpp"
-#include "infer/datatypes.hpp"
+#include "settings.hpp"
+#include "../infer/datatypes.hpp"
 
 #include <iostream>
 

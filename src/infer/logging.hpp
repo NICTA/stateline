@@ -15,7 +15,7 @@
 #include <glog/logging.h>
 #include <Eigen/Core>
 
-#include "infer/datatypes.hpp"
+#include "../infer/datatypes.hpp"
 
 namespace ch = std::chrono;
 

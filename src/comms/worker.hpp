@@ -18,12 +18,12 @@
 #include <glog/logging.h>
 #include <zmq.hpp>
 
-#include "comms/settings.hpp"
-#include "comms/messages.hpp"
-#include "comms/datatypes.hpp"
-#include "comms/router.hpp"
-#include "comms/clientheartbeat.hpp"
-#include "comms/socket.hpp"
+#include "settings.hpp"
+#include "messages.hpp"
+#include "datatypes.hpp"
+#include "router.hpp"
+#include "clientheartbeat.hpp"
+#include "socket.hpp"
 
 namespace stateline
 {

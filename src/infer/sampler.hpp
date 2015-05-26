@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "comms/requester.hpp"
-#include "infer/datatypes.hpp"
-#include "infer/chainarray.hpp"
+#include "../comms/requester.hpp"
+#include "../infer/datatypes.hpp"
+#include "../infer/chainarray.hpp"
 
 namespace stateline
 {

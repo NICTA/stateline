@@ -20,9 +20,9 @@
 #include <zmq.hpp>
 #include <Eigen/Eigen>
 // Project
-#include "comms/messages.hpp"
-#include "comms/worker.hpp"
-#include "comms/socket.hpp"
+#include "messages.hpp"
+#include "worker.hpp"
+#include "socket.hpp"
 
 namespace stateline
 {
