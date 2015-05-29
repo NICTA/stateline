@@ -12,112 +12,66 @@
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <iostream>
-#include <functional>
 #include <string>
-#include <chrono>
 #include <thread>
 #include <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
-#include <json.hpp>
-#include <fstream>
 
 #include "../app/commandline.hpp"
-#include "../app/logging.hpp"
 #include "../app/signal.hpp"
-#include "../stats/normal.hpp"
-#include "../comms/minion.hpp"
-#include "../comms/worker.hpp"
+#include "../app/logging.hpp"
+#include "../app/workerwrapper.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;
-namespace ph = std::placeholders;
-using json = nlohmann::json;
 
 po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Demo Options");
   opts.add_options()
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
+    ("nthreads,t", po::value<uint>()->default_value(1), "Number of worker threads")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
-    ("config,c",po::value<std::string>()->default_value("cpp-demo-config.json"), "Path to configuration file")
     ;
   return opts;
 }
 
-json initConfig(const po::variables_map& vm)
+double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
 {
-  std::ifstream configFile(vm["config"].as<std::string>());
-  if (!configFile)
+  double squaredNorm = 0.0;
+  for (auto i : x)
   {
-    // TODO: use default settings?
-    LOG(FATAL) << "Could not find config file";
+    squaredNorm += i*i; 
   }
-
-  json config;
-  configFile >> config;
-  return config;
+  return 0.5*squaredNorm;
 }
 
-void runClient(zmq::context_t& context, const po::variables_map& vm, bool& running)
-{
-  auto settings = sl::comms::WorkerSettings::Default(vm["address"].as<std::string>());
-  sl::comms::Worker worker(context, settings, running);
-  worker.start();
-}
-
-void runWorker(zmq::context_t& context, const po::variables_map& vm, bool& running)
-{
-  json config = initConfig(vm);
-
-  std::vector<std::string> jobTypes = config["jobTypes"];
-  sl::comms::Minion minion(context, jobTypes);
-
-  // Create the negative log likelihood function of the target distribution.
-  auto nll = [&](const Eigen::VectorXd& x)
-  {
-    return 0.5 * x.squaredNorm();
-  };
-
-  // --------------------------------------------------------------------------
-  // Launch minion to perform work
-  // --------------------------------------------------------------------------
-  while (running)
-  {
-    auto job = minion.nextJob();
-    auto jobType = job.first;
-    auto sample = job.second;
-
-    // Compute the nll
-    minion.submitResult(nll(sample));
-  }
-}
 
 int main(int ac, char *av[])
 {
-  zmq::context_t* context = new zmq::context_t{1};
 
+  // Parse the command line
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
+  int logLevel = vm["loglevel"].as<int>();
+  uint nThreads = vm["nthreads"].as<uint>();
+  std::string address = vm["address"].as<std::string>();
 
-  sl::initLogging("client", vm["loglevel"].as<int>(), true, "");
+  // Initialise logging
+  sl::initLogging("client", logLevel);
+  // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
+    
+  // Only 1 job type for this demo
+  std::vector<std::string> jobTypes {"job"};
 
-  bool running = true;
-  LOG(INFO) << "\033[1;31mstarting client in thread\033[0m";
-  auto clientFuture = std::async(std::launch::async, runClient, std::ref(*context), std::cref(vm), std::ref(running));
-  LOG(INFO) << "started server in thread";
-  LOG(INFO) << "\033[1;31mstarting worker in thread\033[0m";
-  auto workerFuture = std::async(std::launch::async, runWorker, std::ref(*context), std::cref(vm), std::ref(running));
-  LOG(INFO) << "started sampler in thread";
+  sl::WorkerWrapper w(gaussianNLL, address, jobTypes, nThreads);
+  w.start();
 
   while(!sl::global::interruptedBySignal)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
-  running = false;
-  delete context;
+  w.stop();
 
-  clientFuture.wait();
-  workerFuture.wait();
+  return 0;
 }

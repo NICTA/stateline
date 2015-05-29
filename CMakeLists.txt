@@ -199,13 +199,13 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER mcmc delegator requester serverheartbeat)
-SET(STATELINE_CLIENT minion worker clientheartbeat)
+SET(STATELINE_CLIENT wrapper minion worker clientheartbeat)
 
 ADD_LIBRARY(statelineserver src/app/logging.hpp)
 TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(statelineclient src/app/worker.hpp)
+ADD_LIBRARY(statelineclient src/app/workerwrapper.hpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 

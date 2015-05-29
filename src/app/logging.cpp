@@ -18,8 +18,7 @@
 
 namespace stateline
 {
-  void initLogging(const std::string &appName, int logLevel, bool stdErr,
-      const std::string &directory)
+  void initLogging(const std::string &appName, int logLevel, bool stdErr, const std::string& directory)
   {
     int normLog = logLevel;
     int vLevel = 0;

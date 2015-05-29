@@ -21,7 +21,7 @@ namespace stateline
       socket_.send({HELLO,{jobstring}});
     }
 
-    std::pair<std::string, Eigen::VectorXd> Minion::nextJob()
+    std::pair<std::string, std::vector<double>> Minion::nextJob()
     {
       VLOG(3) << "Minion waiting on next job";
       stateline::comms::Message r = socket_.receive();
@@ -31,9 +31,9 @@ namespace stateline
       std::vector<std::string> sampleVectorStr;
       boost::algorithm::split(sampleVectorStr, r.data[2], boost::is_any_of(":"));
 
-      Eigen::VectorXd sample(sampleVectorStr.size());
+      std::vector<double> sample(sampleVectorStr.size());
       for (uint i = 0; i < sample.size(); i++)
-        sample(i) = std::stod(sampleVectorStr[i]);
+        sample[i] = std::stod(sampleVectorStr[i]);
 
       return std::make_pair(r.data[0], sample);
     }

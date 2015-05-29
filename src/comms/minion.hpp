@@ -46,7 +46,7 @@ namespace stateline
       //!
       //! \return The job to do.
       //!
-      std::pair<std::string, Eigen::VectorXd> nextJob();
+      std::pair<std::string, std::vector<double>> nextJob();
 
       //! Submits a result to the worker. Call this function
       //! after requesting a job with job().
