@@ -108,16 +108,23 @@ namespace stateline
   {
     running_ = false;
     if (context_)
+    {
       delete context_;
+      context_ = nullptr; // ALWAYS DO THIS
+    }
     // Wait for futures to finish
     serverThread_.wait();
     samplerThread_.wait();
   }
 
+  bool ServerWrapper::isRunning()
+  {
+    return running_;
+  }
+
   ServerWrapper::~ServerWrapper()
   {
-    if (context_) // stop hasn't been called
-      stop();
+    stop();
   }
 
 

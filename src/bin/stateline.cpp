@@ -65,7 +65,7 @@ int main(int ac, char *av[])
   
   s.start();  
 
-  while(!sl::global::interruptedBySignal)
+  while(!sl::global::interruptedBySignal && s.isRunning())
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }

@@ -62,6 +62,7 @@ namespace stateline
       ~ServerWrapper();
       void start();
       void stop();
+      bool isRunning();
 
     private:
       uint port_;

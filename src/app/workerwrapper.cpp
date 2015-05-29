@@ -59,7 +59,10 @@ void WorkerWrapper::stop()
 {
   running_ = false;
   if (context_)
+  {
     delete context_;
+    context_ = nullptr; //THIS MUST BE DONE
+  }
   clientThread_.wait();
   for (auto const& t : wthreads_)
   {
@@ -69,10 +72,7 @@ void WorkerWrapper::stop()
 
 WorkerWrapper::~WorkerWrapper()
 {
-  if (context_) // stop hasn't been called
-  {
-    stop();
-  }
+  stop();
 }
 
 
