@@ -6,5 +6,6 @@
 # Date: 2014 
 
 ADD_LIBRARY(logging logging.cpp)
-ADD_LIBRARY(wrapper workerwrapper.cpp)
+ADD_LIBRARY(workerwrapper workerwrapper.cpp)
+ADD_LIBRARY(serverwrapper serverwrapper.cpp)
 TARGET_LINK_LIBRARIES(logging ${GLOG_LIBRARY})

@@ -31,18 +31,20 @@ namespace stateline
       }
     }
 
-    SlidingWindowSigmaSettings::SlidingWindowSigmaSettings(const nlohmann::json& config)
+    SlidingWindowSigmaSettings SlidingWindowSigmaSettings::fromJSON(const nlohmann::json& config)
     {
+      SlidingWindowSigmaSettings s;
       auto sigmaConfig = config["sigmaAdaption"];
-      windowSize = getWithDefault(sigmaConfig["windowSize"], 100000);
-      coldSigma = getWithDefault(config["sigma"], 1.0);
-      sigmaFactor = getWithDefault(config["parallelTempering"]["sigmaFactor"], 1.5);
-      adaptionLength = getWithDefault(sigmaConfig["adaptionLength"], 100000);
-      nStepsPerAdapt = getWithDefault(sigmaConfig["stepsPerAdapt"], 2500);
-      optimalAcceptRate = getWithDefault(sigmaConfig["optimalAcceptRate"], 0.24);
-      adaptRate = getWithDefault(sigmaConfig["adaptRate"], 0.2);
-      minAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["min"], 0.8);
-      maxAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["max"], 1.25);
+      s.windowSize = getWithDefault(sigmaConfig["windowSize"], 100000);
+      s.coldSigma = getWithDefault(config["sigma"], 1.0);
+      s.sigmaFactor = getWithDefault(config["parallelTempering"]["sigmaFactor"], 1.5);
+      s.adaptionLength = getWithDefault(sigmaConfig["adaptionLength"], 100000);
+      s.nStepsPerAdapt = getWithDefault(sigmaConfig["stepsPerAdapt"], 2500);
+      s.optimalAcceptRate = getWithDefault(sigmaConfig["optimalAcceptRate"], 0.24);
+      s.adaptRate = getWithDefault(sigmaConfig["adaptRate"], 0.2);
+      s.minAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["min"], 0.8);
+      s.maxAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["max"], 1.25);
+      return s;
     }
 
     SlidingWindowSigmaAdapter::SlidingWindowSigmaAdapter(uint nStacks, uint nChains, uint nDims, 
@@ -116,17 +118,19 @@ namespace stateline
       sigmas_[id] = newSigma;
     }
 
-    SlidingWindowBetaSettings::SlidingWindowBetaSettings(const nlohmann::json& config)
+    SlidingWindowBetaSettings SlidingWindowBetaSettings::fromJSON(const nlohmann::json& config)
     {
+      SlidingWindowBetaSettings s;
       auto betaConfig = config["parallelTempering"]["betaAdaption"];
-      windowSize = getWithDefault(betaConfig["windowSize"], 100000);
-      betaFactor = getWithDefault(config["parallelTempering"]["betaFactor"], 1.5);
-      adaptionLength = getWithDefault(betaConfig["adaptionLength"], 100000);
-      nStepsPerAdapt = getWithDefault(betaConfig["stepsPerAdapt"], 2500);
-      optimalSwapRate = getWithDefault(betaConfig["optimalSwapRate"], 0.24);
-      adaptRate = getWithDefault(betaConfig["adaptRate"], 0.2);
-      minAdaptFactor = getWithDefault(betaConfig["adaptFactor"]["min"], 0.8);
-      maxAdaptFactor = getWithDefault(betaConfig["adaptFactor"]["max"], 1.25);
+      s.windowSize = getWithDefault(betaConfig["windowSize"], 100000);
+      s.betaFactor = getWithDefault(config["parallelTempering"]["betaFactor"], 1.5);
+      s.adaptionLength = getWithDefault(betaConfig["adaptionLength"], 100000);
+      s.nStepsPerAdapt = getWithDefault(betaConfig["stepsPerAdapt"], 2500);
+      s.optimalSwapRate = getWithDefault(betaConfig["optimalSwapRate"], 0.24);
+      s.adaptRate = getWithDefault(betaConfig["adaptRate"], 0.2);
+      s.minAdaptFactor = getWithDefault(betaConfig["adaptFactor"]["min"], 0.8);
+      s.maxAdaptFactor = getWithDefault(betaConfig["adaptFactor"]["max"], 1.25);
+      return s;
     }
 
     SlidingWindowBetaAdapter::SlidingWindowBetaAdapter(uint nStacks, uint nChains, 

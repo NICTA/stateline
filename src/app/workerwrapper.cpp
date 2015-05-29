@@ -1,3 +1,15 @@
+//!
+//! Main entry point for using stateline -- worker side
+//!
+//! 
+//!
+//! \file app/workerwrapper.cpp
+//! \author Lachlan McCalman
+//! \date 2015
+//! \license Lesser General Public License version 3 or later
+//! \copyright (c) 2015, NICTA
+//!
+
 #include "workerwrapper.hpp"
 #include "../comms/minion.hpp"
 #include "../comms/worker.hpp"
@@ -45,17 +57,21 @@ void WorkerWrapper::start()
 
 void WorkerWrapper::stop()
 {
-  delete context_;
   running_ = false;
+  if (context_)
+    delete context_;
+  clientThread_.wait();
+  for (auto const& t : wthreads_)
+  {
+    t.wait(); 
+  }
 }
 
 WorkerWrapper::~WorkerWrapper()
 {
   if (context_) // stop hasn't been called
   {
-    running_ = false;
-    delete context_;
-  
+    stop();
   }
 }
 

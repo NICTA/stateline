@@ -51,7 +51,7 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      SlidingWindowSigmaSettings(const nlohmann::json& config);
+      static SlidingWindowSigmaSettings fromJSON(const nlohmann::json& config);
     };
 
     class SlidingWindowSigmaAdapter
@@ -106,7 +106,7 @@ namespace stateline
       //! single adaption
       double maxAdaptFactor;
 
-      SlidingWindowBetaSettings(const nlohmann::json& config);
+      static SlidingWindowBetaSettings fromJSON(const nlohmann::json& config);
     };
 
     class SlidingWindowBetaAdapter
