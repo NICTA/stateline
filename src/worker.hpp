@@ -17,12 +17,11 @@ namespace stateline
 {
   typedef std::function<double(const std::string&, const std::vector<double>&)> LikelihoodFn;
 
-  class WorkerWrapper
+  class Worker
   {
-
     public:
-      WorkerWrapper(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads);
-      ~WorkerWrapper();
+      Worker(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads);
+      ~Worker();
       void start();
       void stop();
 

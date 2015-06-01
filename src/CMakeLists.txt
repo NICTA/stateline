@@ -5,5 +5,4 @@
 # Authors: Lachlan McCalman
 # Date: 2014 
 
-ADD_LIBRARY(logging logging.cpp)
-TARGET_LINK_LIBRARIES(logging ${GLOG_LIBRARY})
+ADD_LIBRARY(stateline worker.cpp server.cpp)

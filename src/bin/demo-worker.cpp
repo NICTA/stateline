@@ -19,7 +19,7 @@
 #include "../app/commandline.hpp"
 #include "../app/signal.hpp"
 #include "../app/logging.hpp"
-#include "../app/workerwrapper.hpp"
+#include "../worker.hpp"
 
 namespace sl = stateline;
 namespace po = boost::program_options;
@@ -40,15 +40,13 @@ double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
   double squaredNorm = 0.0;
   for (auto i : x)
   {
-    squaredNorm += i*i; 
+    squaredNorm += i*i;
   }
   return 0.5*squaredNorm;
 }
 
-
 int main(int ac, char *av[])
 {
-
   // Parse the command line
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
   int logLevel = vm["loglevel"].as<int>();
@@ -59,7 +57,7 @@ int main(int ac, char *av[])
   sl::initLogging("client", logLevel);
   // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
-    
+
   // Only 1 job type for this demo
   std::vector<std::string> jobTypes {"job"};
 

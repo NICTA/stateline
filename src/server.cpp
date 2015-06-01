@@ -1,12 +1,33 @@
-#include "serverwrapper.hpp" 
-#include "../comms/delegator.hpp"
-#include "../infer/sampler.hpp"
-#include "../infer/adaptive.hpp"
-#include "../infer/diagnostics.hpp"
-#include "../infer/logging.hpp"
+#include "server.hpp"
+
+#include <json.hpp>
+
+#include "comms/delegator.hpp"
+#include "infer/sampler.hpp"
+#include "infer/adaptive.hpp"
+#include "infer/diagnostics.hpp"
+#include "infer/logging.hpp"
 
 namespace stateline
 {
+  StatelineSettings StatelineSettings::fromJSON(const nlohmann::json& j)
+  {
+    StatelineSettings s;
+    s.ndims = j["dimensionality"];
+    s.nstacks = j["parallelTempering"]["stacks"];
+    s.nchains = j["parallelTempering"]["chains"];
+    s.nsecs = j["duration"];
+    s.swapInterval = j["parallelTempering"]["swapInterval"];
+    s.msLoggingRefresh = 1000;
+    s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);
+    s.betaSettings = mcmc::SlidingWindowBetaSettings::fromJSON(j);
+    for (std::string const& i : j["jobTypes"])
+    {
+      s.jobTypes.push_back(i);
+    }
+    return s;
+  }
+
   void runServer(zmq::context_t& context, uint port, bool& running)
   {
     auto settings = comms::DelegatorSettings::Default(port);
@@ -92,6 +113,11 @@ namespace stateline
   ServerWrapper::ServerWrapper(uint port, const StatelineSettings& s)
     : port_(port), settings_(s)
   {
+  }
+
+  void step()
+  {
+
   }
 
   void ServerWrapper::start()

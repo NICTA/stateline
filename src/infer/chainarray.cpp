@@ -18,11 +18,6 @@ namespace stateline
 {
   namespace mcmc
   {
-    ChainSettings::ChainSettings()
-      : databasePath("chains"), chainCacheLength(10)
-    {
-    }
-
     //! Returns true if we want to accept the MCMC step.
     //!
     //! \param newState The proposed state.
@@ -70,35 +65,18 @@ namespace stateline
     }
 
 
-    ChainArray::ChainArray(uint nStacks, uint nChains,
-                           const ChainSettings& settings)
-        : writer_(settings.databasePath, nStacks),
-          nstacks_(nStacks),
+    ChainArray::ChainArray(uint nStacks, uint nChains)
+        : nstacks_(nStacks),
           nchains_(nChains),
-          cacheLength_(settings.chainCacheLength),
-          lengthOnDisk_(nStacks * nChains, 0),
+          states_(nStacks * nChains),
           beta_(nStacks * nChains),
-          sigma_(nStacks * nChains),
-          cache_(nStacks * nChains),
-          lastState_(nStacks * nChains)
+          sigma_(nStacks * nChains)
     {
-      for (uint i=0; i < nstacks_*nchains_; i++)
-        cache_[i].reserve(cacheLength_);
-    }
-
-    ChainArray::~ChainArray()
-    {
-      for (uint i = 0; i < nstacks_*nchains_; i++)
-      {
-        if (cache_[i].size() > 0)
-          flushToDisk(i);
-      }
     }
 
     uint ChainArray::length(uint id) const
     {
-      uint result = lengthOnDisk_[id] + cache_[id].size();
-      return result;
+      return states_[id].size();
     }
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
@@ -107,15 +85,10 @@ namespace stateline
       State last = lastState(id);
       bool accepted = acceptProposal(newState, last, beta_[id]);
 
-      if (accepted)
-        cache_[id].push_back(newState);
-      else
-        cache_[id].push_back(last);
+      states_[id].push_back(accepted ? newState : last);
 
-      cache_[id].back().accepted = accepted;
-      cache_[id].back().swapType = SwapType::NoAttempt;
-      if (cache_[id].size() == cacheLength_)
-        flushToDisk(id);
+      states_[id].back().accepted = accepted;
+      states_[id].back().swapType = SwapType::NoAttempt;
 
       return accepted;
     }
@@ -125,53 +98,17 @@ namespace stateline
     {
       setSigma(id, sigma);
       setBeta(id, beta);
-      cache_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
-      lastState_[id] = cache_[id].back();
-    }
-
-    void ChainArray::flushToDisk(uint id)
-    {
-      uint diskLength = lengthOnDisk_[id];
-      uint cacheLength = cache_[id].size();
-
-      // for t=1 chains only (cold) chains only
-      if (chainIndex(id) == 0)
-      {
-        uint newLength = diskLength + cacheLength;
-        VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
-        std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
-        writer_.append(id / numChains(), statesToBeSaved);
-        lengthOnDisk_[id] = newLength;
-      }
-
-      // Re-initialise the cache
-      if (!cache_[id].empty())
-      {
-        lastState_[id] = cache_[id].back();
-        cache_[id].clear();
-      }
+      states_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
     }
 
     State ChainArray::lastState(uint id) const
     {
-      if (cache_[id].empty()) {
-        return lastState_[id];
-      } else {
-        return cache_[id].back();
-      }
+      return states_[id].back();
     }
 
     void ChainArray::setLastState(uint id, const State& state)
     {
-      if (!cache_[id].empty())
-      {
-        cache_[id].back() = state;
-      }
-      else
-      {
-        writer_.replaceLast(id / numChains(), state);
-        lastState_[id] = state;
-      }
+      states_[id].back() = state;
     }
 
     SwapType ChainArray::swap(uint id1, uint id2)
@@ -198,6 +135,7 @@ namespace stateline
         statel.swapType = SwapType::Reject;
         setLastState(lId, statel);
       }
+
       return swapped ? SwapType::Accept : SwapType::Reject;
     }
 

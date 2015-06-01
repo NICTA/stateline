@@ -18,21 +18,7 @@ namespace stateline
 {
   namespace mcmc
   {
-    //! Settings for interacting with the MCMC Chain Array
-    //!
-    struct ChainSettings
-    {
-      //! Path to the folder directory containing the database.
-      std::string databasePath;
-
-      //
-      uint chainCacheLength;
-
-      //! Default settings
-      ChainSettings();
-    };
-
-    //! Manager for all the states and handle reading / writing from / to database.
+    //! Container for a collection of MCMC chains.
     //!
     //! \section id The chain ID used by MCMC sampler.
     //!
@@ -52,20 +38,12 @@ namespace stateline
     class ChainArray
     {
       public:
-
         //! Create a chain array.
-        //! 
+        //!
         //! \param nStacks The number of stacks. Each stack have the same temperature sequence.
         //! \param nChains The number of chains in each stack.
-        //! \param settings The Chain array settings object
         //
-        ChainArray(uint nStacks, uint nChains, const ChainSettings& settings);
-
-        // Move constructor only
-        ChainArray(ChainArray&& other);
-    
-        // Destructor
-        ~ChainArray();
+        ChainArray(uint nStacks, uint nChains);
 
         //! Get the length of a chain.
         //!
@@ -75,7 +53,7 @@ namespace stateline
         uint length(uint id) const;
 
         //! Append a state to a chain.
-        //! 
+        //!
         //! \param id The id of the chain (see \ref id).
         //! \param proposedState The new state to append.
         //! \return Whether the state accepted or rejected (in which case last state is reappended).
@@ -89,12 +67,6 @@ namespace stateline
         //! \param sigma the proposal width for the chain
         //! \param beta the temperature of the new chain
         void initialise(uint id, const Eigen::VectorXd& sample, double energy, double sigma, double beta);
-
-        //! Forcibly flush the cache for a particular chain to disk.
-        //!
-        //! \param id The id of the chain to flush.
-        //!
-        void flushToDisk(uint id);
 
         //! Return the last state from a chain.
         //!
@@ -166,24 +138,13 @@ namespace stateline
         bool isColdestInStack(uint id) const;
 
       private:
-        void setLastState(uint id, const State& state);
+        void setLastState(uint id, const State& state); // TODO: we don't really need this
 
-        //! Recover a particular chain from disk.
-        //!
-        //! \param id The id of the chain to recover.
-        //!
-        void recoverFromDisk(uint id);
-
-        //mutable db::Database db_; // Mutable so that chain queries can be const
-        db::CSVChainArrayWriter writer_;
         uint nstacks_;
         uint nchains_;
-        uint cacheLength_;
-        std::vector<uint> lengthOnDisk_;
+        std::vector<std::vector<State>> states_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
-        std::vector<std::vector<State>> cache_;
-        std::vector<State> lastState_;
     };
 
   } // namespace mcmc

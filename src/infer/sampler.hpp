@@ -19,11 +19,32 @@ namespace stateline
 {
   namespace mcmc
   {
-    
+    class SamplesArray
+    {
+      public:
+        std::vector<State> chain(int chainIndex) const
+        {
+          return states_[chainIndex];
+        }
+
+        const State &at(int chainIndex, int sampleIndex) const
+        {
+          return states_[chainIndex][sampleIndex];
+        }
+
+        std::vector<State> operator[](int chainIndex) const
+        {
+          return chain(chainIndex);
+        }
+
+      private:
+        std::vector<std::vector<State>> states_; // TODO: make into a rectangular 2d array
+    };
+
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, double sigma)>;
-    
+
     Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma);
-    
+
     //! A truncated Gaussian proposal function. It randomly varies each value in
     //! the state according to a truncated Gaussian distribution. It also bounces of the
     //! walls of the hard boundaries given so as not to get stuck in corners.
@@ -59,15 +80,12 @@ namespace stateline
       public:
         Sampler(comms::Requester& requester, 
                 std::vector<std::string> jobTypes,
-                ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
 
-        ~Sampler();
-      
         std::pair<uint, State> step(const std::vector<double>& sigmas, const std::vector<double>& betas);
 
-        void flush();
+        SamplesArray step(const std::vector<double>& sigmas, const std::vector<double>& betas, uint length);
 
       private:
 
@@ -80,10 +98,10 @@ namespace stateline
         std::vector<std::string> jobTypes_;
 
         // The MCMC chain wrapper
-        ChainArray& chains_;
-        
+        ChainArray chains_;
+
         ProposalFunction propFn_;
-        
+
         // convenience variables
         const uint nstacks_;
         const uint nchains_;
@@ -100,9 +118,6 @@ namespace stateline
         // Whether a chain is locked. A locked chain will wait for any outstanding
         // job results and propagate the lock.
         std::vector<bool> locked_;
-
-        // if we haven't flushed when destructing, flush
-        bool haveFlushed_;
 
     };
   }

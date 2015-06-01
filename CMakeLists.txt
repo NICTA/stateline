@@ -195,23 +195,12 @@ ADD_SUBPROJECT(src/likelihood)
 ADD_SUBPROJECT(src/bin)
 
 ##############################################################################
-# Build final libraries for server and client
+# Build final stateline library
 ##############################################################################
 SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
 
-ADD_LIBRARY(statelineserver src/app/logging.hpp)
-TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
-SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
-
-ADD_LIBRARY(statelineclient src/app/workerwrapper.hpp)
-TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
-SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
-
-install (TARGETS statelineserver
-         ARCHIVE DESTINATION lib
-         LIBRARY DESTINATION lib)
-install (TARGETS statelineclient
-         ARCHIVE DESTINATION lib
-         LIBRARY DESTINATION lib)
+ADD_LIBRARY(libstateline src/worker.cpp src/server.cpp)
+TARGET_LINK_LIBRARIES(libstateline ${STATELINE_COMMON} ${STATELINE_SERVER} ${STATELINE_CLIENT})
+SET_TARGET_PROPERTIES(libstateline PROPERTIES LINKER_LANGUAGE CXX OUTPUTNAME stateline)

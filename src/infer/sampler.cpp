@@ -53,7 +53,7 @@ namespace stateline
       return result;
     }
 
-    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma)
+    Eigen::VectorXd gaussianProposal(uint, const Eigen::VectorXd& sample, double sigma)
     {
       // Random number generators
       static std::random_device rd;
@@ -117,8 +117,7 @@ namespace stateline
         propStates_(nstacks_*nchains_),
         swapInterval_(swapInterval),
         numOutstandingJobs_(0),
-        locked_(nstacks_ * nchains_, false),
-        haveFlushed_(true)
+        locked_(nstacks_ * nchains_, false)
     {
       // Start all the chains from hottest to coldest
       for (uint i = 0; i < chains_.numTotalChains(); i++)
@@ -128,15 +127,8 @@ namespace stateline
       }
     }
 
-    Sampler::~Sampler()
-    {
-      if (haveFlushed_ == false)
-        flush();
-    }
-    
     std::pair<uint, State> Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas)
     {
-      haveFlushed_ = false;
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
 
@@ -180,25 +172,11 @@ namespace stateline
       return {id, chains_.lastState(id)};
     }
 
-    void Sampler::flush()
+    SamplesArray Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas, uint length)
     {
-      haveFlushed_ = true;
-      // Retrieve all outstanding job results.
-      while (numOutstandingJobs_--)
-      {
-        auto result = requester_.retrieve();
-        uint id = result.first;
-        double energy = 0.0;
-        for (const auto& r : result.second)
-        {
-          energy += r;
-        }
-        chains_.append(id, propStates_[id], energy);
-      }
-
-      // Manually flush any chain states that are in memory to disk
-      for (uint i = 0; i < chains_.numTotalChains(); i++)
-        chains_.flushToDisk(i);
+      // TODO: we want to obtain exactly length samples from each of the coldest chains...
+      // what about hotter chains? doesn't really matter if they've got extra samples right?
+      // what's the best way to code this without too much duplicate code with the other overload of step?
     }
 
     void Sampler::propose(uint id)
@@ -230,7 +208,5 @@ namespace stateline
         propose(id);
       }
     }
-
-  
   }
 }

@@ -10,9 +10,9 @@
 //! \copyright (c) 2015, NICTA
 //!
 
-#include "workerwrapper.hpp"
-#include "../comms/minion.hpp"
-#include "../comms/worker.hpp"
+#include "worker.hpp"
+#include "comms/minion.hpp"
+#include "comms/worker.hpp"
 
 namespace stateline
 {
@@ -37,12 +37,12 @@ void runClient(zmq::context_t& context, const std::string& address, bool& runnin
 }
 
 
-WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads)
+Worker::Worker(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads)
   : f_(f), address_(address), jobTypes_(jobTypes), nThreads_(nThreads) 
 {
 }
 
-void WorkerWrapper::start()
+void Worker::start()
 {
   context_ = new zmq::context_t{1};
   running_ = true;
@@ -55,7 +55,7 @@ void WorkerWrapper::start()
   }
 }
 
-void WorkerWrapper::stop()
+void Worker::stop()
 {
   running_ = false;
   if (context_)
@@ -70,7 +70,7 @@ void WorkerWrapper::stop()
   }
 }
 
-WorkerWrapper::~WorkerWrapper()
+Worker::~Worker()
 {
   stop();
 }
