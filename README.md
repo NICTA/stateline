@@ -1,17 +1,13 @@
-stateline
-=========
+## Overview
 Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++11. It focuses on [parallel tempering](http://en.wikipedia.org/wiki/Parallel_tempering) methods which are highly parallelisable.
 
-System Support
---------------
+## System Support
 Currently, Stateline runs on Linux-based operating systems only.
 
-Compiler Support
-----------------
+## Compiler Support
 Stateline has been compiled and tested under g++ 4.8.2.
 
-Prerequisites
--------------
+## Prerequisites
 Stateline requires the following libraries as prerequisites:
 
 * Boost 1.55
@@ -22,8 +18,7 @@ Stateline requires the following libraries as prerequisites:
 * cppzeromq 2358037407 (commit hash)
 * nlohmann json (commit 58d7342)
 
-Building
---------
+## Building
 The simplest way to get Stateline running is to run the `fetch-all.sh` script in the project root directory:
 
 ```bash
@@ -33,6 +28,63 @@ $ cd build/debug && make
 ```
 
 This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+
+## Example C++ Code
+This is a quick example showing the Stateline C++ API to sample from a Gaussian distribution. You can read a (link)tutorial on how to build and run this code.
+
+## Server
+```cpp
+#include "stateline/server.hpp"
+#include "stateline/csv.hpp"
+
+#include <iostream>
+
+namespace sl = stateline;
+
+int main(int ac, char *av[])
+{
+  // Use the default settings with 4 chains
+  auto settings = sl::StatelineSettings::fromDefault(4);
+
+  // Initialise a server on port 5555
+  sl::Server server{5555, settings};
+  
+  std::cout << "Collecting 1000 samples from each chain" << std::endl;
+  auto samples = server.step(1000);
+  
+  // Save the samples from each chain to a CSV file in a folder called demo-samples
+  sl::saveToCSV("demo-samples", samples);
+
+  return 0;
+}
+```
+
+## Worker
+```cpp
+#include "stateline/worker.hpp"
+
+double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
+{
+  double squaredNorm = 0.0;
+  for (auto i : x)
+  {
+    squaredNorm += i * i;
+  }
+  return 0.5 * squaredNorm;
+}
+
+int main(int argc, char *argv[])
+{
+  // Only 1 job type for this demo
+  std::vector<std::string> jobTypes = { "job" };
+  
+  // Initialise a worker with the our likelihood function and use 4 threads.
+  // Blocks until the worker is no longer needed.
+  stateline::runWorker(gaussianNLL, "localhost:5555", jobTypes, 4);
+
+  return 0;
+}
+```
 
 Running C++ Demo
 ----------------
