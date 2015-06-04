@@ -35,6 +35,8 @@ namespace stateline
     //! id 7 = stack 2 chain 4 // highest temperature chain of stack 2
     //! \endcode
     //!
+    // TODO: do we even need this class now? It doesn't really fulfil its responsibility now
+    // that it doesn't store chains. Could we just merge this with Sampler?
     class ChainArray
     {
       public:
@@ -43,7 +45,7 @@ namespace stateline
         //! \param nStacks The number of stacks. Each stack have the same temperature sequence.
         //! \param nChains The number of chains in each stack.
         //
-        ChainArray(uint nStacks, uint nChains);
+        ChainArray(uint nStacks, uint nChains, uint bufferSize);
 
         //! Get the length of a chain.
         //!
@@ -129,6 +131,8 @@ namespace stateline
         //!
         uint numTotalChains() const;
 
+        uint bufferSize() const;
+
         uint stackIndex(uint id) const;
 
         uint chainIndex(uint id) const;
@@ -137,12 +141,18 @@ namespace stateline
 
         bool isColdestInStack(uint id) const;
 
+        void clear();
+
+        void setBufferSize(uint bufferSize);
+
       private:
         void setLastState(uint id, const State& state); // TODO: we don't really need this
 
         uint nstacks_;
         uint nchains_;
-        std::vector<std::vector<State>> states_;
+        uint bufferSize_;
+        std::vector<State> lastStates_;
+        std::vector<uint> chainLengths_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
     };

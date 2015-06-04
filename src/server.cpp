@@ -10,13 +10,22 @@
 
 namespace stateline
 {
+  namespace
+  {
+    void runServer(zmq::context_t& context, uint port, bool& running)
+    {
+      auto settings = comms::DelegatorSettings::Default(port);
+      comms::Delegator delegator(context, settings, running);
+      delegator.start();
+    }
+  }
+
   StatelineSettings StatelineSettings::fromJSON(const nlohmann::json& j)
   {
     StatelineSettings s;
     s.ndims = j["dimensionality"];
     s.nstacks = j["parallelTempering"]["stacks"];
     s.nchains = j["parallelTempering"]["chains"];
-    s.nsecs = j["duration"];
     s.swapInterval = j["parallelTempering"]["swapInterval"];
     s.msLoggingRefresh = 1000;
     s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);
@@ -28,109 +37,94 @@ namespace stateline
     return s;
   }
 
-  void runServer(zmq::context_t& context, uint port, bool& running)
+  struct Server::State
   {
-    auto settings = comms::DelegatorSettings::Default(port);
-    comms::Delegator delegator(context, settings, running);
-    delegator.start();
+    mcmc::SlidingWindowSigmaAdapter sigmaAdapter;
+    mcmc::SlidingWindowBetaAdapter betaAdapter;
+    mcmc::GaussianCovProposal proposal;
+    mcmc::CovarianceEstimator covEstimator;
+    mcmc::Sampler sampler;
+
+    public:
+      State(comms::Requester& requester,
+          const std::vector<std::string>& jobTypes,
+          const mcmc::ChainArray& chains,
+          const mcmc::GaussianCovProposal& proposal,
+          uint swapInterval,
+          const mcmc::SlidingWindowSigmaAdapter& sigmaAdapter,
+          const mcmc::SlidingWindowBetaAdapter& betaAdapter,
+          const mcmc::CovarianceEstimator& covEstimator)
+        : sigmaAdapter(sigmaAdapter),
+          betaAdapter(betaAdapter),
+          proposal(proposal),
+          covEstimator(covEstimator),
+          sampler{requester, jobTypes, chains, proposal, swapInterval}
+      {
+      }
+  };
+
+  Server::Server(uint port, const StatelineSettings& s)
+    : port_(port), settings_(s), context_(new zmq::context_t{1}), requester_(*context_)
+  {
   }
 
-  void runSampler(const StatelineSettings& s, zmq::context_t& context, bool& running)
+  Server::~Server()
   {
+    stop();
+  }
 
-    mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
-    mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
-    mcmc::GaussianCovProposal proposal(s.nstacks, s.nchains, s.ndims);
-    mcmc::CovarianceEstimator covEstimator(s.nstacks, s.nchains, s.ndims);
-    comms::Requester requester(context);
+  mcmc::SamplesArray Server::step(uint length)
+  {
+    // Start the server if it's not yet started
+    if (!running_)
+    {
+      start();
+    }
 
-    // Create a chain array.
-    mcmc::ChainArray chains(s.nstacks, s.nchains, s.chainSettings);
+    state_->sampler.setBufferSize(length);
+    return runSampler(length);
+  }
 
+  void Server::start()
+  {
+    running_ = true;
 
-    for (uint i = 0; i < s.nstacks * s.nchains; i++)
+    serverThread_ = std::async(std::launch::async, runServer, std::ref(*context_), port_, std::ref(running_));
+
+    mcmc::SlidingWindowSigmaAdapter sigmaAdapter{settings_.nstacks, settings_.nchains, settings_.ndims, settings_.sigmaSettings};
+    mcmc::SlidingWindowBetaAdapter betaAdapter{settings_.nstacks, settings_.nchains, settings_.betaSettings};
+
+    // Initialise the chains with initial samples
+    mcmc::ChainArray chains(settings_.nstacks, settings_.nchains, 1);
+
+    for (uint i = 0; i < chains.numTotalChains(); i++)
     {
       // Generate a random initial sample
-      Eigen::VectorXd sample = Eigen::VectorXd::Random(s.ndims);
+      Eigen::VectorXd sample = Eigen::VectorXd::Random(settings_.ndims);
 
       // We now use the worker interface to evaluate this initial sample
-      requester.submit(i, s.jobTypes, sample);
+      requester_.submit(i, settings_.jobTypes, sample);
 
-      auto result = requester.retrieve();
+      auto result = requester_.retrieve();
       double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
 
       // Initialise this chain with the evaluated sample
       chains.initialise(i, sample, energy, sigmaAdapter.sigmas()[i], betaAdapter.betas()[i]);
     }
 
-    // A sampler just takes the worker interface, chain array, proposal function,
-    // and how often to attempt swaps.
-    mcmc::Sampler sampler(requester, s.jobTypes, chains, proposal, s.swapInterval);
-
-    mcmc::EPSRDiagnostic diagnostic(s.nstacks, s.nchains, s.ndims);
-    mcmc::TableLogger logger(s.nstacks, s.nchains, s.msLoggingRefresh);
-
-    // Record the starting time of the MCMC so we can stop the simulation once
-    // the time limit is reached.
-    auto startTime = ch::steady_clock::now();
-
-    // Chain ID and corresponding state.
-    uint id;
-    mcmc::State state;
-
-    while (ch::duration_cast<ch::seconds>(ch::steady_clock::now() - startTime).count() < s.nsecs && running)
-    {
-      // Ask the sampler to return the next state of a chain.
-      // 'id' is the ID of the chain and 'state' is the next state in that chain.
-      try
-      {
-        std::tie(id, state) = sampler.step(sigmaAdapter.sigmas(), betaAdapter.betas());
-      }
-      catch (...)
-      {
-        break;
-      }
-
-      sigmaAdapter.update(id, state);
-      betaAdapter.update(id, state);
-
-      covEstimator.update(id, state.sample);
-      proposal.update(id, covEstimator.covariances()[id]);
-
-      logger.update(id, state,
-          sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
-          betaAdapter.betas(), betaAdapter.swapRates());
-
-      diagnostic.update(id, state);
-    }
-
-    // Finish any outstanding jobs
-    sampler.flush();
-    running = false;
+    // Initialise the server state
+    // TODO: replace with C++14 make_unique
+    state_ = std::unique_ptr<State>(new State(
+          requester_,
+          settings_.jobTypes,
+          chains,
+          {settings_.nstacks, settings_.nchains, settings_.ndims},
+          settings_.swapInterval,
+          sigmaAdapter, betaAdapter,
+          {settings_.nstacks, settings_.nchains, settings_.ndims}));
   }
 
-
-  ServerWrapper::ServerWrapper(uint port, const StatelineSettings& s)
-    : port_(port), settings_(s)
-  {
-  }
-
-  void step()
-  {
-
-  }
-
-  void ServerWrapper::start()
-  {
-    running_ = true;
-    context_ = new zmq::context_t{1};
-
-    serverThread_ = std::async(std::launch::async, runServer, std::ref(*context_), port_, std::ref(running_));
-    samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_), 
-        std::ref(*context_), std::ref(running_));
-  }
-
-  void ServerWrapper::stop()
+  void Server::stop()
   {
     running_ = false;
     if (context_)
@@ -140,18 +134,50 @@ namespace stateline
     }
     // Wait for futures to finish
     serverThread_.wait();
-    samplerThread_.wait();
   }
 
-  bool ServerWrapper::isRunning()
+  bool Server::isRunning()
   {
     return running_;
   }
 
-  ServerWrapper::~ServerWrapper()
+  mcmc::SamplesArray Server::runSampler(uint length)
   {
-    stop();
+    // Chain ID and corresponding state.
+    uint id;
+    mcmc::State state;
+
+    mcmc::TableLogger logger(settings_.nstacks, settings_.nchains, settings_.msLoggingRefresh);
+
+    // Samples array for all the coldest chains
+    mcmc::SamplesArray samples(settings_.nstacks);
+
+    for (uint i = 0; i < length; i++)
+    {
+      // Ask the sampler to return the next state of a chain.
+      // 'id' is the ID of the chain and 'state' is the next state in that chain.
+      try
+      {
+        std::tie(id, state) = state_->sampler.step(state_->sigmaAdapter.sigmas(), state_->betaAdapter.betas());
+      }
+      catch (...)
+      {
+        break;
+      }
+
+      state_->sigmaAdapter.update(id, state);
+      state_->betaAdapter.update(id, state);
+
+      state_->covEstimator.update(id, state.sample);
+      state_->proposal.update(id, state_->covEstimator.covariances()[id]);
+
+      logger.update(id, state,
+          state_->sigmaAdapter.sigmas(), state_->sigmaAdapter.acceptRates(),
+          state_->betaAdapter.betas(), state_->betaAdapter.swapRates());
+
+      samples.append(id, state);
+    }
+
+    return samples;
   }
-
-
 }

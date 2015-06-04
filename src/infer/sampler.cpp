@@ -103,35 +103,26 @@ namespace stateline
       sigL_[id] = cov.llt().matrixL();
     }
 
-    Sampler::Sampler(comms::Requester& requester, 
+    Sampler::Sampler(comms::Requester& requester,
                      std::vector<std::string> jobTypes,
-                     ChainArray& chainArray,
+                     const ChainArray& chains,
                      const ProposalFunction& propFn,
                      uint swapInterval)
       : requester_(requester),
         jobTypes_(std::move(jobTypes)),
-        chains_(chainArray),
+        chains_(chains),
         propFn_(propFn),
-        nstacks_(chains_.numStacks()),
-        nchains_(chains_.numChains()),
-        propStates_(nstacks_*nchains_),
+        propStates_(chains_.numTotalChains()),
         swapInterval_(swapInterval),
-        numOutstandingJobs_(0),
-        locked_(nstacks_ * nchains_, false)
+        locked_(chains_.numTotalChains(), false)
     {
-      // Start all the chains from hottest to coldest
-      for (uint i = 0; i < chains_.numTotalChains(); i++)
-      {
-        uint c = chains_.numTotalChains() - i - 1;
-        propose(c);
-      }
+      proposeAll();
     }
 
     std::pair<uint, State> Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas)
     {
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
-
       auto result = requester_.retrieve();
       uint id = result.first;
       double energy = 0.0;
@@ -139,8 +130,6 @@ namespace stateline
       {
         energy += r;
       }
-
-      numOutstandingJobs_--;
 
       // Update the parameters for this id
       chains_.setSigma(id, sigmas[id]);
@@ -172,19 +161,27 @@ namespace stateline
       return {id, chains_.lastState(id)};
     }
 
-    SamplesArray Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas, uint length)
+    void Sampler::clear()
     {
-      // TODO: we want to obtain exactly length samples from each of the coldest chains...
-      // what about hotter chains? doesn't really matter if they've got extra samples right?
-      // what's the best way to code this without too much duplicate code with the other overload of step?
+      chains_.clear();
+
+      // TODO: we need to check which chains have outstanding jobs, and don't propose those...
+      // Do we even want to allow the sampler to be cleared if there are outstanding jobs??
+      proposeAll();
+    }
+
+    void Sampler::setBufferSize(uint size)
+    {
+      chains_.setBufferSize(size);
     }
 
     void Sampler::propose(uint id)
     {
-      propStates_[id] = propFn_(id, chains_.lastState(id).sample, chains_.sigma(id));
+      if (chains_.length(id) == chains_.bufferSize())
+        return;
 
+      propStates_[id] = propFn_(id, chains_.lastState(id).sample, chains_.sigma(id));
       requester_.submit(id, jobTypes_, propStates_[id]);
-      numOutstandingJobs_++;
     }
 
     void Sampler::unlock(uint id)
@@ -206,6 +203,15 @@ namespace stateline
       {
         // This is the coldest chain and there is no one to swap with
         propose(id);
+      }
+    }
+
+    void Sampler::proposeAll()
+    {
+      for (uint i = 0; i < chains_.numTotalChains(); i++)
+      {
+        // Propose each stack from hottest to coldest
+        propose(chains_.numTotalChains() - i - 1);
       }
     }
   }

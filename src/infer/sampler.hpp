@@ -14,33 +14,12 @@
 #include "../comms/requester.hpp"
 #include "../infer/datatypes.hpp"
 #include "../infer/chainarray.hpp"
+#include "../infer/samplesarray.hpp"
 
 namespace stateline
 {
   namespace mcmc
   {
-    class SamplesArray
-    {
-      public:
-        std::vector<State> chain(int chainIndex) const
-        {
-          return states_[chainIndex];
-        }
-
-        const State &at(int chainIndex, int sampleIndex) const
-        {
-          return states_[chainIndex][sampleIndex];
-        }
-
-        std::vector<State> operator[](int chainIndex) const
-        {
-          return chain(chainIndex);
-        }
-
-      private:
-        std::vector<std::vector<State>> states_; // TODO: make into a rectangular 2d array
-    };
-
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, double sigma)>;
 
     Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma);
@@ -78,20 +57,25 @@ namespace stateline
     class Sampler
     {
       public:
-        Sampler(comms::Requester& requester, 
+        Sampler(comms::Requester& requester,
                 std::vector<std::string> jobTypes,
-                const ProposalFunction& propFn,
+                const ChainArray& chains,
+                const ProposalFunction& propFn, // TODO: consider making this a parameter of 'step'
                 uint swapInterval);
 
         std::pair<uint, State> step(const std::vector<double>& sigmas, const std::vector<double>& betas);
 
-        SamplesArray step(const std::vector<double>& sigmas, const std::vector<double>& betas, uint length);
+        // Clears the "buffer"
+        void clear();
+
+        void setBufferSize(uint size);
 
       private:
-
         void propose(uint id);
 
         void unlock(uint id);
+
+        void proposeAll();
 
         comms::Requester& requester_;
 
@@ -102,18 +86,11 @@ namespace stateline
 
         ProposalFunction propFn_;
 
-        // convenience variables
-        const uint nstacks_;
-        const uint nchains_;
-
         // The proposed states in the process of being computed
         std::vector<Eigen::VectorXd> propStates_;
 
         // How often to attempt a swap
         uint swapInterval_;
-
-        // How many jobs haven't been retrieved?
-        uint numOutstandingJobs_;
 
         // Whether a chain is locked. A locked chain will wait for any outstanding
         // job results and propagate the lock.

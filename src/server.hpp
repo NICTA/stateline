@@ -1,14 +1,14 @@
 //!
 //! Main entry point for using stateline -- server side
 //!
-//! 
-//!
-//! \file app/serverwrapper.hpp
+//! \file app/server.hpp
 //! \author Lachlan McCalman
 //! \date 2015
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2015, NICTA
 //!
+
+//#pragma once
 
 #include <future>
 #include <zmq.hpp>
@@ -16,22 +16,16 @@
 #include <json.hpp>
 
 #include "infer/adaptive.hpp"
-#include "infer/chainarray.hpp"
+#include "infer/samplesarray.hpp"
+#include "infer/sampler.hpp"
 
 namespace stateline
 {
-  class SamplesArray
-  {
-    private:
-
-  };
-
   struct StatelineSettings
   {
       uint ndims;
       uint nstacks;
       uint nchains;
-      uint nsecs;
       uint swapInterval;
       int msLoggingRefresh;
       mcmc::SlidingWindowSigmaSettings sigmaSettings;
@@ -43,21 +37,26 @@ namespace stateline
 
   class Server
   {
-
     public:
       Server(uint port, const StatelineSettings& s);
       ~Server();
-      SamplesArray step(uint length);
+      mcmc::SamplesArray step(uint length);
+      void start();
       void stop();
       bool isRunning();
 
     private:
-      // TODO: use PIMPL to hide these members
+      mcmc::SamplesArray runSampler(uint length);
+
+      struct State; // PIMPL
+      std::unique_ptr<State> state_;
+
       uint port_;
       StatelineSettings settings_;
       bool running_;
+
       zmq::context_t* context_;
+      comms::Requester requester_;
       std::future<void> serverThread_;
-      std::future<void> samplerThread_;
   };
 }

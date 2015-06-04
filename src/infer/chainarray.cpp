@@ -65,10 +65,12 @@ namespace stateline
     }
 
 
-    ChainArray::ChainArray(uint nStacks, uint nChains)
+    ChainArray::ChainArray(uint nStacks, uint nChains, uint bufferSize)
         : nstacks_(nStacks),
           nchains_(nChains),
-          states_(nStacks * nChains),
+          bufferSize_(bufferSize),
+          lastStates_(nStacks * nChains),
+          chainLengths_(nStacks * nChains, 0),
           beta_(nStacks * nChains),
           sigma_(nStacks * nChains)
     {
@@ -76,39 +78,47 @@ namespace stateline
 
     uint ChainArray::length(uint id) const
     {
-      return states_[id].size();
+      return chainLengths_[id];
     }
 
     bool ChainArray::append(uint id, const Eigen::VectorXd& sample, double energy)
     {
+      assert(id < numTotalChains());
+      assert(length(id) > 0U);
+      assert(sample.size() == lastState(id).sample.size());
+
+      if (length(id) >= bufferSize_)
+        return false;
+
       State newState = {sample, energy, sigma_[id], beta_[id], false, SwapType::NoAttempt};
       State last = lastState(id);
       bool accepted = acceptProposal(newState, last, beta_[id]);
 
-      states_[id].push_back(accepted ? newState : last);
+      lastStates_[id] = accepted ? newState : last;
+      lastStates_[id].accepted = accepted;
+      lastStates_[id].swapType = SwapType::NoAttempt;
 
-      states_[id].back().accepted = accepted;
-      states_[id].back().swapType = SwapType::NoAttempt;
+      chainLengths_[id]++;
 
       return accepted;
     }
 
-    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample, 
+    void ChainArray::initialise(uint id, const Eigen::VectorXd& sample,
         double energy, double sigma, double beta)
     {
       setSigma(id, sigma);
       setBeta(id, beta);
-      states_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
+      setLastState(id, { sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
     }
 
     State ChainArray::lastState(uint id) const
     {
-      return states_[id].back();
+      return lastStates_[id];
     }
 
     void ChainArray::setLastState(uint id, const State& state)
     {
-      states_[id].back() = state;
+      lastStates_[id] = state;
     }
 
     SwapType ChainArray::swap(uint id1, uint id2)
@@ -192,6 +202,12 @@ namespace stateline
     bool ChainArray::isColdestInStack(uint id) const
     {
       return chainIndex(id) == 0;
+    }
+
+    void ChainArray::clear()
+    {
+      std::for_each(std::begin(chainLengths_), std::end(chainLengths_),
+          [](uint& length) { length = 0; });
     }
 
   } // namespace mcmc
