@@ -5,30 +5,28 @@ Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) samplin
 Currently, Stateline runs on Linux-based operating systems only.
 
 ## Compiler Support
-Stateline has been compiled and tested under g++ 4.8.2.
-
-## Prerequisites
-Stateline requires the following libraries as prerequisites:
-
-* Boost 1.55
-* Eigen 3.2.0
-* google-log (glog) 0.3.3
-* google-test (gtest) 1.7.0
-* zeromq 4.0.3
-* cppzeromq 2358037407 (commit hash)
-* nlohmann json (commit 58d7342)
+Stateline has been compiled and tested under GCC 4.8.2.
 
 ## Building
-The simplest way to get Stateline running is to run the `fetch-all.sh` script in the project root directory:
+To build Stateline, you will need:
+* GCC 4.8.2 or newer
+* CMake 2.8 or newer
+
+The simplest way to build Stateline running is to clone the repository and fetch the dependencies:
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline
-$ ./tools/fetch-deps && ./tools/build debug
+$ cd stateline && ./tools/fetch-deps
+```
+
+This will automatically download and build the necessary dependencies into `build/prereqs`. Then, to build Stateline in debug, run:
+
+```bash
+$ ./tools/configure debug
 $ cd build/debug && make
 ```
 
-This will automatically download and build the necessary dependencies into a build folder. It will also create and configure a folders for a debug build. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
+You usually only need to configure once, so just run `make` next time you want to re-compile. Only when you make significant changes to the build procedures will you need to run `./tools/configure`. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
 
 ## Example C++ Code
 This is a quick example showing the Stateline C++ API to sample from a Gaussian distribution. You can read a (link)tutorial on how to build and run this code.
@@ -42,10 +40,10 @@ This is a quick example showing the Stateline C++ API to sample from a Gaussian 
 
 namespace sl = stateline;
 
-int main(int ac, char *av[])
+int main(int argc, char *argv[])
 {
-  // Use the default settings with 4 chains
-  auto settings = sl::StatelineSettings::fromDefault(4);
+  // Use the default settings with 4 chains, sampling from 1D distribution
+  auto settings = sl::StatelineSettings::fromDefault(1, 4);
 
   // Initialise a server on port 5555
   sl::Server server{5555, settings};
@@ -87,54 +85,6 @@ int main(int argc, char *argv[])
 }
 ```
 
-Running C++ Demo
-----------------
-To see Stateline in action, open two terminals and run the following commands in a build directory:
-
-Run the Stateline server in Terminal 1:
-
-```bash
-$ ./stateline --config=cpp-demo-config.json
-```
-
-Run a Stateline worker in Terminal 2:
-
-```bash
-$ ./demo-worker
-```
-
-Now, in your build directory, you should see a folder called cpp-demo-chains. This folder contains samples from the demo MCMC. Running
-
-```bash
-$ python vis.py cpp-demo-output/0.csv
-```
-
-will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [triangle-plot](https://github.com/dfm/triangle.py) module.
-
-Running Python Demo
--------------------
-There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. Again, open two terminals and run the following commands in a build directory:
-
-Run the Stateline server in Terminal 1:
-
-```bash
-$ ./stateline --config=python-demo-config.json
-```
-
-Run a Stateline worker in Terminal 2:
-
-```bash
-$ python demo-worker.py
-```
-
-And again, running
-
-```bash
-$ python vis.py python-demo-output/0.csv
-```
-
-will launch a Python script that visualises the samples of the first chain.
-
 Documentation
 -------------
 Documentation can be found in the
@@ -144,7 +94,7 @@ Documentation can be found in the
 $ make doc
 ```
 
-in a build directory. Please ensure Doxygen is installed. Finally, there are demos for python and C++ in the src/bin folder.
+in a build directory. Please ensure Doxygen is installed. Finally, there are examples in the `examples` folder.
 
 Licence
 -------
