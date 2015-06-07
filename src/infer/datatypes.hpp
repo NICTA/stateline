@@ -12,7 +12,6 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <glog/logging.h>
 
 namespace stateline
 {

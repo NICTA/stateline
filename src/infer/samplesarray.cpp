@@ -15,6 +15,11 @@ namespace stateline
 {
   namespace mcmc
   {
+    SamplesArray::SamplesArray(uint numColdChains)
+      : states_(numColdChains)
+    {
+    }
+
     std::vector<State> SamplesArray::chain(uint chainIndex) const
     {
       assert(chainIndex < states_.size());
@@ -34,15 +39,9 @@ namespace stateline
       return states_[chainIndex];
     }
 
-    SamplesArray::SamplesArray(uint numColdChains)
-      : states_(numColdChains)
-    {
-    }
-
-    void SamplesArray::setChain(uint chainIndex, const std::vector<State>& states)
+    void SamplesArray::append(uint chainIndex, const State& state)
     {
       assert(chainIndex < states_.size());
-
       states_[chainIndex].push_back(state);
     }
   }

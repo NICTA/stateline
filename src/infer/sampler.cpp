@@ -10,6 +10,7 @@
 //!
 
 #include "infer/sampler.hpp"
+#include "comms/requester.hpp"
 
 #include <iostream>
 
@@ -177,6 +178,7 @@ namespace stateline
 
     void Sampler::propose(uint id)
     {
+      std::cout << chains_.length(id) << " == " << chains_.bufferSize() << std::endl;
       if (chains_.length(id) == chains_.bufferSize())
         return;
 

@@ -1,5 +1,5 @@
 //!
-//! Interface to the CSV reader/writer.
+//! Reading and writing from CSV.
 //!
 //! \file csv.hpp
 //! \author Darren Shen
@@ -10,10 +10,9 @@
 
 #include <string>
 
+#include "infer/samplesarray.hpp"
+
 namespace stateline
 {
-  void saveToCSV(const std::string& directory)
-  {
-    CSVChainArrayWriter writer(
-  }
+  void saveToCSV(const mcmc::SamplesArray& samples, const std::string& directory);
 }

@@ -21,6 +21,7 @@ MESSAGE("*** Build directory detected as: ${STATELINE_BINARY_DIR}" )
 MESSAGE("*** Prerequites directory detected as: ${PREREQ_DIR}" )
 SET(ROOT_SRC_DIR "${STATELINE_SOURCE_DIR}")
 SET(ROOT_BIN_DIR "${STATELINE_BINARY_DIR}")
+SET(ROOT_TOOLS_DIR "${ROOT_SRC_DIR}/tools")
 
 # This is the path to additional CMake modules for finding libs etc.
 SET(CMAKE_MODULE_PATH "${ROOT_SRC_DIR}/CMakeModules/" ${CMAKE_MODULE_PATH})
@@ -197,10 +198,14 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final stateline library
 ##############################################################################
-SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
-SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
-SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
+#SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
+#SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
+#SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
 
-ADD_LIBRARY(libstateline src/worker.cpp src/server.cpp)
-TARGET_LINK_LIBRARIES(libstateline ${STATELINE_COMMON} ${STATELINE_SERVER} ${STATELINE_CLIENT})
-SET_TARGET_PROPERTIES(libstateline PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME stateline)
+ADD_LIBRARY(app src/worker.cpp src/server.cpp src/csv.cpp)
+
+ADD_CUSTOM_TARGET(libstateline ALL
+                  COMMAND ar -M < "${ROOT_TOOLS_DIR}/link_libs.mri"
+                  DEPENDS app comms mcmc
+                  WORKING_DIRECTORY ${ROOT_BIN_DIR}
+                  COMMENT "Creating standalone static library")

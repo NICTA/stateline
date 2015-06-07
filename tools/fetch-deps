@@ -1,13 +1,17 @@
 #!/bin/bash
 
-# Script to build stateline prerequisites
-# MUST HAVE TAR and UNZIP installed.
+export SOURCE_DIR=$(readlink -f $(dirname $0))
+export PREREQ_DIR=$STATELINE_SOURCE_DIR/build/prereqs
 
+# Create a prereqs folder in build
+mkdir -p build/prereqs
+cd build/prereqs
+
+# Create folders for the dependencies
 mkdir src
 mkdir include
 mkdir lib
 mkdir bin
-export PREREQ_DIR=$(pwd)
 cd src
 
 # Boost 1.55
@@ -58,3 +62,15 @@ cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
 wget -c https://github.com/nlohmann/json/archive/master.zip -O json-master.zip
 [ -d json-master ] || unzip -o json-master.zip
 cp json-master/src/json.hpp $PREREQ_DIR/include
+
+# Configure debug folder
+mkdir debug
+cd debug
+cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR ../..
+cd ..
+
+# Configure release folder
+mkdir release
+cd release
+cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR ../.. -DCMAKE_BUILD_TYPE=Release
+cd ..

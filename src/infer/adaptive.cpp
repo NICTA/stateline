@@ -9,7 +9,9 @@
 //!
 
 #include "infer/adaptive.hpp"
+
 #include <iostream>
+#include <glog/logging.h>
 
 namespace stateline
 {
@@ -44,6 +46,21 @@ namespace stateline
       s.adaptRate = getWithDefault(sigmaConfig["adaptRate"], 0.2);
       s.minAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["min"], 0.8);
       s.maxAdaptFactor = getWithDefault(sigmaConfig["adaptFactor"]["max"], 1.25);
+      return s;
+    }
+
+    SlidingWindowSigmaSettings SlidingWindowSigmaSettings::fromDefault()
+    {
+      SlidingWindowSigmaSettings s;
+      s.windowSize = 100000;
+      s.coldSigma = 1.0;
+      s.sigmaFactor = 1.5;
+      s.adaptionLength = 100000;
+      s.nStepsPerAdapt = 2500;
+      s.optimalAcceptRate = 0.24;
+      s.adaptRate = 0.2;
+      s.minAdaptFactor = 0.8;
+      s.maxAdaptFactor = 1.25;
       return s;
     }
 
@@ -116,6 +133,20 @@ namespace stateline
         newSigma = sigmas_[id - 1];
       }
       sigmas_[id] = newSigma;
+    }
+
+    SlidingWindowBetaSettings SlidingWindowBetaSettings::fromDefault()
+    {
+      SlidingWindowBetaSettings s;
+      s.windowSize = 100000;
+      s.betaFactor = 1.5;
+      s.adaptionLength = 100000;
+      s.nStepsPerAdapt = 2500;
+      s.optimalSwapRate = 0.24;
+      s.adaptRate = 0.2;
+      s.minAdaptFactor = 0.8;
+      s.maxAdaptFactor = 1.25;
+      return s;
     }
 
     SlidingWindowBetaSettings SlidingWindowBetaSettings::fromJSON(const nlohmann::json& config)

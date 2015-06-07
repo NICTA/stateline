@@ -1,38 +1,27 @@
 //!
-//! Main entry point for using stateline -- worker side
+//! Stateline worker interface.
 //!
-//! 
-//!
-//! \file app/workerwrapper.hpp
+//! \file worker.hpp
 //! \author Lachlan McCalman
+//! \author Darren Shen
 //! \date 2015
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2015, NICTA
 //!
 
-#include <future>
-#include <zmq.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace stateline
 {
-  typedef std::function<double(const std::string&, const std::vector<double>&)> LikelihoodFn;
 
-  class Worker
-  {
-    public:
-      Worker(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads);
-      ~Worker();
-      void start();
-      void stop();
+// TODO: add back the Worker class. Currently it's not very useful...
 
-    private:
-      const LikelihoodFn& f_;
-      std::string address_;
-      std::vector<std::string> jobTypes_;
-      uint nThreads_;
-      bool running_;
-      zmq::context_t* context_;
-      std::future<void> clientThread_;
-      std::vector<std::future<void>> wthreads_;
-  };
+using LogLFn = std::function<double(const std::string&, const std::vector<double>&)>;
+
+void runWorkers(const LogLFn& logLFn, const std::string& addr,
+    const std::vector<std::string>& jobTypes,
+    uint nThreads = 1);
+
 }

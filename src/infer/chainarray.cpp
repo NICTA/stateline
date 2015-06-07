@@ -109,6 +109,7 @@ namespace stateline
       setSigma(id, sigma);
       setBeta(id, beta);
       setLastState(id, { sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
+      chainLengths_[id] = 1;
     }
 
     State ChainArray::lastState(uint id) const
@@ -208,6 +209,12 @@ namespace stateline
     {
       std::for_each(std::begin(chainLengths_), std::end(chainLengths_),
           [](uint& length) { length = 0; });
+    }
+
+    void ChainArray::setBufferSize(uint bufferSize)
+    {
+      assert(bufferSize > 0U);
+      bufferSize_ = bufferSize;
     }
 
   } // namespace mcmc

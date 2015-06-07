@@ -23,11 +23,12 @@ The simplest way to get Stateline running is to run the `fetch-all.sh` script in
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline && ./fetch-all.sh
+$ cd stateline
+$ ./tools/fetch-deps && ./tools/build debug
 $ cd build/debug && make
 ```
 
-This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+This will automatically download and build the necessary dependencies into a build folder. It will also create and configure a folders for a debug build. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
 
 ## Example C++ Code
 This is a quick example showing the Stateline C++ API to sample from a Gaussian distribution. You can read a (link)tutorial on how to build and run this code.

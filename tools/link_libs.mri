@@ -1,0 +1,8 @@
+create libstateline.a
+addlib libapp.a
+addlib src/infer/libmcmc.a
+addlib src/comms/libcomms.a
+addlib ../prereqs/lib/libzmq.a
+addlib ../prereqs/lib/libglog.a
+save
+end

@@ -131,7 +131,7 @@ namespace stateline
         //!
         uint numTotalChains() const;
 
-        uint bufferSize() const;
+        uint bufferSize() const { return bufferSize_; }
 
         uint stackIndex(uint id) const;
 

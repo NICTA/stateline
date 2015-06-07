@@ -11,9 +11,6 @@
 //#pragma once
 
 #include <future>
-#include <zmq.hpp>
-
-#include <json.hpp>
 
 #include "infer/adaptive.hpp"
 #include "infer/samplesarray.hpp"
@@ -32,7 +29,10 @@ namespace stateline
       mcmc::SlidingWindowBetaSettings betaSettings;
       std::vector<std::string> jobTypes;
 
-      static StatelineSettings fromJSON(const nlohmann::json& j);
+      // TODO: add json without needing a #include <json>
+      static StatelineSettings fromDefault(uint numDims,
+          const std::vector<std::string>& jobTypes,
+          uint numStacks = 1, uint numChains = 1);
   };
 
   class Server
@@ -48,15 +48,13 @@ namespace stateline
     private:
       mcmc::SamplesArray runSampler(uint length);
 
-      struct State; // PIMPL
-      std::unique_ptr<State> state_;
+      struct Impl;
+      std::unique_ptr<Impl> impl_;
 
       uint port_;
       StatelineSettings settings_;
       bool running_;
 
-      zmq::context_t* context_;
-      comms::Requester requester_;
       std::future<void> serverThread_;
   };
 }

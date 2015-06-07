@@ -1,22 +1,23 @@
-# Copyright (c) 2014, NICTA. 
+# Copyright (c) 2015, NICTA.
 # Lesser General Public License version 3 or later
 # See the COPYRIGHT file.
 
 # Authors: Lachlan McCalman
-# Date: 2014 
+# Date: 2015
 
-#ADD_LIBRARY(chainarray chainarray.cpp)
-#TARGET_LINK_LIBRARIES(chainarray db ${Boost_SERIALIZATION_LIBRARY})
-#
-#ADD_LIBRARY(sampler sampler.cpp)
-#TARGET_LINK_LIBRARIES(sampler chainarray)
+ADD_LIBRARY(mcmc_sampler OBJECT sampler.cpp)
+ADD_LIBRARY(mcmc_samplesarray OBJECT samplesarray.cpp)
+ADD_LIBRARY(mcmc_chainarray OBJECT chainarray.cpp)
+ADD_LIBRARY(mcmc_diagnostics OBJECT diagnostics.cpp)
+ADD_LIBRARY(mcmc_adaptive OBJECT adaptive.cpp)
+ADD_LIBRARY(mcmc_logging OBJECT logging.cpp)
 
-ADD_LIBRARY(mcmc sampler.cpp chainarray.cpp diagnostics.cpp adaptive.cpp logging.cpp)
+ADD_LIBRARY(mcmc
+  $<TARGET_OBJECTS:mcmc_sampler>
+  $<TARGET_OBJECTS:mcmc_samplesarray>
+  $<TARGET_OBJECTS:mcmc_chainarray>
+  $<TARGET_OBJECTS:mcmc_diagnostics>
+  $<TARGET_OBJECTS:mcmc_adaptive>
+  $<TARGET_OBJECTS:mcmc_logging>)
 
-MESSAGE(STATUS "Linking mcmc to ${Boost_SERIALIZATION_LIBRARY}")
-TARGET_LINK_LIBRARIES(mcmc db ${Boost_SERIALIZATION_LIBRARY})
-
-#ADD_TEST(test-chainarray tests/chainarray.cpp mcmc
-#${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY} mcmc)
-
-ADD_TEST(test-diagnostics tests/diagnostics.cpp ${Boost_SYSTEM_LIBRARY} mcmc)
+ADD_TEST(test-diagnostics tests/diagnostics.cpp mcmc)

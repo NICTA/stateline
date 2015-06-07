@@ -11,13 +11,17 @@
 
 #pragma once
 
-#include "../comms/requester.hpp"
 #include "../infer/datatypes.hpp"
 #include "../infer/chainarray.hpp"
 #include "../infer/samplesarray.hpp"
 
 namespace stateline
 {
+  namespace comms
+  {
+    class Requester; // Forward decl for Sampler
+  }
+
   namespace mcmc
   {
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, double sigma)>;

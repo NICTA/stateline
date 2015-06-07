@@ -1,7 +1,10 @@
-#include "stateline/worker.hpp"
+#include "worker.hpp"
+
+#include <iostream>
 
 double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
 {
+  std::cout << "got job " << jobType << ", x = " << x[0] << std::endl;
   double squaredNorm = 0.0;
   for (auto i : x)
   {
@@ -17,7 +20,7 @@ int main(int argc, char *argv[])
 
   // Initialise a worker with the our likelihood function and use 4 threads.
   // Blocks until the worker is no longer needed.
-  stateline::runWorker(gaussianNLL, "localhost:5555", jobTypes, 4);
+  stateline::runWorkers(gaussianNLL, "localhost:5555", jobTypes, 4);
 
   return 0;
 }

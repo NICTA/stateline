@@ -23,11 +23,13 @@ namespace stateline
 
         std::vector<State> chain(uint chainIndex) const;
 
-        const State &at(uint chainIndex, uint sampleIndex) const;
+        const State& at(uint chainIndex, uint sampleIndex) const;
 
         std::vector<State> operator[](uint chainIndex) const;
 
         void append(uint chainIndex, const State& state);
+
+        uint numChains() const { return states_.size(); }
 
       private:
         std::vector<std::vector<State>> states_;

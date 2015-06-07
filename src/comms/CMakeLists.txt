@@ -6,29 +6,32 @@
 # Date: 2014 
 
 # Common libraries
-ADD_LIBRARY(messages messages.cpp)
-ADD_LIBRARY(router router.cpp)
-TARGET_LINK_LIBRARIES(router messages socket ${ZMQ_LIBRARY})
-ADD_LIBRARY(socket socket.cpp)
-TARGET_LINK_LIBRARIES(socket messages ${ZMQ_LIBRARY})
+ADD_LIBRARY(comms_messages OBJECT messages.cpp)
+ADD_LIBRARY(comms_router OBJECT router.cpp)
+ADD_LIBRARY(comms_socket OBJECT socket.cpp)
 
 # Server specific libraries
-ADD_LIBRARY(serverheartbeat serverheartbeat.cpp)
-TARGET_LINK_LIBRARIES(serverheartbeat messages)
-ADD_LIBRARY(delegator delegator.cpp)
-TARGET_LINK_LIBRARIES(delegator messages router serverheartbeat ${ZMQ_LIBRARY})
-ADD_LIBRARY(requester requester.cpp)
-TARGET_LINK_LIBRARIES(requester messages router)
-ADD_LIBRARY(minion minion.cpp)
-TARGET_LINK_LIBRARIES(minion messages router)
+ADD_LIBRARY(comms_serverheartbeat OBJECT serverheartbeat.cpp)
+ADD_LIBRARY(comms_delegator OBJECT delegator.cpp)
+ADD_LIBRARY(comms_requester OBJECT requester.cpp)
 
 # Client specific libraries
-ADD_LIBRARY(worker worker.cpp)
-TARGET_LINK_LIBRARIES(worker messages router)
-ADD_LIBRARY(clientheartbeat clientheartbeat.cpp)
-TARGET_LINK_LIBRARIES(clientheartbeat messages)
+ADD_LIBRARY(comms_clientheartbeat OBJECT clientheartbeat.cpp)
+ADD_LIBRARY(comms_worker OBJECT worker.cpp)
+ADD_LIBRARY(comms_minion OBJECT minion.cpp)
 
-ADD_TEST(test-message tests/message.cpp messages)
-ADD_TEST(test-socket tests/socket.cpp socket)
-ADD_TEST(test-router tests/router.cpp router)
-ADD_TEST(test-delegator tests/delegator.cpp delegator)
+ADD_LIBRARY(comms
+  $<TARGET_OBJECTS:comms_messages>
+  $<TARGET_OBJECTS:comms_router>
+  $<TARGET_OBJECTS:comms_socket>
+  $<TARGET_OBJECTS:comms_serverheartbeat>
+  $<TARGET_OBJECTS:comms_delegator>
+  $<TARGET_OBJECTS:comms_requester>
+  $<TARGET_OBJECTS:comms_clientheartbeat>
+  $<TARGET_OBJECTS:comms_worker>
+  $<TARGET_OBJECTS:comms_minion>)
+
+ADD_TEST(test-message tests/message.cpp comms ${ZMQ_LIBRARY})
+ADD_TEST(test-socket tests/socket.cpp comms ${ZMQ_LIBRARY})
+ADD_TEST(test-router tests/router.cpp comms ${ZMQ_LIBRARY})
+ADD_TEST(test-delegator tests/delegator.cpp comms ${ZMQ_LIBRARY})
