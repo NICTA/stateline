@@ -1,0 +1,24 @@
+#!/bin/bash
+
+
+if [ $# -eq 0 ] then
+  echo "Usage: build <debug|release>"
+  exit 1
+fi
+
+export SOURCE_DIR=$(readlink -f $(dirname $0))
+export BUILD_DIR=$STATELINE_SOURCE_DIR/build
+export PREREQ_DIR=$BUILD_DIR/prereqs
+
+cd $BUILD_DIR
+
+if [ $1 -eq "debug" ] then
+  mkdir -p debug
+  cd debug
+  cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR $@
+elif [ $1 -eq "release" ] then
+  mkdir -p release
+  cd release
+  cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR -DCMAKE_BUILD_TYPE=Release $@
+fi
+
