@@ -201,11 +201,11 @@ SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
 
-ADD_LIBRARY(statelineserver src/app/logging.hpp)
+ADD_LIBRARY(statelineserver SHARED src/app/serverwrapper.cpp src/app/logging.cpp)
 TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(statelineclient src/app/workerwrapper.hpp)
+ADD_LIBRARY(statelineclient SHARED src/app/workerwrapper.cpp src/app/logging.cpp)
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
