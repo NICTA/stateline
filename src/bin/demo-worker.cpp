@@ -29,7 +29,6 @@ po::options_description commandLineOptions()
   auto opts = po::options_description("Demo Options");
   opts.add_options()
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
-    ("nthreads,t", po::value<uint>()->default_value(1), "Number of worker threads")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
     ;
   return opts;
@@ -52,18 +51,18 @@ int main(int ac, char *av[])
   // Parse the command line
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
   int logLevel = vm["loglevel"].as<int>();
-  uint nThreads = vm["nthreads"].as<uint>();
   std::string address = vm["address"].as<std::string>();
 
   // Initialise logging
   sl::initLogging("client", logLevel);
+
   // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
     
-  // Only 1 job type for this demo
-  std::vector<std::string> jobTypes {"job"};
+  // Only 1 job type ("job") for this demo
+  sl::JobLikelihoodFnMap lhMap { { "job", gaussianNLL } };
 
-  sl::WorkerWrapper w(gaussianNLL, address, jobTypes, nThreads);
+  sl::WorkerWrapper w(lhMap, address);
   w.start();
 
   while(!sl::global::interruptedBySignal)

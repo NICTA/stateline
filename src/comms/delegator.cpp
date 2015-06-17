@@ -125,7 +125,7 @@ namespace stateline
 
       std::string id = w.address.front();
       workers_.insert(std::make_pair(id, w));
-      LOG(INFO)<< " Worker " << id << " connected.";
+      LOG(INFO)<< "Worker " << id << " connected, supporting jobtypes: " << msg.data[0];
     }
 
     void Delegator::receiveRequest(const Message& msg)

@@ -10,6 +10,7 @@
 //! \copyright (c) 2015, NICTA
 //!
 
+#include <map>
 #include <future>
 #include <zmq.hpp>
 
@@ -17,23 +18,22 @@ namespace stateline
 {
   typedef std::function<double(const std::string&, const std::vector<double>&)> LikelihoodFn;
 
+  typedef std::map<std::string, LikelihoodFn> JobLikelihoodFnMap;
+
   class WorkerWrapper
   {
-
     public:
-      WorkerWrapper(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads);
+      WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address);
       ~WorkerWrapper();
       void start();
       void stop();
 
     private:
-      const LikelihoodFn& f_;
+      const JobLikelihoodFnMap& m_;
       std::string address_;
-      std::vector<std::string> jobTypes_;
-      uint nThreads_;
       bool running_;
       zmq::context_t* context_;
       std::future<void> clientThread_;
-      std::vector<std::future<void>> wthreads_;
+      std::future<void> minionThread_;
   };
 }
