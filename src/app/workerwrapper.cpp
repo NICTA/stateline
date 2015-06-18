@@ -11,20 +11,24 @@
 //!
 
 #include "workerwrapper.hpp"
-#include "../comms/minion.hpp"
-#include "../comms/worker.hpp"
+#include "comms/minion.hpp"
+#include "comms/worker.hpp"
+#include "comms/thread.hpp"
+
+#include <iomanip>
 
 namespace stateline
 {
 
-void runMinion(const JobLikelihoodFnMap& m, zmq::context_t& context, bool& running)
+void runMinion(const JobLikelihoodFnMap& m, zmq::context_t& context,
+               const std::string& workerSocketAddr, bool& running )
 {
   // Create vector of job types from JobLikelihoodFnMap keys
   std::vector<std::string> jobsVec;
   std::transform( m.begin(), m.end(), std::back_inserter(jobsVec),
                   [](const JobLikelihoodFnMap::value_type &v){ return v.first; } );
 
-  comms::Minion minion(context, jobsVec);
+  comms::Minion minion(context, jobsVec, workerSocketAddr);
   while (running)
   {
     const auto job = minion.nextJob();
@@ -34,27 +38,35 @@ void runMinion(const JobLikelihoodFnMap& m, zmq::context_t& context, bool& runni
   }
 }
 
-void runClient(zmq::context_t& context, const std::string& address, bool& running)
+std::string generateRandomIPCAddr()
 {
-  auto settings = comms::WorkerSettings::Default(address);
-  comms::Worker worker(context, settings, running);
-  worker.start();
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, 0x1000000);
+  std::ostringstream oss;
+  oss << "ipc:///tmp/sl_worker_"
+     << std::hex << std::uppercase << std::setw(6) << std::setfill('0') << dis(gen)
+     << ".socket";
+  return oss.str();
 }
 
-
 WorkerWrapper::WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address)
-  : m_(m), address_(address)
+  : m_(m), settings_(comms::WorkerSettings::Default(address))
 {
+  settings_.workerAddress = generateRandomIPCAddr();
 }
 
 void WorkerWrapper::start()
 {
   context_ = new zmq::context_t{1};
   running_ = true;
-  clientThread_ = std::async(std::launch::async, runClient, std::ref(*context_),
-                             std::cref(address_), std::ref(running_));
+
+  clientThread_ = startInThread<comms::Worker>(std::ref(running_), std::ref(*context_),
+                                               std::cref(settings_));
+
   minionThread_ = std::async(std::launch::async, runMinion, std::cref(m_),
-                             std::ref(*context_), std::ref(running_));
+                             std::ref(*context_), std::cref(settings_.workerAddress),
+                             std::ref(running_));
 }
 
 void WorkerWrapper::stop()

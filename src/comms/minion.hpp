@@ -40,7 +40,8 @@ namespace stateline
       //! \param w The parent worker object it communicates with.
       //! \param jobTypes The job types that the minion will do
       //!
-      Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes);
+      Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes,
+             const std::string socketAddr = WORKER_SOCKET_ADDR );
 
       //! Gets a job from the worker.
       //!

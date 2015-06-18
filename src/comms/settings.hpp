@@ -16,6 +16,9 @@ namespace stateline
 {
   namespace comms
   {
+    //! Default address that the minion connects its socket to.
+    const std::string WORKER_SOCKET_ADDR = "ipc:///tmp/sl_worker.socket";
+
     //! Settings for controlling heartbeat threads.
     //!
     struct HeartbeatSettings
@@ -80,17 +83,22 @@ namespace stateline
       int msPollRate;
 
       //! The address of the delegator to connect to.
-      std::string address;
+      std::string networkAddress;
+
+      //! The address of this worker which the minion connects to.
+      std::string workerAddress;
 
       //! Settings for the heartbeat monitoring.
       HeartbeatSettings heartbeat;
 
       //! Default delegator settings
-      static WorkerSettings Default(const std::string &address)
+      static WorkerSettings Default(const std::string &networkAddress,
+                                    const std::string &workerAddress = WORKER_SOCKET_ADDR)
       {
         WorkerSettings settings;
         settings.msPollRate = -1;
-        settings.address = address;
+        settings.networkAddress = networkAddress;
+        settings.workerAddress = workerAddress;
         settings.heartbeat = HeartbeatSettings::WorkerDefault();
         return settings;
       }

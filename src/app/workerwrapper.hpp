@@ -10,6 +10,8 @@
 //! \copyright (c) 2015, NICTA
 //!
 
+#include "../comms/settings.hpp"
+
 #include <map>
 #include <future>
 #include <zmq.hpp>
@@ -30,10 +32,13 @@ namespace stateline
 
     private:
       const JobLikelihoodFnMap& m_;
-      std::string address_;
+      comms::WorkerSettings settings_;
+
       bool running_;
       zmq::context_t* context_;
-      std::future<void> clientThread_;
+
+      std::future<bool> clientThread_;
       std::future<void> minionThread_;
   };
 }
+
