@@ -20,21 +20,16 @@
 namespace stateline
 {
 
-void runMinion(const JobLikelihoodFnMap& m, zmq::context_t& context,
-               const std::string& workerSocketAddr, bool& running )
+void runMinion(const JobToLikelihoodFnFn& lhFnFn, const std::vector<std::string>& jobTypes,
+               zmq::context_t& context, const std::string& workerSocketAddr, bool& running)
 {
-  // Create vector of job types from JobLikelihoodFnMap keys
-  std::vector<std::string> jobsVec;
-  std::transform( m.begin(), m.end(), std::back_inserter(jobsVec),
-                  [](const JobLikelihoodFnMap::value_type &v){ return v.first; } );
-
-  comms::Minion minion(context, jobsVec, workerSocketAddr);
+  comms::Minion minion(context, jobTypes, workerSocketAddr);
   while (running)
   {
     const auto job = minion.nextJob();
     const auto& jobType = job.first;
     const auto& sample = job.second;
-    minion.submitResult( m.at(jobType)(jobType,sample) );
+    minion.submitResult( lhFnFn(jobType)(jobType,sample) );
   }
 }
 
@@ -50,8 +45,29 @@ std::string generateRandomIPCAddr()
   return oss.str();
 }
 
+WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::vector<std::string>& jobTypes,
+                             const std::string& address)
+  : lhFnFn_( [&](const std::string&){ return f; } )
+  , jobTypes_(jobTypes)
+  , settings_(comms::WorkerSettings::Default(address))
+{
+  settings_.workerAddress = generateRandomIPCAddr();
+}
+
 WorkerWrapper::WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address)
-  : m_(m), settings_(comms::WorkerSettings::Default(address))
+  : lhFnFn_( [&](const std::string& job){ return m.at(job); } )
+  , settings_(comms::WorkerSettings::Default(address))
+{
+  settings_.workerAddress = generateRandomIPCAddr();
+
+  std::transform( m.begin(), m.end(), std::back_inserter(jobTypes_),
+                  [](const JobLikelihoodFnMap::value_type &v){ return v.first; } );
+}
+
+WorkerWrapper::WorkerWrapper(const JobToLikelihoodFnFn& f, const std::vector<std::string>& jobTypes,
+                             const std::string& address)
+  : lhFnFn_(f), jobTypes_(jobTypes)
+  , settings_(comms::WorkerSettings::Default(address))
 {
   settings_.workerAddress = generateRandomIPCAddr();
 }
@@ -64,9 +80,9 @@ void WorkerWrapper::start()
   clientThread_ = startInThread<comms::Worker>(std::ref(running_), std::ref(*context_),
                                                std::cref(settings_));
 
-  minionThread_ = std::async(std::launch::async, runMinion, std::cref(m_),
-                             std::ref(*context_), std::cref(settings_.workerAddress),
-                             std::ref(running_));
+  minionThread_ = std::async(std::launch::async, runMinion, std::cref(lhFnFn_),
+                             std::cref(jobTypes_), std::ref(*context_),
+                             std::cref(settings_.workerAddress), std::ref(running_));
 }
 
 void WorkerWrapper::stop()

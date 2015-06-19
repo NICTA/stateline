@@ -34,7 +34,7 @@ po::options_description commandLineOptions()
   return opts;
 }
 
-double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
+double gaussianNLL(const std::string& /*jobType*/, const std::vector<double>& x)
 {
   double squaredNorm = 0.0;
   for (auto i : x)
@@ -47,7 +47,6 @@ double gaussianNLL(const std::string& jobType, const std::vector<double>& x)
 
 int main(int ac, char *av[])
 {
-
   // Parse the command line
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
   int logLevel = vm["loglevel"].as<int>();
@@ -60,9 +59,19 @@ int main(int ac, char *av[])
   sl::init::initialiseSignalHandler();
     
   // Only 1 job type ("job") for this demo
-  sl::JobLikelihoodFnMap lhMap { { "job", gaussianNLL } };
+  sl::WorkerWrapper w(gaussianNLL, {"job"}, address);
 
-  sl::WorkerWrapper w(lhMap, address);
+  /*
+   NB: For multiple likelihood functions WorkerWrapper can be initialised with a map, e.g.:
+      sl::JobLikelihoodFnMap  { { "job", gaussianNLL } };
+      sl::WorkerWrapper w(lhMap, address);
+
+    or a function, e.g.:
+      auto& lh = gaussianNLL;
+      sl::JobToLikelihoodFnFn f = [&](const std::string&){ return lh; };
+      sl::WorkerWrapper w(f, {"job"}, address);
+  */
+
   w.start();
 
   while(!sl::global::interruptedBySignal)

@@ -20,18 +20,30 @@ namespace stateline
 {
   typedef std::function<double(const std::string&, const std::vector<double>&)> LikelihoodFn;
 
+  typedef std::function<const LikelihoodFn&(const std::string&)> JobToLikelihoodFnFn;
+
   typedef std::map<std::string, LikelihoodFn> JobLikelihoodFnMap;
 
   class WorkerWrapper
   {
     public:
+      WorkerWrapper(const LikelihoodFn& f, const std::vector<std::string>& jobTypes,
+                    const std::string& address);
+
       WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address);
+
+      WorkerWrapper(const JobToLikelihoodFnFn& f, const std::vector<std::string>& jobTypes,
+                    const std::string& address);
+
       ~WorkerWrapper();
       void start();
       void stop();
 
     private:
-      const JobLikelihoodFnMap& m_;
+
+      const JobToLikelihoodFnFn lhFnFn_;
+      std::vector<std::string> jobTypes_;
+
       comms::WorkerSettings settings_;
 
       bool running_;
