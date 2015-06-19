@@ -63,12 +63,12 @@ int main(int ac, char *av[])
 
   /*
    NB: For multiple likelihood functions WorkerWrapper can be initialised with a map, e.g.:
-      sl::JobLikelihoodFnMap  { { "job", gaussianNLL } };
+      sl::JobLikelihoodFnMap lhMap = { { "job", gaussianNLL } };
       sl::WorkerWrapper w(lhMap, address);
 
     or a function, e.g.:
-      auto& lh = gaussianNLL;
-      sl::JobToLikelihoodFnFn f = [&](const std::string&){ return lh; };
+      const sl::LikelihoodFn& lh = gaussianNLL;
+      sl::JobToLikelihoodFnFn f = [&lh](const std::string&) -> const sl::LikelihoodFn& { return lh; };
       sl::WorkerWrapper w(f, {"job"}, address);
   */
 
