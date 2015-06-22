@@ -30,11 +30,11 @@ namespace stateline
         minionWaiting_(true)
     {
       // Initialise the local sockets
-      minion_.bind(WORKER_SOCKET_ADDR);
+      minion_.bind(settings.workerAddress);
       heartbeat_.bind(CLIENT_HB_SOCKET_ADDR);
       network_.setIdentifier();
-      LOG(INFO) << "Worker connecting to " << settings.address;
-      network_.connect("tcp://" + settings.address);
+      LOG(INFO) << "Worker connecting to " << settings.networkAddress;
+      network_.connect("tcp://" + settings.networkAddress);
       LOG(INFO) << "Worker connected!"; 
 
       // Specify the Worker functionality

@@ -11,34 +11,60 @@
 //!
 
 #include "workerwrapper.hpp"
-#include "../comms/minion.hpp"
-#include "../comms/worker.hpp"
+#include "comms/minion.hpp"
+#include "comms/worker.hpp"
+#include "comms/thread.hpp"
+
+#include <iomanip>
 
 namespace stateline
 {
 
-void runMinion(const LikelihoodFn& f, zmq::context_t& context, const std::vector<std::string>& jobTypes, bool& running)
+void runMinion(const JobToLikelihoodFnFn& lhFnFn, const std::vector<std::string>& jobTypes,
+               zmq::context_t& context, const std::string& workerSocketAddr, bool& running)
 {
-  comms::Minion minion(context, jobTypes);
+  comms::Minion minion(context, jobTypes, workerSocketAddr);
   while (running)
   {
-    auto job = minion.nextJob();
-    auto jobType = job.first;
-    auto sample = job.second;
-    minion.submitResult(f(jobType, sample));
+    const auto job = minion.nextJob();
+    const auto& jobType = job.first;
+    const auto& sample = job.second;
+    minion.submitResult( lhFnFn(jobType)(jobType,sample) );
   }
 }
 
-void runClient(zmq::context_t& context, const std::string& address, bool& running)
+std::string generateRandomIPCAddr()
 {
-  auto settings = comms::WorkerSettings::Default(address);
-  comms::Worker worker(context, settings, running);
-  worker.start();
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dis(0, 0x1000000);
+  std::ostringstream oss;
+  oss << "ipc:///tmp/sl_worker_"
+     << std::hex << std::uppercase << std::setw(6) << std::setfill('0') << dis(gen)
+     << ".socket";
+  return oss.str();
 }
 
+WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::vector<std::string>& jobTypes,
+                             const std::string& address)
+  : lhFnFn_( [&f](const std::string&) -> const LikelihoodFn& { return f; } )
+  , jobTypes_(jobTypes)
+  , settings_(comms::WorkerSettings::Default(address))
+{
+}
 
-WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::string& address, const std::vector<std::string>& jobTypes, uint nThreads)
-  : f_(f), address_(address), jobTypes_(jobTypes), nThreads_(nThreads) 
+WorkerWrapper::WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address)
+  : lhFnFn_( [&m](const std::string& job) -> const LikelihoodFn& { return m.at(job); } )
+  , settings_(comms::WorkerSettings::Default(address))
+{
+  std::transform( m.begin(), m.end(), std::back_inserter(jobTypes_),
+                  [](const JobLikelihoodFnMap::value_type &v){ return v.first; } );
+}
+
+WorkerWrapper::WorkerWrapper(const JobToLikelihoodFnFn& f, const std::vector<std::string>& jobTypes,
+                             const std::string& address)
+  : lhFnFn_(f), jobTypes_(jobTypes)
+  , settings_(comms::WorkerSettings::Default(address))
 {
 }
 
@@ -46,13 +72,15 @@ void WorkerWrapper::start()
 {
   context_ = new zmq::context_t{1};
   running_ = true;
-  clientThread_ = std::async(std::launch::async, runClient, std::ref(*context_), std::cref(address_), std::ref(running_));
-  for (uint i=0; i<nThreads_;i++)
-  {
-    wthreads_.push_back(
-        std::async(std::launch::async, runMinion, std::cref(f_), std::ref(*context_), std::cref(jobTypes_), std::ref(running_))
-        );
-  }
+
+  settings_.workerAddress = generateRandomIPCAddr();
+
+  clientThread_ = startInThread<comms::Worker>(std::ref(running_), std::ref(*context_),
+                                               std::cref(settings_));
+
+  minionThread_ = std::async(std::launch::async, runMinion, std::cref(lhFnFn_),
+                             std::cref(jobTypes_), std::ref(*context_),
+                             std::cref(settings_.workerAddress), std::ref(running_));
 }
 
 void WorkerWrapper::stop()
@@ -64,16 +92,12 @@ void WorkerWrapper::stop()
     context_ = nullptr; //THIS MUST BE DONE
   }
   clientThread_.wait();
-  for (auto const& t : wthreads_)
-  {
-    t.wait(); 
-  }
+  minionThread_.wait();
 }
 
 WorkerWrapper::~WorkerWrapper()
 {
   stop();
 }
-
 
 }

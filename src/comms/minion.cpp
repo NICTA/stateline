@@ -13,10 +13,11 @@ namespace stateline
 {
   namespace comms
   {
-    Minion::Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes)
+    Minion::Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes,
+                   const std::string socketAddr /*= WORKER_SOCKET_ADDR*/ )
         : socket_(context, ZMQ_DEALER, "toWorker")
     {
-      socket_.connect(WORKER_SOCKET_ADDR.c_str());
+      socket_.connect(socketAddr.c_str());
       std::string jobstring = boost::algorithm::join(jobTypes, ":");
       socket_.send({HELLO,{jobstring}});
     }

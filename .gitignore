@@ -56,5 +56,11 @@ target/
 # PyCharm
 .idea
 
+# qtcreator
+CMakeLists.txt.user
+
+# vim
+*.swp
+
 # Build
 build
