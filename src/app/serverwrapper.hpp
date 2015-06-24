@@ -15,10 +15,10 @@
 #include <json.hpp>
 #include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
+#include "../infer/sampler.hpp"
 
 namespace stateline
 {
-  
   struct StatelineSettings
   {
       uint ndims;
@@ -31,6 +31,7 @@ namespace stateline
       mcmc::SlidingWindowBetaSettings betaSettings;
       mcmc::ChainSettings chainSettings;
       std::vector<std::string> jobTypes;
+      mcmc::ProposalBounds proposalBounds;
 
       static StatelineSettings fromJSON(const nlohmann::json& j)
       {
@@ -49,6 +50,9 @@ namespace stateline
         {
           s.jobTypes.push_back(i);
         }
+
+        if (j.count("boundaries"))
+          s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
         
         return s;
       }

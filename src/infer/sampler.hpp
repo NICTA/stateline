@@ -15,34 +15,58 @@
 #include "../infer/datatypes.hpp"
 #include "../infer/chainarray.hpp"
 
+#include <json.hpp>
+
 namespace stateline
 {
   namespace mcmc
   {
-    
+
+    //! Settings for the defining a hard boundary on the samples produced
+    //! by the proposal function.
+    struct ProposalBounds
+    {
+      Eigen::VectorXd min;
+      Eigen::VectorXd max;
+
+      static ProposalBounds fromJSON(const nlohmann::json& j)
+      {
+        ProposalBounds b;
+        uint nDims = j["dimensionality"];
+        uint nMin = j["boundaries"]["min"].size();
+        uint nMax = j["boundaries"]["max"].size();
+
+        if ((nMin != 0) || (nMax != 0))
+        {
+          if ((nMin != nDims) || (nMax != nDims))
+          {
+            LOG(ERROR) << "Proposal bounds dimension mismatch: ndim="
+                       << nDims <<", nMin=" << nMin << ", nMax=" << nMax;
+          }
+          else
+          {
+            b.min.resize(nDims);
+            b.max.resize(nDims);
+            for (uint i=0; i < nDims; ++i)
+            {
+              b.min[i] = j["boundaries"]["min"][i];
+              b.max[i] = j["boundaries"]["max"][i];
+            }
+          }
+        }
+        return b;
+      }
+    };
+
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, double sigma)>;
-    
-    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma);
-    
-    //! A truncated Gaussian proposal function. It randomly varies each value in
-    //! the state according to a truncated Gaussian distribution. It also bounces of the
-    //! walls of the hard boundaries given so as not to get stuck in corners.
-    //! 
-    //! \param state The current state of the chain
-    //! \param sigma The standard deviation of the distribution (step size of the proposal)
-    //! \param min The minimum bound of theta 
-    //! \param max The maximum bound of theta 
-    //! \returns The new proposed theta
-    //!
-    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
-        double sigma, const Eigen::VectorXd& min, const Eigen::VectorXd& max);
 
     class GaussianCovProposal
     {
       public:
-        GaussianCovProposal(uint nStacks, uint nChains, uint nDims);
+        GaussianCovProposal(uint nStacks, uint nChains, uint nDims, const ProposalBounds& bounds);
 
         Eigen::VectorXd propose(uint id, const Eigen::VectorXd &sample, double sigma);
+        Eigen::VectorXd boundedPropose(uint id, const Eigen::VectorXd &sample, double sigma);
 
         Eigen::VectorXd operator()(uint id, const Eigen::VectorXd &sample, double sigma);
 
@@ -52,6 +76,9 @@ namespace stateline
         std::mt19937 gen_;
         std::normal_distribution<> rand_; // Standard normal
         std::vector<Eigen::MatrixXd> sigL_;
+
+        ProposalBounds bounds_;
+        ProposalFunction proposeFn_;
     };
 
     class Sampler

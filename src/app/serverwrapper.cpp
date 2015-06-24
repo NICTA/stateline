@@ -19,7 +19,7 @@ namespace stateline
 
     mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
     mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
-    mcmc::GaussianCovProposal proposal(s.nstacks, s.nchains, s.ndims);
+    mcmc::GaussianCovProposal proposal(s.nstacks, s.nchains, s.ndims, s.proposalBounds);
     mcmc::CovarianceEstimator covEstimator(s.nstacks, s.nchains, s.ndims);
     comms::Requester requester(context);
 
