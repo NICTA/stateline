@@ -11,7 +11,10 @@
 
 #include "infer/sampler.hpp"
 
+#include <functional>
 #include <iostream>
+
+namespace ph = std::placeholders;
 
 namespace stateline
 {
@@ -53,33 +56,23 @@ namespace stateline
       return result;
     }
 
-    Eigen::VectorXd gaussianProposal(uint id, const Eigen::VectorXd& sample, double sigma)
-    {
-      // Random number generators
-      static std::random_device rd;
-      static std::mt19937 generator(rd());
-      static std::normal_distribution<> rand; // Standard normal
-
-      // Vary each paramater according to a Gaussian distribution
-      Eigen::VectorXd proposal(sample.rows());
-      for (int i = 0; i < proposal.rows(); i++)
-        proposal(i) = sample(i) + rand(generator) * sigma;
-
-      return proposal;
-    }
-
-    Eigen::VectorXd truncatedGaussianProposal(uint id, const Eigen::VectorXd& sample,
-        double sigma,
-        const Eigen::VectorXd& min, const Eigen::VectorXd& max)
-    {
-      return bouncyBounds(gaussianProposal(id, sample, sigma), min, max);
-    }
-
-    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint nDims)
-      : gen_(std::random_device()()), sigL_(nStacks * nChains)
+    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint nDims,
+                                             const ProposalBounds& bounds)
+      : gen_(std::random_device()()), sigL_(nStacks * nChains), bounds_(bounds)
     {
       for (uint i = 0; i < nStacks * nChains; i++)
         update(i, Eigen::MatrixXd::Identity(nDims, nDims)); 
+
+      if ((bounds_.min.rows() == nDims) && (bounds_.max.rows() == nDims))
+      {
+        LOG(INFO) << "Using a bounded Gaussian proposal function";
+        proposeFn_ = std::bind(&GaussianCovProposal::boundedPropose, this, ph::_1, ph::_2, ph::_3);
+      }
+      else
+      {
+        LOG(INFO) << "Using a Gaussian proposal function";
+        proposeFn_ = std::bind(&GaussianCovProposal::propose, this, ph::_1, ph::_2, ph::_3);
+      }
     }
 
     Eigen::VectorXd GaussianCovProposal::propose(uint id, const Eigen::VectorXd &sample, double sigma)
@@ -90,12 +83,17 @@ namespace stateline
       for (uint i = 0; i < n; i++)
         randn(i) = rand_(gen_);
 
-      return sample + sigL_[id] * randn * sigma * sigma;
+      return sample + sigL_[id] * randn * sigma;
+    }
+
+    Eigen::VectorXd GaussianCovProposal::boundedPropose(uint id, const Eigen::VectorXd& sample, double sigma)
+    {
+      return bouncyBounds(propose(id, sample, sigma), bounds_.min, bounds_.max);
     }
 
     Eigen::VectorXd GaussianCovProposal::operator()(uint id, const Eigen::VectorXd &sample, double sigma)
     {
-      return propose(id, sample, sigma);
+      return proposeFn_(id, sample, sigma);
     }
 
     void GaussianCovProposal::update(uint id, const Eigen::MatrixXd &cov)
