@@ -83,7 +83,7 @@ namespace stateline
       for (uint i = 0; i < n; i++)
         randn(i) = rand_(gen_);
 
-      return sample + sigL_[id] * randn * sigma * sigma;
+      return sample + sigL_[id] * randn * sigma;
     }
 
     Eigen::VectorXd GaussianCovProposal::boundedPropose(uint id, const Eigen::VectorXd& sample, double sigma)
