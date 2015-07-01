@@ -7,6 +7,7 @@
   "duration": 20,
   "sigma": 1.0,
   "jobTypes": ["job"],
+  "annealLength": 1,
   "sigmaAdaption": {
     "windowSize": 100000,
     "adaptionLength": 100000,

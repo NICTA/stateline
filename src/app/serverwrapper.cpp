@@ -14,9 +14,41 @@ namespace stateline
     delegator.start();
   }
 
+  std::pair<Eigen::VectorXd,double> generateInitialSample(const StatelineSettings& s,
+                                                          comms::Requester& requester)
+  {
+    uint n = s.annealLength;
+
+    std::vector<Eigen::VectorXd> sampleVec(n);
+
+    // Send n random samples to workers to be evaluated
+    for (uint i=0; i<n; ++i)
+    {
+      sampleVec[i] = Eigen::VectorXd::Random(s.ndims);
+      requester.submit(i, s.jobTypes, sampleVec[i]);
+    }
+
+    // Retrieve all results and select sample with lowest energy
+    uint minEnergyIndex = 0;
+    double minEnergy = std::numeric_limits<double>::max();
+
+    for (uint i=0; i<n; ++i)
+    {
+      auto result = requester.retrieve();
+      uint id = result.first;
+      double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
+      if (energy < minEnergy)
+      {
+        minEnergyIndex = id;
+        minEnergy = energy;
+      }
+    }
+
+    return {sampleVec[minEnergyIndex], minEnergy};
+  }
+
   void runSampler(const StatelineSettings& s, zmq::context_t& context, bool& running)
   {
-
     mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
     mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
     mcmc::GaussianCovProposal proposal(s.nstacks, s.nchains, s.ndims, s.proposalBounds);
@@ -26,20 +58,18 @@ namespace stateline
     // Create a chain array.
     mcmc::ChainArray chains(s.nstacks, s.nchains, s.chainSettings);
 
+    LOG(INFO) << "Initialising chains using annealLength = " << s.annealLength;
 
     for (uint i = 0; i < s.nstacks * s.nchains; i++)
     {
-      // Generate a random initial sample
-      Eigen::VectorXd sample = Eigen::VectorXd::Random(s.ndims);
-
-      // We now use the worker interface to evaluate this initial sample
-      requester.submit(i, s.jobTypes, sample);
-
-      auto result = requester.retrieve();
-      double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
+      // Generate the initial sample/energy for this chain
+      Eigen::VectorXd sample;
+      double energy;
+      std::tie(sample,energy) = generateInitialSample(s,requester);
 
       // Initialise this chain with the evaluated sample
       chains.initialise(i, sample, energy, sigmaAdapter.sigmas()[i], betaAdapter.betas()[i]);
+      LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
     }
 
     // A sampler just takes the worker interface, chain array, proposal function,

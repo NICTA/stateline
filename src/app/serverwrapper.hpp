@@ -24,6 +24,7 @@ namespace stateline
       uint ndims;
       uint nstacks;
       uint nchains;
+      uint annealLength;
       uint nsecs;
       uint swapInterval;
       int msLoggingRefresh;
@@ -39,6 +40,7 @@ namespace stateline
         s.ndims = j["dimensionality"];
         s.nstacks = j["parallelTempering"]["stacks"];
         s.nchains = j["parallelTempering"]["chains"];
+        s.annealLength = j["annealLength"];
         s.nsecs = j["duration"];
         s.swapInterval = j["parallelTempering"]["swapInterval"];
         s.msLoggingRefresh = 1000;
