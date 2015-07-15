@@ -191,7 +191,9 @@ namespace stateline
       // Save the swap only on the lower temperature chain
       if (swapped)
       {
-        std::swap(stateh, statel);
+        std::swap(stateh.sample, statel.sample);
+        std::swap(stateh.energy, statel.energy);
+        std::swap(stateh.accepted, statel.accepted);
         statel.swapType = SwapType::Accept;
         setLastState(hId, stateh);
         setLastState(lId, statel);
