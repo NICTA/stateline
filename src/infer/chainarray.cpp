@@ -169,7 +169,10 @@ namespace stateline
       }
       else
       {
-        writer_.replaceLast(id / numChains(), state);
+        if (chainIndex(id) == 0)
+        {
+          writer_.replaceLast(id / numChains(), state);
+        }
         lastState_[id] = state;
       }
     }
