@@ -32,7 +32,7 @@ namespace stateline
       for (auto s : sockets_)
       {
         s->setLinger(0);
-        pollList_.push_back({s->socket_, 0, ZMQ_POLLIN, 0});
+        pollList_.push_back({(void*)s->socket_, 0, ZMQ_POLLIN, 0});
       }
     }
 
