@@ -33,7 +33,7 @@ $ cd stateline && ./fetch-all.sh
 $ cd build/debug && make
 ```
 
-This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced build instructions](https://github.com/NICTA/stateline/wiki/Installation-Guide).
 
 Communications
 --------------
