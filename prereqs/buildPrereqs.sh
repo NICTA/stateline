@@ -1,14 +1,15 @@
-#!/bin/bash
+#!/bin/sh -ex
 
 # Script to build stateline prerequisites
 # MUST HAVE TAR and UNZIP installed.
 
-mkdir src
-mkdir include
-mkdir lib
-mkdir bin
-export PREREQ_DIR=$(pwd)
+PREREQ_DIR=$(pwd)
+N_PROC=$(getconf _NPROCESSORS_ONLN)
+
+mkdir -p src include lib bin
 cd src
+
+exit 1
 
 # Boost 1.55
 wget -c http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz

@@ -1,14 +1,16 @@
 #!/bin/sh -ex
 
-export STATELINE_SOURCE_DIR=$(readlink -f $(dirname $0))
-export PREREQ_DIR=$STATELINE_SOURCE_DIR/build/prereqs
+SOURCE_DIR=$(pwd)
+BUILD_DIR=$SOURCE_DIR/build
+PREREQ_DIR=$BUILD_DIR/prereqs
 
-mkdir build
-cd build
-cp -r ../prereqs .
-cd prereqs
-./buildPrereqs.sh
-cd ..
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
+cp -r $SOURCE_DIR/prereqs $PREREQ_DIR
+cd $PREREQ_DIR
+source buildPrereqs.sh
+
+exit 1
 
 # Configure debug folder
 mkdir debug

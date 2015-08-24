@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh -ex
 
 # Build script for Stateline
 # =========================
