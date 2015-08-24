@@ -26,6 +26,7 @@ namespace stateline
 
     void Requester::submit(uint id, const std::vector<std::string>& jobTypes, const Eigen::VectorXd& data)
     {
+
         std::string jtstring = boost::algorithm::join(jobTypes, ":");
 
         std::vector<std::string> dataVectorStr;

@@ -15,10 +15,10 @@
 include(FindPackageHandleStandardArgs)
 
 find_path(GLOG_INCLUDE_DIR glog/logging.h
-  HINTS
-  ${GLOG_ROOT_DIR}
+  HINTS ${GLOG_ROOT_DIR}
   PATH_SUFFIXES include
   PATHS
+  HINTS ${GLOG_ROOT_DIR}/include
   ~/Library/Frameworks
   /Library/Frameworks
   /usr/local

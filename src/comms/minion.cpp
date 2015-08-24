@@ -14,7 +14,7 @@ namespace stateline
   namespace comms
   {
     Minion::Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes,
-                   const std::string socketAddr /*= WORKER_SOCKET_ADDR*/ )
+                   const std::string socketAddr )
         : socket_(context, ZMQ_DEALER, "toWorker")
     {
       socket_.connect(socketAddr.c_str());

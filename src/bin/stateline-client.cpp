@@ -38,7 +38,7 @@ po::options_description commandLineOptions()
   opts.add_options()
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("networkAddr,n",po::value<std::string>()->default_value("localhost:5555"), "Address of delegator")
-    ("workerAddr,w",po::value<std::string>()->default_value(stateline::comms::WORKER_SOCKET_ADDR),
+    ("workerAddr,w",po::value<std::string>()->default_value("ipc:///tmp/sl_worker.sock"),
       "Address of worker for minion to connect to")
     ;
   return opts;
@@ -63,7 +63,7 @@ int main(int ac, char *av[])
   // --------------------------------------------------------------------------
   std::string networkAddr = vm["networkAddr"].as<std::string>();
   std::string workerAddr = vm["workerAddr"].as<std::string>();
-  sl::comms::WorkerSettings settings = sl::comms::WorkerSettings::Default(networkAddr,workerAddr);
+  sl::comms::WorkerSettings settings = sl::comms::WorkerSettings::Default(networkAddr, workerAddr);
 
   // In Stateline, a worker can handle multiple job types. Since the server
   // only sends out one job type, we can just set it to the default job type

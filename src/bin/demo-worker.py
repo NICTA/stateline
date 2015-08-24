@@ -3,6 +3,8 @@ import json
 import logging
 import numpy as np
 import subprocess
+import random
+import string
 
 HELLO = b'0'
 HEARTBEAT = b'1'
@@ -10,6 +12,9 @@ REQUEST = b'2'
 JOB = b'3'
 RESULT = b'4'
 GOODBYE = b'5'
+
+def random_string():
+    return "".join(random.choice(string.lowercase) for x in range(10))
 
 def nll(x):
     # negative log likelihood of standard normal distribution
@@ -50,8 +55,11 @@ def main():
     logging.basicConfig(level=logging.CRITICAL)
 
     # Launch stateline-client
+    #random address
+    addr = "ipc:///tmp/sl_worker_" + random_string() + ".socket"
+
     logging.info('Starting client')
-    client_proc = subprocess.Popen(['./stateline-client'])
+    client_proc = subprocess.Popen(['./stateline-client', '-w', addr])
     logging.info('Started client')
 
     # Load configuration
@@ -63,7 +71,6 @@ def main():
     # Start minion
     ctx = zmq.Context()
     socket = ctx.socket(zmq.DEALER)
-    addr = "ipc:///tmp/sl_worker.socket"
 
     logging.info("Connecting to {0}...".format(addr))
     socket.connect(addr)

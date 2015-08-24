@@ -4,7 +4,8 @@ Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) samplin
 
 System Support
 --------------
-Currently, Stateline runs on Linux-based operating systems only.
+Currently, Stateline runs on Linux-based operating systems only, though there
+is also a Dockerfile. 
 
 Compiler Support
 ----------------
@@ -33,6 +34,13 @@ $ cd build/debug && make
 ```
 
 This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+
+Communications
+--------------
+
+By default, Stateline workers communicate with the sever on port 5555. Keep
+this port open or exposed on the Docker containers.
+
 
 Running C++ Demo
 ----------------

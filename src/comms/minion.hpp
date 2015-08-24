@@ -41,7 +41,7 @@ namespace stateline
       //! \param jobTypes The job types that the minion will do
       //!
       Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes,
-             const std::string socketAddr = WORKER_SOCKET_ADDR );
+             const std::string socketAddr);
 
       //! Gets a job from the worker.
       //!

@@ -49,13 +49,13 @@ WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::vector<std::strin
                              const std::string& address)
   : lhFnFn_( [&f](const std::string&) -> const LikelihoodFn& { return f; } )
   , jobTypes_(jobTypes)
-  , settings_(comms::WorkerSettings::Default(address))
+  , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
 {
 }
 
 WorkerWrapper::WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address)
   : lhFnFn_( [&m](const std::string& job) -> const LikelihoodFn& { return m.at(job); } )
-  , settings_(comms::WorkerSettings::Default(address))
+  , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
 {
   std::transform( m.begin(), m.end(), std::back_inserter(jobTypes_),
                   [](const JobLikelihoodFnMap::value_type &v){ return v.first; } );
@@ -64,7 +64,7 @@ WorkerWrapper::WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& add
 WorkerWrapper::WorkerWrapper(const JobToLikelihoodFnFn& f, const std::vector<std::string>& jobTypes,
                              const std::string& address)
   : lhFnFn_(f), jobTypes_(jobTypes)
-  , settings_(comms::WorkerSettings::Default(address))
+  , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
 {
 }
 
@@ -72,8 +72,6 @@ void WorkerWrapper::start()
 {
   context_ = new zmq::context_t{1};
   running_ = true;
-
-  settings_.workerAddress = generateRandomIPCAddr();
 
   clientThread_ = startInThread<comms::Worker>(std::ref(running_), std::ref(*context_),
                                                std::cref(settings_));
