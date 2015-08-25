@@ -9,15 +9,15 @@ N_PROC=$(getconf _NPROCESSORS_ONLN)
 mkdir -p src include lib bin
 cd src
 
-exit 1
-
 # Boost 1.55
 wget -c http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.gz
 [ -d boost_1_55_0 ] || tar -xvf boost_1_55_0.tar.gz
 cd boost_1_55_0
 ./bootstrap.sh
-./b2 -j $(nproc) --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR
-cd ..
+./b2 -j $N_PROC --layout=versioned variant=debug,release threading=multi link=static runtime-link=static toolset=gcc address-model=64 install --prefix=$PREREQ_DIR
+cd -
+
+exit 1
 
 # Eigen 3.2.0
 wget -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O eigen_3.2.0.tar.gz
