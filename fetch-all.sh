@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh -ex
 
 export STATELINE_SOURCE_DIR=$(readlink -f $(dirname $0))
 export PREREQ_DIR=$STATELINE_SOURCE_DIR/build/prereqs
