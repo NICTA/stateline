@@ -225,6 +225,7 @@ namespace stateline
       for (auto const& j : w.workInProgress)
         jobQueue_.push_front(j.second);
       workers_.erase(worker);
+      LOG(INFO)<< "Worker " << worker << " disconnected: re-assigning their jobs";
     }
 
     void Delegator::sendFailed(const Message& msgToWorker)
