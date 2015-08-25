@@ -24,17 +24,20 @@ namespace stateline
       socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
     }
 
-    void Requester::submit(uint id, const std::vector<std::string>& jobTypes, const Eigen::VectorXd& data)
+    void Requester::submit(uint id, const std::vector<uint>& jobTypes, const Eigen::VectorXd& data)
     {
+      std::vector<std::string> jobTypesStr;
+      std::transform(jobTypes.begin(), jobTypes.end(),
+                     std::back_inserter(jobTypesStr),
+                     [](uint x) { return std::to_string(x); });
+      std::string jtstring = boost::algorithm::join(jobTypesStr, ":");
 
-        std::string jtstring = boost::algorithm::join(jobTypes, ":");
+      std::vector<std::string> dataVectorStr;
+      for (uint i = 0; i < data.size(); i++) {
+        dataVectorStr.push_back(std::to_string(data(i)));
+      }
 
-        std::vector<std::string> dataVectorStr;
-        for (uint i = 0; i < data.size(); i++) {
-          dataVectorStr.push_back(std::to_string(data(i)));
-        }
-
-        socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, boost::algorithm::join(dataVectorStr, ":") }});
+      socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, boost::algorithm::join(dataVectorStr, ":") }});
     }
 
     std::pair<uint, std::vector<double>> Requester::retrieve()

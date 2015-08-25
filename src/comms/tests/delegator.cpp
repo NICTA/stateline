@@ -59,6 +59,7 @@ public:
     settings.msPollRate = 100;
     settings.heartbeat.msPollRate = 100;
     settings.heartbeat.msTimeout = 500;
+    settings.maxJobTypes = 10;
 
     running_ = true;
     delFuture_ = stateline::startInThread<::stateline::comms::Delegator>(running_, std::ref(context_), std::ref(settings));
@@ -91,25 +92,25 @@ TEST_F(DelegatorTest, canSendHelloToDelegator)
 
 TEST_F(DelegatorTest, canSendAndReceiveSingleJobTypeMultipleTimes)
 {
-  worker_.send({ HELLO, { "A" }});
+  worker_.send({ HELLO, { "0:1" }});
 
   // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "A", "Request 1" }});
+  requester_.send({{ "42" }, REQUEST, { "0", "Request 1" }});
   auto job1 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job1);
+  EXPECT_EQ(Message(JOB, { "0", "0", "Request 1" }), job1);
 
   // Send another job request
-  requester_.send({{ "36" }, REQUEST, { "A", "Request 2" }});
+  requester_.send({{ "36" }, REQUEST, { "0", "Request 2" }});
   auto job2 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "A", "1", "Request 2" }), job2);
+  EXPECT_EQ(Message(JOB, { "0", "1", "Request 2" }), job2);
 }
 
 TEST_F(DelegatorTest, canSendAndReceiveMultipleJobTypes)
 {
-  worker_.send({ HELLO, { "A:B" }});
+  worker_.send({ HELLO, { "0:2" }});
 
   // Send a job request with two job types
-  requester_.send({{ "42" }, REQUEST, { "A:B", "Request" }});
+  requester_.send({{ "42" }, REQUEST, { "0:1", "Request" }});
 
   // Receive both of the requests
   auto job1 = receiveIgnoreHBs(worker_);
@@ -118,27 +119,27 @@ TEST_F(DelegatorTest, canSendAndReceiveMultipleJobTypes)
   ASSERT_EQ(3U, job1.data.size());
   ASSERT_EQ(3U, job2.data.size());
 
-  if (job1.data[0] == "A")
+  if (job1.data[0] == "0")
   {
-    EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job1);
-    EXPECT_EQ(Message(JOB, { "B", "1", "Request" }), job2);
+    EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job1);
+    EXPECT_EQ(Message(JOB, { "1", "1", "Request" }), job2);
   }
   else
   {
-    EXPECT_EQ(Message(JOB, { "B", "0", "Request" }), job1);
-    EXPECT_EQ(Message(JOB, { "A", "1", "Request" }), job2);
+    EXPECT_EQ(Message(JOB, { "1", "0", "Request" }), job1);
+    EXPECT_EQ(Message(JOB, { "0", "1", "Request" }), job2);
   }
 }
 
 TEST_F(DelegatorTest, canReceiveResultForRequest)
 {
   // Connect the worker
-  worker_.send({ HELLO, { "A" }});
+  worker_.send({ HELLO, { "0:1" }});
 
   // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "A", "Request" }});
+  requester_.send({{ "42" }, REQUEST, { "0", "Request" }});
   auto job = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job);
+  EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job);
 
   // Send the job result
   worker_.send({RESULT, { "0", "Result" }});
@@ -150,29 +151,29 @@ TEST_F(DelegatorTest, canReceiveResultForRequest)
 
 TEST_F(DelegatorTest, multipleHelloMessages)
 {
-  worker_.send({ HELLO, { "A" }});
-  worker_.send({ HELLO, { "B" }}); // Should be ignored
-  worker_.send({ HELLO, { "C" }}); // Should be ignored
+  worker_.send({ HELLO, { "0:1" }});
+  worker_.send({ HELLO, { "1:2" }}); // Should be ignored
+  worker_.send({ HELLO, { "2:3" }}); // Should be ignored
 }
 
 TEST_F(DelegatorTest, requesterSendsBeforeWorkerSaysHello)
 {
   // Send a job request first
-  requester_.send({{ "42" }, REQUEST, { "A", "Request 1" }});
+  requester_.send({{ "42" }, REQUEST, { "0", "Request 1" }});
 
   // Worker connects
-  worker_.send({ HELLO, { "A" }});
+  worker_.send({ HELLO, { "0:1" }});
   auto job = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "A", "0", "Request 1" }), job);
+  EXPECT_EQ(Message(JOB, { "0", "0", "Request 1" }), job);
 }
 
 TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
 {
   // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "A", "Request" }});
+  requester_.send({{ "42" }, REQUEST, { "0", "Request" }});
 
   // Receive the job. This worker does not send heartbeats and will timeout eventually.
-  worker_.send({ HELLO, { "A" }});
+  worker_.send({ HELLO, { "0:1" }});
   receiveIgnoreHBs(worker_);
 
   // Wait for this worker to time out
@@ -184,12 +185,12 @@ TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
   newWorker.connect("tcp://localhost:5555");
 
   // Connect the new worker
-  newWorker.send({ HELLO, { "A" }});
+  newWorker.send({ HELLO, { "0:1" }});
 
   // Wait for a job, this should unblock as soon as the heartbeat times out
   // and the previous worker considered dead.
   auto job = receiveIgnoreHBs(newWorker);
-  EXPECT_EQ(Message(JOB, { "A", "0", "Request" }), job);
+  EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job);
 
   // Send the job result
   newWorker.send({ RESULT, { "0", "Result" }});
@@ -197,4 +198,20 @@ TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
   // Get the job result from the requester
   auto result = requester_.receive();
   EXPECT_EQ(Message({ "42" }, RESULT, { "Result" }), result);
+}
+
+TEST_F(DelegatorTest, workerReceivesEverythingForEmptyJobTypes)
+{
+  worker_.send({ HELLO, { "" }});
+
+  // Send a job request
+  requester_.send({{ "42" }, REQUEST, { "3", "Request 1" }});
+  auto job1 = receiveIgnoreHBs(worker_);
+  EXPECT_EQ(Message(JOB, { "3", "0", "Request 1" }), job1);
+
+  // Send another job request
+  requester_.send({{ "36" }, REQUEST, { "5", "Request 2" }});
+  auto job2 = receiveIgnoreHBs(worker_);
+  EXPECT_EQ(Message(JOB, { "5", "1", "Request 2" }), job2);
+
 }

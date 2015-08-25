@@ -85,7 +85,7 @@ namespace stateline
     {
       public:
         Sampler(comms::Requester& requester, 
-                std::vector<std::string> jobTypes,
+                std::vector<uint> jobTypes,
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
@@ -104,7 +104,7 @@ namespace stateline
 
         comms::Requester& requester_;
 
-        std::vector<std::string> jobTypes_;
+        std::vector<uint> jobTypes_;
 
         // The MCMC chain wrapper
         ChainArray& chains_;

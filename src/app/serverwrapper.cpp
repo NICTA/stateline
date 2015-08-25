@@ -21,11 +21,14 @@ namespace stateline
 
     std::vector<Eigen::VectorXd> sampleVec(n);
 
+    std::vector<uint> jobTypes(s.maxJobTypes);
+    std::iota(jobTypes.begin(), jobTypes.end(), 0);
+
     // Send n random samples to workers to be evaluated
     for (uint i=0; i<n; ++i)
     {
       sampleVec[i] = Eigen::VectorXd::Random(s.ndims);
-      requester.submit(i, s.jobTypes, sampleVec[i]);
+      requester.submit(i, jobTypes, sampleVec[i]);
     }
 
     // Retrieve all results and select sample with lowest energy
@@ -72,9 +75,13 @@ namespace stateline
       LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
     }
 
+    // Create job types from 0 to max number of job types
+    std::vector<uint> jobTypes(s.maxJobTypes);
+    std::iota(jobTypes.begin(), jobTypes.end(), 0);
+
     // A sampler just takes the worker interface, chain array, proposal function,
     // and how often to attempt swaps.
-    mcmc::Sampler sampler(requester, s.jobTypes, chains, proposal, s.swapInterval);
+    mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
 
     mcmc::EPSRDiagnostic diagnostic(s.nstacks, s.nchains, s.ndims);
     mcmc::TableLogger logger(s.nstacks, s.nchains, s.msLoggingRefresh);

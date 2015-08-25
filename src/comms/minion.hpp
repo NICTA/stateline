@@ -34,20 +34,26 @@ namespace stateline
     class Minion
     {
     public:
+      //! Create a new a minion.
+      //!
+      //! \param w The parent worker object it communicates with.
+      //! \param jobTypes The job types that the minion will do
+      //!
+      Minion(zmq::context_t& context, const std::string socketAddr);
 
       //! Create a new a minion.
       //!
       //! \param w The parent worker object it communicates with.
       //! \param jobTypes The job types that the minion will do
       //!
-      Minion(zmq::context_t& context, const std::vector<std::string>& jobTypes,
+      Minion(zmq::context_t& context, const std::pair<uint, uint>& jobTypeRange,
              const std::string socketAddr);
 
       //! Gets a job from the worker.
       //!
       //! \return The job to do.
       //!
-      std::pair<std::string, std::vector<double>> nextJob();
+      std::pair<uint, std::vector<double>> nextJob();
 
       //! Submits a result to the worker. Call this function
       //! after requesting a job with job().

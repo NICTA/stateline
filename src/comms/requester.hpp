@@ -44,7 +44,7 @@ namespace stateline
       //! \param jobs The vector of jobs to compute
       //! \return The results of the job computations
       //!
-      void submit(uint id, const std::vector<std::string>& jobTypes, const Eigen::VectorXd& data);
+      void submit(uint id, const std::vector<uint>& jobTypes, const Eigen::VectorXd& data);
 
       //! Retrieves a batch of jobs that have previously been submitted for computation.
       //! A pair is returned, with the id of the batch (from the submit call),

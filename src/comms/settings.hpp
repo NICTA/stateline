@@ -61,6 +61,9 @@ namespace stateline
       //! Settings for the heartbeat monitoring.
       HeartbeatSettings heartbeat;
 
+      //! Maximum number of job types.
+      uint maxJobTypes;
+
       //! Default delegator settings
       static DelegatorSettings Default(uint port)
       {
@@ -68,6 +71,7 @@ namespace stateline
         settings.msPollRate = 10;
         settings.port = port;
         settings.heartbeat = HeartbeatSettings::DelegatorDefault();
+        settings.maxJobTypes = 1;
         return settings;
       }
     };

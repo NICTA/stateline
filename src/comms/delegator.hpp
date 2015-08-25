@@ -61,7 +61,7 @@ namespace stateline
         struct Request
         {
           std::vector<std::string> address;
-          std::set<std::string> jobTypes;
+          std::set<uint> jobTypes;
           std::string data;
           std::vector<std::string> results;
           uint nDone;
@@ -69,7 +69,7 @@ namespace stateline
 
         struct Job
         {
-          std::string type;
+          uint type;
           std::string id;
           std::string requesterID;
           uint requesterIndex;
@@ -86,9 +86,9 @@ namespace stateline
         struct Worker
         {
           std::vector<std::string> address;
-          std::set<std::string> jobTypes;
+          std::pair<uint, uint> jobTypesRange;
           std::map<std::string, Job> workInProgress;
-          std::map<std::string, boost::circular_buffer<uint>> times;
+          std::map<uint, boost::circular_buffer<uint>> times;
         };
 
       private:
@@ -103,13 +103,13 @@ namespace stateline
         void connectWorker(const Message& m);
 
         //! Send a job to a worker that has requested one.
-        //! 
+        //!
         //! \param m the job request message.
         //!
         void sendJob(const Message& m);
 
         //! Disconnect a worker by removing it from the list of connected workers.
-        //! 
+        //!
         //! \param m The GOODBYE message the connecting worker sent.
         //!
         void disconnectWorker(const Message& m);
@@ -127,10 +127,9 @@ namespace stateline
         void receiveResult(const Message& m);
 
         // TODO: does this need to be a member function?
-        Worker* bestWorker(const std::string& jobType, uint maxJobs);
+        Worker* bestWorker(uint jobType, uint maxJobs);
 
-
-        zmq::context_t& context_; 
+        zmq::context_t& context_;
 
         // Sockets
         Socket requester_;
@@ -147,6 +146,9 @@ namespace stateline
 
         bool& running_;
         uint nextJobId_;
+
+        // Maximum number of job types
+        uint maxJobTypes_;
     };
 
   } // namespace comms

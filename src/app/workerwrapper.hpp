@@ -18,21 +18,21 @@
 
 namespace stateline
 {
-  typedef std::function<double(const std::string&, const std::vector<double>&)> LikelihoodFn;
+  typedef std::function<double(uint, const std::vector<double>&)> LikelihoodFn;
 
-  typedef std::function<const LikelihoodFn&(const std::string&)> JobToLikelihoodFnFn;
+  typedef std::function<const LikelihoodFn&(uint)> JobToLikelihoodFnFn;
 
-  typedef std::map<std::string, LikelihoodFn> JobLikelihoodFnMap;
+  typedef std::vector<LikelihoodFn> LikelihoodFnList;
 
   class WorkerWrapper
   {
     public:
-      WorkerWrapper(const LikelihoodFn& f, const std::vector<std::string>& jobTypes,
+      WorkerWrapper(const LikelihoodFn& f, const std::pair<uint, uint>& jobTypesRange,
                     const std::string& address);
 
-      WorkerWrapper(const JobLikelihoodFnMap& m, const std::string& address);
+      WorkerWrapper(const LikelihoodFnList& m, uint startJobTypeOffset, const std::string& address);
 
-      WorkerWrapper(const JobToLikelihoodFnFn& f, const std::vector<std::string>& jobTypes,
+      WorkerWrapper(const JobToLikelihoodFnFn& f, const std::pair<uint, uint>& jobTypesRange,
                     const std::string& address);
 
       ~WorkerWrapper();
@@ -42,7 +42,7 @@ namespace stateline
     private:
 
       const JobToLikelihoodFnFn lhFnFn_;
-      std::vector<std::string> jobTypes_;
+      std::pair<uint, uint> jobTypesRange_;
 
       comms::WorkerSettings settings_;
 
