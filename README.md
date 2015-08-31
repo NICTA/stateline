@@ -41,7 +41,6 @@ Communications
 By default, Stateline workers communicate with the sever on port 5555. Keep
 this port open or exposed on the Docker containers.
 
-
 Running C++ Demo
 ----------------
 To see Stateline in action, open two terminals and run the following commands in a build directory:
