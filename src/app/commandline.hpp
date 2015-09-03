@@ -19,8 +19,14 @@ namespace stateline
       po::notify(vm);
     } catch (const std::exception& ex)
     {
-      std::cout << "Error: Unrecognised commandline argume" << opts << "\n";
+      std::cout << "Error: Unrecognised commandline argument" << opts << "\n";
       exit(EXIT_FAILURE);
+    }
+
+    if (vm.count("help")) 
+    {
+      std::cout << opts << "\n";
+      exit(EXIT_SUCCESS);
     }
     return vm;
   }

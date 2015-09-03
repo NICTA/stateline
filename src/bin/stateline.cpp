@@ -30,6 +30,7 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Stateline Options");
   opts.add_options()
+  ("help,h", "Print help message")
   ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
   ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
   ("config,c",po::value<std::string>()->default_value("config.json"), "Path to configuration file")

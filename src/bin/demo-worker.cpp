@@ -28,6 +28,7 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Demo Options");
   opts.add_options()
+    ("help,h", "Print help message")
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
     ("jobtypes,j",po::value<uint>()->default_value(3), "Number of job types")
