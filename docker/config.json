@@ -6,7 +6,7 @@
   },
   "duration": 20,
   "sigma": 1.0,
-  "jobTypes": ["job"],
+  "nJobTypes": 3,
   "annealLength": 50,
   "sigmaAdaption": {
     "windowSize": 100000,
@@ -38,7 +38,7 @@
     }
   },
   "output": {
-    "directory": "cpp-demo-output",
+    "directory": ".",
     "cacheLength": 20
   }
 }
