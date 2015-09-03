@@ -147,8 +147,8 @@ namespace stateline
         bool& running_;
         uint nextJobId_;
 
-        // Maximum number of job types
-        uint maxJobTypes_;
+        // Number of job types
+        uint nJobTypes_;
     };
 
   } // namespace comms

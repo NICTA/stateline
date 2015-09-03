@@ -31,7 +31,7 @@ namespace stateline
       mcmc::SlidingWindowSigmaSettings sigmaSettings;
       mcmc::SlidingWindowBetaSettings betaSettings;
       mcmc::ChainSettings chainSettings;
-      uint maxJobTypes;
+      uint nJobTypes;
       mcmc::ProposalBounds proposalBounds;
 
       static StatelineSettings fromJSON(const nlohmann::json& j)
@@ -48,7 +48,7 @@ namespace stateline
         s.betaSettings = mcmc::SlidingWindowBetaSettings::fromJSON(j);
         s.chainSettings.databasePath = j["output"]["directory"].get<std::string>();
         s.chainSettings.chainCacheLength = j["output"]["cacheLength"];
-        s.maxJobTypes = j["maxJobTypes"];
+        s.nJobTypes = j["nJobTypes"];
 
         if (j.count("boundaries"))
           s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);

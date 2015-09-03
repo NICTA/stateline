@@ -59,7 +59,7 @@ public:
     settings.msPollRate = 100;
     settings.heartbeat.msPollRate = 100;
     settings.heartbeat.msTimeout = 500;
-    settings.maxJobTypes = 10;
+    settings.nJobTypes = 10;
 
     running_ = true;
     delFuture_ = stateline::startInThread<::stateline::comms::Delegator>(running_, std::ref(context_), std::ref(settings));

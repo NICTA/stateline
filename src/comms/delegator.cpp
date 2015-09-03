@@ -57,7 +57,7 @@ namespace stateline
           hbSettings_(settings.heartbeat),
           running_(running),
           nextJobId_(0),
-          maxJobTypes_(settings.maxJobTypes)
+          nJobTypes_(settings.nJobTypes)
     {
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
@@ -120,7 +120,7 @@ namespace stateline
       std::pair<uint, uint> jobTypeRange;
       if (msg.data[0] == "") {
         jobTypeRange.first = 0;
-        jobTypeRange.second = maxJobTypes_;
+        jobTypeRange.second = nJobTypes_;
       } else {
         std::vector<std::string> jobTypes;
         boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));

@@ -21,7 +21,7 @@ namespace stateline
 
     std::vector<Eigen::VectorXd> sampleVec(n);
 
-    std::vector<uint> jobTypes(s.maxJobTypes);
+    std::vector<uint> jobTypes(s.nJobTypes);
     std::iota(jobTypes.begin(), jobTypes.end(), 0);
 
     // Send n random samples to workers to be evaluated
@@ -76,7 +76,7 @@ namespace stateline
     }
 
     // Create job types from 0 to max number of job types
-    std::vector<uint> jobTypes(s.maxJobTypes);
+    std::vector<uint> jobTypes(s.nJobTypes);
     std::iota(jobTypes.begin(), jobTypes.end(), 0);
 
     // A sampler just takes the worker interface, chain array, proposal function,

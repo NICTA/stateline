@@ -30,6 +30,7 @@ po::options_description commandLineOptions()
   opts.add_options()
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
+    ("jobtypes,j",po::value<uint>()->default_value(3), "Number of job types")
     ;
   return opts;
 }
@@ -58,8 +59,7 @@ int main(int ac, char *av[])
   // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
     
-  // Only 1 job type (job type 0) for this demo
-  sl::WorkerWrapper w(gaussianNLL, {0, 1}, address);
+  sl::WorkerWrapper w(gaussianNLL, {0, vm["jobtypes"].as<uint>()}, address);
 
   /*
    NB: For multiple likelihood functions WorkerWrapper can be initialised with an array, e.g.:
