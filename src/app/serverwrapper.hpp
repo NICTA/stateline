@@ -43,7 +43,7 @@ namespace stateline
         s.annealLength = j["annealLength"];
         s.nsecs = j["duration"];
         s.swapInterval = j["parallelTempering"]["swapInterval"];
-        s.msLoggingRefresh = 1000;
+        s.msLoggingRefresh = j["msLoggingRefresh"];
         s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);
         s.betaSettings = mcmc::SlidingWindowBetaSettings::fromJSON(j);
         s.chainSettings.databasePath = j["output"]["directory"].get<std::string>();

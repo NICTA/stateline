@@ -40,5 +40,6 @@
   "output": {
     "directory": "demo-output",
     "cacheLength": 20
-  }
+  },
+  "msLoggingRefresh": 1000
 }
