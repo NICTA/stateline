@@ -14,8 +14,9 @@ namespace stateline
     delegator.start();
   }
 
-  std::pair<Eigen::VectorXd,double> generateInitialSample(const StatelineSettings& s,
-                                                          comms::Requester& requester)
+  std::pair<Eigen::VectorXd,double> generateInitialSample(
+          const StatelineSettings& s, comms::Requester& requester,
+          const mcmc::ProposalBounds& bounds)
   {
     uint n = s.annealLength;
 
@@ -27,7 +28,8 @@ namespace stateline
     // Send n random samples to workers to be evaluated
     for (uint i=0; i<n; ++i)
     {
-      sampleVec[i] = Eigen::VectorXd::Random(s.ndims);
+      sampleVec[i] = mcmc::bouncyBounds(Eigen::VectorXd::Random(s.ndims), 
+              bounds.min, bounds.max);
       requester.submit(i, jobTypes, sampleVec[i]);
     }
 
@@ -68,7 +70,7 @@ namespace stateline
       // Generate the initial sample/energy for this chain
       Eigen::VectorXd sample;
       double energy;
-      std::tie(sample,energy) = generateInitialSample(s,requester);
+      std::tie(sample,energy) = generateInitialSample(s,requester, s.proposalBounds);
 
       // Initialise this chain with the evaluated sample
       chains.initialise(i, sample, energy, sigmaAdapter.sigmas()[i], betaAdapter.betas()[i]);

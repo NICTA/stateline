@@ -22,6 +22,9 @@ namespace stateline
   namespace mcmc
   {
 
+    Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max);
+
     //! Settings for the defining a hard boundary on the samples produced
     //! by the proposal function.
     struct ProposalBounds
