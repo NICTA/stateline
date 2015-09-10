@@ -10,6 +10,8 @@
 
 #include "stats/uniform.hpp"
 
+#include <random>
+
 namespace stateline
 {
   namespace stats

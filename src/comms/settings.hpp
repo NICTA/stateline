@@ -12,6 +12,8 @@
 
 #include <string>
 
+#include "typedefs.hpp"
+
 namespace stateline
 {
   namespace comms
