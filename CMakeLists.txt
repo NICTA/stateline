@@ -44,9 +44,6 @@ SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
 SET(BOOST_INCLUDEDIR ${PREREQ_DIR}/include/boost-1_59)
-SET(BOOST_LIBRARYDIR ${PREREQ_DIR}/lib)
-SET(Boost_COMPILER "-clang-darwin42")
-SET(Boost_USE_MULTITHREADED ON)
 
 # Installation
 install(DIRECTORY src/ DESTINATION "include/stateline"
@@ -104,6 +101,8 @@ SET(Boost_NO_SYSTEM_PATHS ON)
 SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_STATIC_RUNTIME ON)
+SET(Boost_COMPILER "-clang-darwin42")
+SET(Boost_USE_MULTITHREADED ON)
 
 FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
                                             system
