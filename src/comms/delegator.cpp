@@ -21,7 +21,7 @@ namespace stateline
     namespace
     {
       // TODO: should this be a float?
-      uint timeForJob(const Delegator::Worker& w, const std::string& jobType)
+      uint timeForJob(const Delegator::Worker& w, uint jobType)
       {
         auto& times = w.times.at(jobType);
         uint totalTime = std::accumulate(std::begin(times), std::end(times), 0);
@@ -35,7 +35,7 @@ namespace stateline
 
       // TODO: could we compute these lazily? i.e. each time a new job is assigned,
       // we update the expected finishing time?
-      uint usTillDone(const Delegator::Worker& w, const std::string& jobType)
+      uint usTillDone(const Delegator::Worker& w, uint jobType)
       {
         uint t = 0;
         for (auto const& i : w.workInProgress)
@@ -56,7 +56,8 @@ namespace stateline
           msPollRate_(settings.msPollRate),
           hbSettings_(settings.heartbeat),
           running_(running),
-          nextJobId_(0)
+          nextJobId_(0),
+          nJobTypes_(settings.nJobTypes)
     {
       // Initialise the local sockets
       requester_.bind(DELEGATOR_SOCKET_ADDR);
@@ -116,12 +117,21 @@ namespace stateline
     {
       // Worker can now be 'connected'
       // add jobtypes
-      std::set<std::string> jobTypes; 
-      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+      std::pair<uint, uint> jobTypeRange;
+      if (msg.data[0] == "") {
+        jobTypeRange.first = 0;
+        jobTypeRange.second = nJobTypes_;
+      } else {
+        std::vector<std::string> jobTypes;
+        boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+        assert(jobTypes.size() == 2);
+        jobTypeRange.first = std::stoi(jobTypes[0]);
+        jobTypeRange.second = std::stoi(jobTypes[1]);
+      }
 
-      Worker w {msg.address, jobTypes, {}, {}};
-      for (auto const& s : jobTypes)
-        w.times.insert(std::make_pair(s, boost::circular_buffer<uint>(10)));
+      Worker w {msg.address, jobTypeRange, {}, {}};
+      for (uint i = jobTypeRange.first; i < jobTypeRange.second; i++)
+        w.times.insert(std::make_pair(i, boost::circular_buffer<uint>(10)));
 
       std::string id = w.address.front();
       workers_.insert(std::make_pair(id, w));
@@ -131,13 +141,20 @@ namespace stateline
     void Delegator::receiveRequest(const Message& msg)
     {
       std::string id = boost::algorithm::join(msg.address, ":");
-      std::set<std::string> jobTypes; 
+      std::set<std::string> jobTypes;
       boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+
+      std::set<uint> jobTypesInt;
+      std::transform(jobTypes.begin(), jobTypes.end(),
+                     std::inserter(jobTypesInt, jobTypesInt.begin()),
+                     [](const std::string& x) { return std::stoi(x); });
+
+
       VLOG(2) << "New request Received, with " << jobTypes.size() << " jobs.";
-      Request r {msg.address, jobTypes, msg.data[1], std::vector<std::string>(jobTypes.size()), 0};
+      Request r {msg.address, jobTypesInt, msg.data[1], std::vector<std::string>(jobTypes.size()), 0};
       requests_.insert(std::make_pair(id, r));
       uint idx=0;
-      for (auto const& t : jobTypes)
+      for (auto const& t : jobTypesInt)
       {
         Job j = {t, std::to_string(nextJobId_), id, idx, {}}; //we're not starting with a job yet
         jobQueue_.push_back(j);
@@ -169,14 +186,16 @@ namespace stateline
       workers_[worker].workInProgress.erase(jobID);
     }
 
-    Delegator::Worker* Delegator::bestWorker(const std::string& jobType, uint maxJobs)
+    Delegator::Worker* Delegator::bestWorker(uint jobType, uint maxJobs)
     {
       // TODO: can we do this using an STL algorithm?
       Delegator::Worker* best = nullptr;
       uint bestTime = std::numeric_limits<uint>::max();
       for (auto& w : workers_)
       {
-        if (w.second.jobTypes.count(jobType) && w.second.workInProgress.size() < maxJobs)
+        if (jobType >= w.second.jobTypesRange.first &&
+            jobType <  w.second.jobTypesRange.second &&
+            w.second.workInProgress.size() < maxJobs)
         {
           uint t = usTillDone(w.second, jobType);
           if (t < bestTime)
@@ -203,7 +222,7 @@ namespace stateline
         }
 
         std::string& data = requests_[i->requesterID].data;
-        network_.send({worker->address, JOB, {i->type, i->id, data}});
+        network_.send({worker->address, JOB, {std::to_string(i->type), i->id, data}});
         i->startTime = std::chrono::high_resolution_clock::now();
         worker->workInProgress.insert(std::make_pair(i->id, *i));
 

@@ -30,6 +30,7 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Stateline Options");
   opts.add_options()
+  ("help,h", "Print help message")
   ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
   ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
   ("config,c",po::value<std::string>()->default_value("config.json"), "Path to configuration file")
@@ -54,12 +55,12 @@ json initConfig(const po::variables_map& vm)
 int main(int ac, char *av[])
 {
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
+  sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
+  sl::init::initialiseSignalHandler();
   json config = initConfig(vm);
   uint port = vm["port"].as<uint>();
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
 
-  sl::init::initialiseSignalHandler();
-  sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
 
   sl::ServerWrapper s(port, settings);
   

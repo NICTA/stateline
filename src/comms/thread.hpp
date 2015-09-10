@@ -16,6 +16,11 @@ namespace stateline
         T obj(std::forward<Args>(args)..., std::ref(running));
         obj.start();
       }
+      catch (const zmq::error_t& ex)
+      {
+        // Ignore ZMQ errors to prevent ugly stack trace
+        LOG(INFO) << "Caught interrupt. Goodbye!";
+      }
       catch (const std::exception& ex)
       {
         LOG(FATAL) << "Exception thrown in child thread: " << ex.what();

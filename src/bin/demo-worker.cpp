@@ -28,13 +28,15 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Demo Options");
   opts.add_options()
+    ("help,h", "Print help message")
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("address,a",po::value<std::string>()->default_value("localhost:5555"), "Address of server")
+    ("jobtypes,j",po::value<uint>()->default_value(3), "Number of job types")
     ;
   return opts;
 }
 
-double gaussianNLL(const std::string& /*jobType*/, const std::vector<double>& x)
+double gaussianNLL(uint /*jobType*/, const std::vector<double>& x)
 {
   double squaredNorm = 0.0;
   for (auto i : x)
@@ -58,13 +60,12 @@ int main(int ac, char *av[])
   // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
     
-  // Only 1 job type ("job") for this demo
-  sl::WorkerWrapper w(gaussianNLL, {"job"}, address);
+  sl::WorkerWrapper w(gaussianNLL, {0, vm["jobtypes"].as<uint>()}, address);
 
   /*
-   NB: For multiple likelihood functions WorkerWrapper can be initialised with a map, e.g.:
-      sl::JobLikelihoodFnMap lhMap = { { "job", gaussianNLL } };
-      sl::WorkerWrapper w(lhMap, address);
+   NB: For multiple likelihood functions WorkerWrapper can be initialised with an array, e.g.:
+      sl::JobLikelihoodFnMap lhMap = { gaussianNLL };
+      sl::WorkerWrapper w(lhMap, 0, address);
 
     or a function, e.g.:
       const sl::LikelihoodFn& lh = gaussianNLL;

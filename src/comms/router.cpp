@@ -58,6 +58,7 @@ namespace stateline
       {
         // block until a message arrives
         zmq::poll(&(pollList_[0]), pollList_.size(), msWait);
+
         // figure out which socket it's from
         for (uint i = 0; i < pollList_.size(); i++)
         {

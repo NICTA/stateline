@@ -36,6 +36,7 @@ po::options_description commandLineOptions()
 {
   auto opts = po::options_description("Stateline client worker options");
   opts.add_options()
+    ("help,h", "Print help message")
     ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
     ("networkAddr,n",po::value<std::string>()->default_value("localhost:5555"), "Address of delegator")
     ("workerAddr,w",po::value<std::string>()->default_value("ipc:///tmp/sl_worker.sock"),

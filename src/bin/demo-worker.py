@@ -24,8 +24,10 @@ def handle_job(job_type, job_data):
     sample = list(map(float, job_data.split(b':')))
     return nll(np.asarray(sample))
 
-def send_hello(socket, jobTypes):
-    jobTypesStr = ':'.join(jobTypes).encode('ascii')
+def send_hello(socket, nJobTypes):
+
+    # job range in this case 0-nJobs (inclusive)
+    jobTypesStr = '0:{}'.format(nJobTypes).encode('ascii')
 
     logging.info("Sending HELLO message...")
     socket.send_multipart([b"", HELLO, jobTypesStr])
@@ -63,10 +65,10 @@ def main():
     logging.info('Started client')
 
     # Load configuration
-    with open('python-demo-config.json', 'r') as f:
+    with open('demo-config.json', 'r') as f:
         config = json.load(f)
 
-    jobTypes = config['jobTypes']
+    nJobTypes = config['nJobTypes']
 
     # Start minion
     ctx = zmq.Context()
@@ -76,7 +78,7 @@ def main():
     socket.connect(addr)
     logging.info("Connected!")
 
-    send_hello(socket, jobTypes)
+    send_hello(socket, nJobTypes)
     job_loop(socket)
 
 if __name__ == "__main__":

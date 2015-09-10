@@ -14,6 +14,7 @@
 #include "../comms/requester.hpp"
 #include "../infer/datatypes.hpp"
 #include "../infer/chainarray.hpp"
+#include "../app/jsonsettings.hpp"
 
 #include <json.hpp>
 #include <random>
@@ -22,6 +23,9 @@ namespace stateline
 {
   namespace mcmc
   {
+
+    Eigen::VectorXd bouncyBounds(const Eigen::VectorXd& val,
+        const Eigen::VectorXd& min, const Eigen::VectorXd& max);
 
     //! Settings for the defining a hard boundary on the samples produced
     //! by the proposal function.
@@ -33,9 +37,9 @@ namespace stateline
       static ProposalBounds fromJSON(const nlohmann::json& j)
       {
         ProposalBounds b;
-        uint nDims = j["dimensionality"];
-        uint nMin = j["boundaries"]["min"].size();
-        uint nMax = j["boundaries"]["max"].size();
+        uint nDims = readSettings<uint>(j,"dimensionality");
+        uint nMin = readSettings<std::vector<double>>(j, "boundaries", "min").size();
+        uint nMax = readSettings<std::vector<double>>(j, "boundaries", "max").size();
 
         if ((nMin != 0) || (nMax != 0))
         {
@@ -48,10 +52,12 @@ namespace stateline
           {
             b.min.resize(nDims);
             b.max.resize(nDims);
+            std::vector<double> vmin = readSettings<std::vector<double>>(j, "boundaries", "min");
+            std::vector<double> vmax = readSettings<std::vector<double>>(j, "boundaries", "max");
             for (uint i=0; i < nDims; ++i)
             {
-              b.min[i] = j["boundaries"]["min"][i];
-              b.max[i] = j["boundaries"]["max"][i];
+              b.min[i] = vmin[i];
+              b.max[i] = vmax[i];
             }
           }
         }
@@ -86,7 +92,7 @@ namespace stateline
     {
       public:
         Sampler(comms::Requester& requester, 
-                std::vector<std::string> jobTypes,
+                std::vector<uint> jobTypes,
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
                 uint swapInterval);
@@ -105,7 +111,7 @@ namespace stateline
 
         comms::Requester& requester_;
 
-        std::vector<std::string> jobTypes_;
+        std::vector<uint> jobTypes_;
 
         // The MCMC chain wrapper
         ChainArray& chains_;

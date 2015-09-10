@@ -102,7 +102,7 @@ namespace stateline
     }
 
     Sampler::Sampler(comms::Requester& requester, 
-                     std::vector<std::string> jobTypes,
+                     std::vector<uint> jobTypes,
                      ChainArray& chainArray,
                      const ProposalFunction& propFn,
                      uint swapInterval)
