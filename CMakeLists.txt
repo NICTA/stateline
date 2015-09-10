@@ -43,6 +43,10 @@ SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
+SET(BOOST_INCLUDEDIR ${PREREQ_DIR}/include/boost-1_59)
+SET(BOOST_LIBRARYDIR ${PREREQ_DIR}/lib)
+SET(Boost_COMPILER "-clang-darwin42")
+SET(Boost_USE_MULTITHREADED ON)
 
 # Installation
 install(DIRECTORY src/ DESTINATION "include/stateline"
@@ -53,13 +57,12 @@ IF(LOCAL_INSTALL)
   SET(CMAKE_INSTALL_PREFIX "${STATELINE_BINARY_DIR}/install")
 ENDIF(LOCAL_INSTALL)
 
-
-
 ##############################################################################
 # LOGGING (GLOG)
 ##############################################################################
 
 FIND_PACKAGE(Glog REQUIRED)
+
 # Logging toggle
 OPTION(NO_LOGGING "Set to true to compile out any Logging statements" OFF)
 IF(NO_LOGGING)
@@ -98,17 +101,14 @@ ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
 # Boost
 SET(Boost_NO_SYSTEM_PATHS ON)
-SET(DESIRED_BOOST_VERSION "1_55_0")
-SET(Boost_ADDITIONAL_VERSIONS "1_55_0")
+SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_STATIC_RUNTIME ON)
 
-FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
-                                       system
-                                       filesystem
-                                       serialization)
-
-MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
+FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
+                                            system
+                                            filesystem
+                                            serialization)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -117,7 +117,6 @@ FIND_PACKAGE(ZMQ REQUIRED)
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
 # Google Test
-MESSAGE(STATUS "GTEST directory: ${GTEST_SRC_DIR}")
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
 ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
