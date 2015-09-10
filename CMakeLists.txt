@@ -9,7 +9,7 @@
 # CMAKE SETUP
 ##############################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 PROJECT(STATELINE)
 
 # Use folders
@@ -101,8 +101,10 @@ SET(Boost_NO_SYSTEM_PATHS ON)
 SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_STATIC_RUNTIME ON)
-SET(Boost_COMPILER "-clang-darwin42")
-SET(Boost_USE_MULTITHREADED ON)
+IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # CMake doesn't seem smart enough to detect boost libraries build with Clang
+  SET(Boost_COMPILER "-clang-darwin42")
+ENDIF()
 
 FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
                                             system
