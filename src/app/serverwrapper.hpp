@@ -1,3 +1,4 @@
+#pragma once
 //!
 //! Main entry point for using stateline -- server side
 //!
@@ -13,9 +14,12 @@
 #include <future>
 #include <zmq.hpp>
 #include <json.hpp>
+#include "jsonsettings.hpp"
 #include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
 #include "../infer/sampler.hpp"
+
+
 
 namespace stateline
 {
@@ -37,18 +41,18 @@ namespace stateline
       static StatelineSettings fromJSON(const nlohmann::json& j)
       {
         StatelineSettings s;
-        s.ndims = j["dimensionality"];
-        s.nstacks = j["parallelTempering"]["stacks"];
-        s.nchains = j["parallelTempering"]["chains"];
-        s.annealLength = j["annealLength"];
-        s.nsecs = j["duration"];
-        s.swapInterval = j["parallelTempering"]["swapInterval"];
-        s.msLoggingRefresh = j["msLoggingRefresh"];
+        s.ndims = readSettings<uint>(j, "dimensionality");
+        s.nstacks = readSettings<uint>(j, "parallelTempering", "stacks");
+        s.nchains = readSettings<uint>(j, "parallelTempering", "chains");
+        s.annealLength = readSettings<uint>(j, "annealLength");
+        s.nsecs = readSettings<uint>(j, "duration");
+        s.swapInterval = readSettings<uint>(j,"parallelTempering","swapInterval");
+        s.msLoggingRefresh = readSettings<int>(j, "msLoggingRefresh");
         s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);
         s.betaSettings = mcmc::SlidingWindowBetaSettings::fromJSON(j);
-        s.chainSettings.databasePath = j["output"]["directory"].get<std::string>();
-        s.chainSettings.chainCacheLength = j["output"]["cacheLength"];
-        s.nJobTypes = j["nJobTypes"];
+        s.chainSettings.databasePath = readSettings<std::string>(j, "output", "directory");
+        s.chainSettings.chainCacheLength = readSettings<uint>(j,"output", "cacheLength");
+        s.nJobTypes = readSettings<uint>(j, "nJobTypes");
 
         if (j.count("boundaries"))
           s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
