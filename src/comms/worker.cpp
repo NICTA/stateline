@@ -35,7 +35,6 @@ namespace stateline
       network_.setIdentifier();
       LOG(INFO) << "Worker connecting to " << settings.networkAddress;
       network_.connect("tcp://" + settings.networkAddress);
-      LOG(INFO) << "Worker connected!"; 
 
       // Specify the Worker functionality
       //
