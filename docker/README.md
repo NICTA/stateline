@@ -2,19 +2,15 @@
 
 Below is a rough first-pass at linked containers.
 
-## Config File
-For the moment, it is simplest to modify the config.json in this directory
-before building the containers. It will be added automatically.
+## Config Directory
+This directory is going to be mounted in your containers, and contains a
+demo config file and the launch scripts.
 
-##Build the Containers
 
-  docker build -t stateline -f stateline.dock .
-  docker build -t stateline-server -f stateline-server.dock .
-  docker build -t stateline-demoworker -f stateline-demoworker.dock .
+## Running a demo
+using the lmccalman/stateline image, from this directory run
+    ./run_demo_server.sh
 
-##Start the server
-  docker run -i --name=mystateline stateline-server
+and then in another terminal run
 
-##Start a worker
-  docker run --link mystateline:stateline stateline-demoworker -a stateline:5555
-
+    ./run_demo_worker.sh

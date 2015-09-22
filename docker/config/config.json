@@ -41,5 +41,5 @@
     "directory": ".",
     "cacheLength": 20
   },
-  "msLoggingRefresh": 10000
+  "msLoggingRefresh": 1000
 }
