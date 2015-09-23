@@ -1,0 +1,24 @@
+
+name: stateline    
+environment:  
+  copy:
+    - "config/"
+  components:
+    server:
+      machine: master       
+      cpu: auto             
+      image: lmccalman/stateline 
+      cmd: "/bin/bash /home/data/config/launch_stateline.sh"   
+      ports: 31555,31556 
+    worker:   
+      machine: worker       
+      depends: server       
+      cpu: 1.0              
+      count: auto           # Automatically run as much as possible on all machines of this type
+      image: lmccalman/stateline 
+      cmd: "/bin/bash /home/data/config/launch_worker.sh" 
+  expose_tunnel:
+    # local_port:component_name:source_port
+    service: 31556:server:31556
+    # An optional message to display to the user once the port is exposed
+    message: "To see stateline logging, run ncat localhost 31556"
