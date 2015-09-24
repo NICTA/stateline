@@ -173,6 +173,11 @@ namespace stateline
     {
       socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
     }
+    
+    void Socket::setHWM(int n)
+    {
+      socket_.setsockopt(ZMQ_SNDHWM, &n, sizeof(int));
+    }
 
     std::string Socket::name() const
     {

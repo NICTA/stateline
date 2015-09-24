@@ -24,6 +24,7 @@ namespace stateline
         Message receive();
         void setFallback(const std::function<void(const Message& m)>& sendCallback);
         void setLinger(int l);
+        void setHWM(int n);
         void setIdentifier();
         void setIdentifier(const std::string& id);
         std::string name() const;
