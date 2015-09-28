@@ -66,6 +66,8 @@ ELSE(CMAKE_COMPILER_IS_GNUCXX)
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
+ADD_DEFINITIONS(-DELPP_THREAD_SAFE)
+
 ##############################################################################
 # PREREQUISITE LIBRARIES
 ##############################################################################
