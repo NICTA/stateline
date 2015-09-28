@@ -120,6 +120,10 @@ namespace stateline
           betaAdapter.betas(), betaAdapter.swapRates());
 
       diagnostic.update(id, state);
+      std::cout << "Convergence test: " << diagnostic.rHat() << " (" <<
+                   (diagnostic.hasConverged() ? "possibly converged" :
+                                                "not converged")
+                   << ")" << std::endl;;
     }
 
     // Finish any outstanding jobs
