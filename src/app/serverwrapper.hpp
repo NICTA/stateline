@@ -29,7 +29,7 @@ namespace stateline
       uint nstacks;
       uint nchains;
       uint annealLength;
-      uint nsecs;
+      uint nsamples;
       uint swapInterval;
       int msLoggingRefresh;
       mcmc::SlidingWindowSigmaSettings sigmaSettings;
@@ -45,7 +45,7 @@ namespace stateline
         s.nstacks = readSettings<uint>(j, "parallelTempering", "stacks");
         s.nchains = readSettings<uint>(j, "parallelTempering", "chains");
         s.annealLength = readSettings<uint>(j, "annealLength");
-        s.nsecs = readSettings<uint>(j, "duration");
+        s.nsamples = readSettings<uint>(j, "nsamples");
         s.swapInterval = readSettings<uint>(j,"parallelTempering","swapInterval");
         s.msLoggingRefresh = readSettings<int>(j, "msLoggingRefresh");
         s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);

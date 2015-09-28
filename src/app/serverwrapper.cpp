@@ -96,13 +96,15 @@ namespace stateline
     uint id;
     mcmc::State state;
 
-    while (ch::duration_cast<ch::seconds>(ch::steady_clock::now() - startTime).count() < s.nsecs && running)
+    uint nsamples = 0;
+    while (s.nsamples < nsamples && running)
     {
       // Ask the sampler to return the next state of a chain.
       // 'id' is the ID of the chain and 'state' is the next state in that chain.
       try
       {
         std::tie(id, state) = sampler.step(sigmaAdapter.sigmas(), betaAdapter.betas());
+        nsamples++;
       }
       catch (...)
       {
