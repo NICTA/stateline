@@ -34,10 +34,6 @@ namespace stateline
     //! Requester object that takes jobs and returns results. Communicates with
     //! a delegator living in a (possibly) different thread.
     //!
-
-    // TODO: move this to inside Delegator as private members
-
-
     class Delegator
     {
       public:
@@ -88,8 +84,6 @@ namespace stateline
           std::pair<uint, uint> jobTypesRange;
           std::map<std::string, Job> workInProgress;
           std::map<uint, boost::circular_buffer<uint>> times;
-
-          Worker() { }
 
           Worker(std::vector<std::string> address,
                  std::pair<uint, uint> jobTypesRange)
