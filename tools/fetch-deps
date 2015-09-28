@@ -1,7 +1,6 @@
 #!/bin/bash
 
 export STATELINE_SOURCE_DIR=$(pwd)
-export PREREQ_DIR=$STATELINE_SOURCE_DIR/build/prereqs
 
 # Determine platform specific variables
 if [ "$(uname)" == "Darwin" ]; then
@@ -16,9 +15,11 @@ fi
 
 printf "Using %d cores to build.\n" "$N_PROCESSORS"
 
-# Create a prereqs folder in build
-mkdir -p build/prereqs
-cd build/prereqs
+# Create a prereqs folder if no prefix is specified
+if [ $# -eq 0 ]; then
+  mkdir -p build/prereqs
+  cd build/prereqs
+fi
 
 # Create folders for the dependencies
 mkdir -p src

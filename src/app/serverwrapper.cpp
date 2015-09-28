@@ -84,6 +84,8 @@ namespace stateline
     // and how often to attempt swaps.
     mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
 
+    mcmc::TableLogger logger(s.nstacks, s.nchains, s.ndims, s.msLoggingRefresh);
+
     // Record the starting time of the MCMC so we can stop the simulation once
     // the time limit is reached.
     auto startTime = ch::steady_clock::now();
