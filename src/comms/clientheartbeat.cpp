@@ -11,7 +11,7 @@
 
 #include "comms/clientheartbeat.hpp"
 #include <stdexcept>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
 #include "comms/settings.hpp"
 
 namespace stateline

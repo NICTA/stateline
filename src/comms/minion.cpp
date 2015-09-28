@@ -7,7 +7,9 @@
 //!
 
 #include "comms/minion.hpp"
+
 #include <boost/algorithm/string.hpp>
+#include <easylogging/easylogging++.h>
 
 namespace stateline
 {

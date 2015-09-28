@@ -12,7 +12,6 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
-#include <glog/logging.h>
 #include <Eigen/Core>
 
 #include "../infer/datatypes.hpp"

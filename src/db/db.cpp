@@ -11,8 +11,6 @@
 
 #include "db/db.hpp"
 
-#include <glog/logging.h>
-
 namespace stateline
 {
   namespace db

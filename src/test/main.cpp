@@ -3,10 +3,10 @@
 
 const int logLevel = -3;
 const bool stdErr = false;
-std::string directory = ".";
+const std::string filename = "test.log";
 
 int main (int ac, char** av) {
-  stateline::initLogging("test", logLevel, stdErr, directory);
+  stateline::initLogging(logLevel, stdErr, filename);
   testing::InitGoogleTest(&ac, av);
   return RUN_ALL_TESTS();
 }

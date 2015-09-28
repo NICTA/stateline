@@ -15,7 +15,6 @@
 #include <string>
 #include <list>
 
-#include <glog/logging.h>
 #include <zmq.hpp>
 #include <boost/circular_buffer.hpp>
 
@@ -89,6 +88,14 @@ namespace stateline
           std::pair<uint, uint> jobTypesRange;
           std::map<std::string, Job> workInProgress;
           std::map<uint, boost::circular_buffer<uint>> times;
+
+          Worker() { }
+
+          Worker(std::vector<std::string> address,
+                 std::pair<uint, uint> jobTypesRange)
+            : address(std::move(address)), jobTypesRange(std::move(jobTypesRange))
+          {
+          }
         };
 
       private:

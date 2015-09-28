@@ -11,8 +11,9 @@
 
 #include "infer/chainarray.hpp"
 
-#include <glog/logging.h>
 #include <iostream>
+#include <easylogging/easylogging++.h>
+#include <random>
 
 namespace stateline
 {

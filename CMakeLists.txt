@@ -39,7 +39,6 @@ SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Search variables for prereqs
 SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
-SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
@@ -53,25 +52,6 @@ OPTION(LOCAL_INSTALL "Install to build directory (overrides CMAKE_INSTALL_PREFIX
 IF(LOCAL_INSTALL)
   SET(CMAKE_INSTALL_PREFIX "${STATELINE_BINARY_DIR}/install")
 ENDIF(LOCAL_INSTALL)
-
-##############################################################################
-# LOGGING (GLOG)
-##############################################################################
-
-FIND_PACKAGE(Glog REQUIRED)
-
-# Logging toggle
-OPTION(NO_LOGGING "Set to true to compile out any Logging statements" OFF)
-IF(NO_LOGGING)
-    ADD_DEFINITIONS(-DNO_LOGGING)
-ENDIF(NO_LOGGING)
-
-# Conditional linking of logging
-MACRO(LINK_LOGGING projectName)
-  IF(NOT NO_LOGGING)
-    TARGET_LINK_LIBRARIES(${projectName} ${GLOG_LIBRARY})
-  ENDIF (NOT NO_LOGGING)
-ENDMACRO(LINK_LOGGING projectName)
 
 ##############################################################################
 # COMPILATION
@@ -128,8 +108,8 @@ TARGET_LINK_LIBRARIES(gtest logging)
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
+                    "${STATELINE_SOURCE_DIR}/external"
                      ${ZMQ_INCLUDE_DIR}
-                     ${GLOG_INCLUDE_DIR}
                      ${Boost_INCLUDE_DIR}
                      ${EIGEN3_INCLUDE_DIR}
                      ${GTEST_DIR}
@@ -197,7 +177,7 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} ${GLOG_LIBRARY} logging)
+SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
 SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
 

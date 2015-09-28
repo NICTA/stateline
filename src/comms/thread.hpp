@@ -1,5 +1,7 @@
 #pragma once
 
+#include <easylogging/easylogging++.h>
+
 // Notes, this might have be be done on a per-type basis because the args 
 // don't line up. Otherwise I may have to restict what args the delegator,
 // worker, and heartbeat systems all take.

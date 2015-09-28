@@ -13,7 +13,6 @@ FUNCTION(ADD_BINARY name library)
     RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
 
   TARGET_LINK_LIBRARIES(${name}
-    ${GLOG_LIBRARY}
     ${library}
     stats
     ${Boost_SYSTEM_LIBRARY}
