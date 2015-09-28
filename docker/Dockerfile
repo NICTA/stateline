@@ -3,15 +3,15 @@ MAINTAINER Lachlan McCalman <lachlan.mccalman@nicta.com.au>
 RUN apt-get update && apt-get install -y \
   build-essential \
   git \
-	bzip2 \
-	cmake \
-	wget \
+  bzip2 \
+  cmake \
+  wget \
   unzip \
   nmap
 
-RUN mkdir -p /stateline /usr/local/src/stateline /tmp/build && git clone https://github.com/NICTA/stateline.git /usr/local/src/stateline && cp /usr/local/src/stateline/prereqs/buildPrereqs.sh /usr/local/
+RUN mkdir -p /stateline /usr/local/src/stateline /tmp/build && git clone https://github.com/NICTA/stateline.git /usr/local/src/stateline && cp /usr/local/src/stateline/tools /usr/local/
 WORKDIR /usr/local
-RUN ./buildPrereqs.sh
+RUN ./tools/fetch-deps
 
 # get stateline inside and compiled
 WORKDIR /tmp/build
@@ -23,4 +23,3 @@ RUN apt-get purge -y git cmake bzip2 wget unzip && apt-get clean && rm -rf /var/
 
 WORKDIR /stateline
 EXPOSE 5555 5556
-
