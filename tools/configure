@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+  echo "Usage: build <debug|release>"
+  exit 1
+fi
+
+SOURCE_DIR=$(pwd)
+BUILD_DIR=$SOURCE_DIR/build
+PREREQ_DIR=$BUILD_DIR/prereqs
+
+cd $BUILD_DIR
+
+if [ $1 = "debug" ]; then
+  mkdir -p debug
+  cd debug
+  cmake $SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR ${@:2}
+elif [ $1 = "release" ]; then
+  mkdir -p release
+  cd release
+  cmake $SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR -DCMAKE_BUILD_TYPE=Release ${@:2}
+fi

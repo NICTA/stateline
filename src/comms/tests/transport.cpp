@@ -6,7 +6,6 @@
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <glog/logging.h>
 #include "gtest/gtest.h"
 
 #include "comms/messages.hpp"

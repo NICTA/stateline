@@ -16,7 +16,7 @@ namespace stateline
 {
   namespace lh
   {
-    constexpr double log2PI = std::log(2 * M_PI);
+    const double log2PI = std::log(2 * M_PI);
 
     double normal(const Eigen::VectorXd &x, const Eigen::VectorXd &mean, double std)
     {

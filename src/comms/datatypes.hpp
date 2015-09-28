@@ -13,6 +13,8 @@
 #include <string>
 #include <chrono>
 
+#include "typedefs.hpp"
+
 namespace stateline
 {
   namespace comms

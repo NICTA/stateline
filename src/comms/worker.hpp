@@ -15,7 +15,6 @@
 #include <string>
 #include <queue>
 
-#include <glog/logging.h>
 #include <zmq.hpp>
 
 #include "settings.hpp"

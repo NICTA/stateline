@@ -17,6 +17,7 @@
 #include "../app/jsonsettings.hpp"
 
 #include <json.hpp>
+#include <random>
 
 namespace stateline
 {

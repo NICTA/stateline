@@ -53,7 +53,7 @@ int main(int ac, char *av[])
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
   
   // Initialise the logging settings
-  sl::initLogging("client", vm["loglevel"].as<int>(), true, "");
+  sl::initLogging(vm["loglevel"].as<int>(), true, "");
   
   // This allows the user to interrupt using Ctrl-C.
   sl::init::initialiseSignalHandler();

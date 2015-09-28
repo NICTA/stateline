@@ -14,11 +14,13 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
+
+INITIALIZE_EASYLOGGINGPP;
 
 namespace stateline
 {
-  void initLogging(const std::string &appName, int logLevel, bool stdErr, const std::string& directory)
+  void initLogging(int logLevel, bool stdOut, const std::string& filename)
   {
     int normLog = logLevel;
     int vLevel = 0;
@@ -28,12 +30,18 @@ namespace stateline
       normLog = 0;
     }
 
-    google::InitGoogleLogging(appName.c_str());
-    FLAGS_logtostderr = stdErr;
-    FLAGS_colorlogtostderr = true;
-    FLAGS_log_dir = directory;
-    FLAGS_minloglevel = normLog;
-    FLAGS_v = vLevel;
+    el::Configurations defaultConf;
+    defaultConf.setToDefault();
+
+    defaultConf.setGlobally(
+        el::ConfigurationType::Format, "%datetime %level %msg");
+    defaultConf.setGlobally(
+        el::ConfigurationType::ToStandardOutput, stdOut ? "true" : "false");
+    defaultConf.setGlobally(
+        el::ConfigurationType::ToFile, stdOut ? "false" : "true");
+    defaultConf.setGlobally(
+        el::ConfigurationType::Filename, filename);
+
     LOG(INFO) << "Logging initialised with level " << normLog << " and verbosity " << vLevel;
   }
 

@@ -55,16 +55,15 @@ json initConfig(const po::variables_map& vm)
 int main(int ac, char *av[])
 {
   po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
-  sl::initLogging("server", vm["loglevel"].as<int>(), true, "");
+  sl::initLogging(vm["loglevel"].as<int>(), true, "");
   sl::init::initialiseSignalHandler();
   json config = initConfig(vm);
   uint port = vm["port"].as<uint>();
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
 
-
   sl::ServerWrapper s(port, settings);
-  
-  s.start();  
+
+  s.start();
 
   while(!sl::global::interruptedBySignal && s.isRunning())
   {

@@ -10,7 +10,7 @@
 #include <cstdio>
 #include "comms/router.hpp"
 #include <thread>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
 
 typedef std::chrono::high_resolution_clock hrc;
 

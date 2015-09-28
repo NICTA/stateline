@@ -12,13 +12,11 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <glog/logging.h>
 
 namespace stateline
 {
   namespace mcmc
   {
-
     //! Used for recording swapping of chains.
     //!
     enum class SwapType
@@ -54,8 +52,6 @@ namespace stateline
 
       //! The type of swap that occurred when this state was recorded.
       SwapType swapType;
-
     };
-
   } // namespace mcmc 
 } // namespace stateline

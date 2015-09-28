@@ -87,7 +87,7 @@ public:
 
 TEST_F(DelegatorTest, canSendHelloToDelegator)
 {
-  worker_.send({ HELLO, { "A:B" }});
+  worker_.send({ HELLO, { "0:1" }});
 }
 
 TEST_F(DelegatorTest, canSendAndReceiveSingleJobTypeMultipleTimes)

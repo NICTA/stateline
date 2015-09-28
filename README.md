@@ -11,36 +11,32 @@ Compiler Support
 ----------------
 Stateline has been compiled and tested under g++ 4.8.2.
 
-Prerequisites
--------------
-Stateline requires the following libraries as prerequisites:
-
-* Boost 1.55
-* Eigen 3.2.0
-* google-log (glog) 0.3.3
-* google-test (gtest) 1.7.0
-* zeromq 4.0.3
-* cppzeromq 2358037407 (commit hash)
-* nlohmann json (commit 58d7342)
-
 Building
 --------
-The simplest way to get Stateline running is to run the `fetch-all.sh` script in the project root directory:
+To build Stateline, you will need:
+* GCC 4.8.2/Clang 6.0 or newer
+* CMake 3.0 or newer
+
+The simplest way to build Stateline running is to clone the repository and fetch the dependencies:
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline && ./fetch-all.sh
+$ cd stateline && ./tools/fetch-deps
+```
+
+This will automatically download and build the necessary dependencies into `build/prereqs`. Then, to build Stateline in debug, run:
+
+```bash
+$ ./tools/configure debug
 $ cd build/debug && make
 ```
 
-This will automatically download and build the necessary dependencies into a build folder. It will also create and configure separate folders for `debug` and `release` builds. If you want to do a release build, just run `make` in the release build folder instead. There are also more [advanced](https://github.com/NICTA/stateline/wiki/Installation-Guide) build instructions.
+You usually only need to configure once, so just run `make` next time you want to re-compile. Only when you make significant changes to the build procedures will you need to run `./tools/configure`. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
 
 Communications
 --------------
-
 By default, Stateline workers communicate with the sever on port 5555. Keep
 this port open or exposed on the Docker containers.
-
 
 Running C++ Demo
 ----------------

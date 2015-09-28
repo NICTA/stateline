@@ -12,6 +12,8 @@
 
 #include "multivariate.hpp"
 
+#include <random>
+
 namespace stateline
 {
   namespace stats

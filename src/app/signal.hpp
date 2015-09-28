@@ -12,7 +12,7 @@
 
 #include <atomic>
 #include <csignal>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
 #include <chrono>
 #include <thread>
 #include <future>
@@ -49,8 +49,6 @@ namespace stateline
       // std::signal(SIGTERM, handleSignal);
       std::signal(SIGINT, SIG_IGN);
       std::signal(SIGTERM, SIG_IGN);
-      // Let google handle segfaults
-      google::InstallFailureSignalHandler();
       std::thread(threadHandle).detach();
     }
 

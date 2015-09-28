@@ -16,7 +16,6 @@
 #include <string>
 #include <thread>
 // Prerequisites
-#include <glog/logging.h>
 #include <zmq.hpp>
 #include <Eigen/Eigen>
 // Project

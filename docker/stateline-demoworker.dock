@@ -1,2 +1,0 @@
-FROM stateline
-ENTRYPOINT ["/usr/local/bin/demo-worker"]

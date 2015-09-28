@@ -12,7 +12,8 @@
 
 #include <sstream>
 #include <iomanip>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
+#include <random>
 
 namespace stateline
 {
@@ -172,6 +173,11 @@ namespace stateline
     void Socket::setLinger(int l)
     {
       socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
+    }
+    
+    void Socket::setHWM(int n)
+    {
+      socket_.setsockopt(ZMQ_SNDHWM, &n, sizeof(int));
     }
 
     std::string Socket::name() const

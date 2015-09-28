@@ -1,4 +1,4 @@
-#include "serverwrapper.hpp" 
+#include "serverwrapper.hpp"
 #include "../comms/delegator.hpp"
 #include "../infer/sampler.hpp"
 #include "../infer/adaptive.hpp"

@@ -55,11 +55,11 @@ int main(int ac, char *av[])
   std::string address = vm["address"].as<std::string>();
 
   // Initialise logging
-  sl::initLogging("client", logLevel);
+  sl::initLogging(logLevel);
 
   // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
-    
+
   sl::WorkerWrapper w(gaussianNLL, {0, vm["jobtypes"].as<uint>()}, address);
 
   /*
