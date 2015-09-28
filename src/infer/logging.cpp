@@ -13,7 +13,7 @@ namespace stateline
 {
   namespace mcmc
   {
-    TableLogger::TableLogger(uint nstacks, uint nchains, uint msRefresh)
+    TableLogger::TableLogger(uint nstacks, uint nchains, uint ndims, uint msRefresh)
           : msRefresh_(msRefresh),
             nstacks_(nstacks), 
             nchains_(nchains), 
@@ -22,7 +22,8 @@ namespace stateline
             energies_(nstacks*nchains),
             nAcceptsGlobal_(nstacks*nchains),
             nSwapsGlobal_(nstacks*nchains),
-            nSwapAttemptsGlobal_(nstacks*nchains)
+            nSwapAttemptsGlobal_(nstacks*nchains),
+            diagnostic_(nstacks, nchains, ndims)
     {
       std::fill(lengths_.begin(), lengths_.end(), 1);
       std::fill(minEnergies_.begin(), minEnergies_.end(), std::numeric_limits<double>::infinity());
@@ -43,6 +44,7 @@ namespace stateline
       nAcceptsGlobal_[id] += s.accepted;
       nSwapsGlobal_[id] += s.swapType == SwapType::Accept;
       nSwapAttemptsGlobal_[id] += s.swapType != SwapType::NoAttempt;
+      diagnostic_.update(id, s);
 
       if (ch::duration_cast<ch::milliseconds>(ch::steady_clock::now() - lastPrintTime_).count() > msRefresh_)
       {
@@ -75,6 +77,11 @@ namespace stateline
         }
 
         std::cout << ss.str() << std::endl;
+
+        std::cout << "Convergence test: " << diagnostic_.rHat().mean() << " (" <<
+                     (diagnostic_.hasConverged() ? "possibly converged" :
+                                                   "not converged")
+                     << ")" << std::endl;;
       }
     }
   } // namespace mcmc

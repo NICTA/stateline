@@ -2,7 +2,6 @@
 #include "../comms/delegator.hpp"
 #include "../infer/sampler.hpp"
 #include "../infer/adaptive.hpp"
-#include "../infer/diagnostics.hpp"
 #include "../infer/logging.hpp"
 
 namespace stateline
@@ -85,9 +84,6 @@ namespace stateline
     // and how often to attempt swaps.
     mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
 
-    mcmc::EPSRDiagnostic diagnostic(s.nstacks, s.nchains, s.ndims);
-    mcmc::TableLogger logger(s.nstacks, s.nchains, s.msLoggingRefresh);
-
     // Record the starting time of the MCMC so we can stop the simulation once
     // the time limit is reached.
     auto startTime = ch::steady_clock::now();
@@ -97,7 +93,7 @@ namespace stateline
     mcmc::State state;
 
     uint nsamples = 0;
-    while (s.nsamples < nsamples && running)
+    while (nsamples < s.nsamples && running)
     {
       // Ask the sampler to return the next state of a chain.
       // 'id' is the ID of the chain and 'state' is the next state in that chain.
@@ -120,12 +116,6 @@ namespace stateline
       logger.update(id, state,
           sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
           betaAdapter.betas(), betaAdapter.swapRates());
-
-      diagnostic.update(id, state);
-      std::cout << "Convergence test: " << diagnostic.rHat() << " (" <<
-                   (diagnostic.hasConverged() ? "possibly converged" :
-                                                "not converged")
-                   << ")" << std::endl;;
     }
 
     // Finish any outstanding jobs

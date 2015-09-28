@@ -16,6 +16,7 @@
 #include <Eigen/Core>
 
 #include "../infer/datatypes.hpp"
+#include "../infer/diagnostics.hpp"
 
 namespace ch = std::chrono;
 
@@ -26,7 +27,7 @@ namespace stateline
     class TableLogger
     {
       public:
-        TableLogger(uint nstacks, uint nchains, uint msRefresh);
+        TableLogger(uint nstacks, uint nchains, uint ndims, uint msRefresh);
 
         void update(uint id, const State & s,
             const std::vector<double>& sigmas,
@@ -45,6 +46,7 @@ namespace stateline
         std::vector<uint> nAcceptsGlobal_;
         std::vector<uint> nSwapsGlobal_;
         std::vector<uint> nSwapAttemptsGlobal_;
+        mcmc::EPSRDiagnostic diagnostic_;
     };
   } // namespace mcmc
 } // namespace stateline
