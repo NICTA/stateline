@@ -1,3 +1,0 @@
-FROM stateline
-ADD config.json /stateline/
-CMD ["/usr/local/bin/stateline", "-c", "config.json"]

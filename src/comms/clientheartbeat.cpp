@@ -24,7 +24,7 @@ namespace stateline
     //! \param router A reference to the socket router.
     //! \param msTimeout The heartbeat timeout in milliseconds.
     //!
-    void monitorTimeout(hrc::time_point& lastReceivedTime, Socket& socket, uint msTimeout, bool& running);
+    // void monitorTimeout(hrc::time_point& lastReceivedTime, Socket& socket, uint msTimeout, bool& running);
 
     //! Update book-keeping on server heartbeats. Called when the socket receives a heartbeat from the server.
     //!
@@ -54,7 +54,7 @@ namespace stateline
 
       auto onPoll = [&]()
       {
-        monitorTimeout(lastReceivedTime_, socket_, settings.msTimeout, running_);
+        // monitorTimeout(lastReceivedTime_, socket_, settings.msTimeout, running_);
         sendHeartbeat(lastSendTime_, socket_, settings.msRate); 
       };
 
@@ -78,16 +78,16 @@ namespace stateline
     }
 
     // TODO: why not just make these member functions?
-    void monitorTimeout(hrc::time_point& lastReceivedTime, Socket& socket, uint msTimeout, bool& running)
-    {
-      auto msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(hrc::now() - lastReceivedTime).count();
-      if (msElapsed > msTimeout)
-      {
-        VLOG(1) << "Heartbeat system sending GOODBYE on behalf of server";
-        socket.send({ stateline::comms::GOODBYE });
-        running = false;
-      }
-    }
+    // void monitorTimeout(hrc::time_point& lastReceivedTime, Socket& socket, uint msTimeout, bool& running)
+    // {
+    //   auto msElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(hrc::now() - lastReceivedTime).count();
+    //   if (msElapsed > msTimeout)
+    //   {
+    //     VLOG(1) << "Heartbeat system sending GOODBYE on behalf of server";
+    //     socket.send({ stateline::comms::GOODBYE });
+    //     running = false;
+    //   }
+    // }
 
     void heartbeatArrived(hrc::time_point& lastReceivedTime)
     {
