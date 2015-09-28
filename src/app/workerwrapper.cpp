@@ -16,6 +16,7 @@
 #include "comms/thread.hpp"
 
 #include <iomanip>
+#include <random>
 
 namespace stateline
 {

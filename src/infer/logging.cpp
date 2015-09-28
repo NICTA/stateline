@@ -8,6 +8,7 @@
 //!
 
 #include "infer/logging.hpp"
+#include <easylogging/easylogging++.h>
 
 namespace stateline
 {

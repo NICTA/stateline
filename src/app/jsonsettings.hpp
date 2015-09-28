@@ -13,7 +13,7 @@
 
 #include <json.hpp>
 #include <string>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
 
 namespace stateline
 {

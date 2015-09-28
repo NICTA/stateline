@@ -23,5 +23,5 @@ namespace stateline
   //! \param stdErr Switch to enable logging to stdError.
   //! \param directory The directory to log to if stdErr logging is disabled.
   //!
-  void initLogging(const std::string &appName, int logLevel, bool stdErr=true, const std::string& directory=".");
+  void initLogging(int logLevel, bool stdOut=true, const std::string& filename=".");
 } // namespace stateline

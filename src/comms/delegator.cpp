@@ -10,6 +10,8 @@
 
 #include <string>
 #include <boost/algorithm/string.hpp>
+#include <easylogging/easylogging++.h>
+#include <numeric>
 
 #include "comms/datatypes.hpp"
 #include "comms/thread.hpp"
@@ -129,7 +131,7 @@ namespace stateline
         jobTypeRange.second = std::stoi(jobTypes[1]);
       }
 
-      Worker w {msg.address, jobTypeRange, {}, {}};
+      Worker w {msg.address, jobTypeRange};
       for (uint i = jobTypeRange.first; i < jobTypeRange.second; i++)
         w.times.insert(std::make_pair(i, boost::circular_buffer<uint>(10)));
 
@@ -166,13 +168,18 @@ namespace stateline
 
     void Delegator::receiveResult(const Message& msg)
     {
-      std::string worker = msg.address.front();
+      std::string workerId = msg.address.front();
+      if (!workers_.count(workerId))
+        return;
+
       std::string jobID = msg.data[0];
-      Job& j = workers_[worker].workInProgress[jobID];
+      auto& worker = workers_.find(workerId)->second;
+
+      Job& j = worker.workInProgress[jobID];
       // timing information
       auto elapsedTime = std::chrono::high_resolution_clock::now() - j.startTime;
       uint usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
-      workers_[worker].times[j.type].push_back(usecs);
+      worker.times[j.type].push_back(usecs);
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];
       r.nDone++;
@@ -183,7 +190,7 @@ namespace stateline
         requests_.erase(j.requesterID);
       }
       //remove job from work in progress store
-      workers_[worker].workInProgress.erase(jobID);
+      worker.workInProgress.erase(jobID);
     }
 
     Delegator::Worker* Delegator::bestWorker(uint jobType, uint maxJobs)
@@ -238,13 +245,16 @@ namespace stateline
     void Delegator::disconnectWorker(const Message& goodbyeFromWorker)
     {
       //first address
-      std::string worker = goodbyeFromWorker.address.front();
+      std::string workerId = goodbyeFromWorker.address.front();
 
-      Worker& w = workers_[worker];
+      if (!workers_.count(workerId))
+        return;
+
+      auto w = workers_.find(workerId)->second;
       for (auto const& j : w.workInProgress)
         jobQueue_.push_front(j.second);
-      workers_.erase(worker);
-      LOG(INFO)<< "Worker " << worker << " disconnected: re-assigning their jobs";
+      workers_.erase(workerId);
+      LOG(INFO)<< "Worker " << workerId << " disconnected: re-assigning their jobs";
     }
 
     void Delegator::sendFailed(const Message& msgToWorker)

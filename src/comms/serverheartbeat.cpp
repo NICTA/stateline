@@ -10,7 +10,7 @@
 
 #include "comms/serverheartbeat.hpp"
 #include <stdexcept>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
 
 namespace stateline
 {
@@ -121,6 +121,7 @@ namespace stateline
 
     void monitorTimeouts(HBClients& clients, HBMap& lastHeartbeats, Socket& socket, uint msTimeout)
     {
+      std::vector<std::string> toRemove;
       for (const auto& addr : clients)
       {
         auto msElapsed = std::chrono::duration_cast < std::chrono::milliseconds > (hrc::now() - lastHeartbeats[addr]).count();
@@ -128,10 +129,13 @@ namespace stateline
         {
           VLOG(1) << "Heartbeat system sending GOODBYE on behalf of " << addr;
           socket.send({{ addr }, GOODBYE});
-          clients.erase(clients.find(addr));
           lastHeartbeats.erase(addr);
+          toRemove.push_back(addr);
         }
       }
+
+      for (const auto& addr : toRemove)
+        clients.erase(addr);
     }
 
     void sendHeartbeats(HBClients& clients, hrc::time_point& lastHbTime, Socket& socket, uint msFrequency)

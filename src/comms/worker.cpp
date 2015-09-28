@@ -12,6 +12,7 @@
 #include "comms/thread.hpp"
 
 #include <cstdlib>
+#include <easylogging/easylogging++.h>
 
 namespace stateline
 {

@@ -9,7 +9,7 @@
 # CMAKE SETUP
 ##############################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 PROJECT(STATELINE)
 
 # Use folders
@@ -39,10 +39,10 @@ SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Search variables for prereqs
 SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
-SET(GLOG_ROOT_DIR ${PREREQ_DIR})
 SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
 SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
 SET(BOOST_ROOT ${PREREQ_DIR})
+SET(BOOST_INCLUDEDIR ${PREREQ_DIR}/include/boost-1_59)
 
 # Installation
 install(DIRECTORY src/ DESTINATION "include/stateline"
@@ -52,26 +52,6 @@ OPTION(LOCAL_INSTALL "Install to build directory (overrides CMAKE_INSTALL_PREFIX
 IF(LOCAL_INSTALL)
   SET(CMAKE_INSTALL_PREFIX "${STATELINE_BINARY_DIR}/install")
 ENDIF(LOCAL_INSTALL)
-
-
-
-##############################################################################
-# LOGGING (GLOG)
-##############################################################################
-
-FIND_PACKAGE(Glog REQUIRED)
-# Logging toggle
-OPTION(NO_LOGGING "Set to true to compile out any Logging statements" OFF)
-IF(NO_LOGGING)
-    ADD_DEFINITIONS(-DNO_LOGGING)
-ENDIF(NO_LOGGING)
-
-# Conditional linking of logging
-MACRO(LINK_LOGGING projectName)
-  IF(NOT NO_LOGGING)
-    TARGET_LINK_LIBRARIES(${projectName} ${GLOG_LIBRARY})
-  ENDIF (NOT NO_LOGGING)
-ENDMACRO(LINK_LOGGING projectName)
 
 ##############################################################################
 # COMPILATION
@@ -86,6 +66,8 @@ ELSE(CMAKE_COMPILER_IS_GNUCXX)
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
+ADD_DEFINITIONS(-DELPP_THREAD_SAFE)
+
 ##############################################################################
 # PREREQUISITE LIBRARIES
 ##############################################################################
@@ -98,17 +80,18 @@ ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
 # Boost
 SET(Boost_NO_SYSTEM_PATHS ON)
-SET(DESIRED_BOOST_VERSION "1_55_0")
-SET(Boost_ADDITIONAL_VERSIONS "1_55_0")
+SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_STATIC_RUNTIME ON)
+IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # CMake doesn't seem smart enough to detect boost libraries build with Clang
+  SET(Boost_COMPILER "-clang-darwin42")
+ENDIF()
 
-FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options
-                                       system
-                                       filesystem
-                                       serialization)
-
-MESSAGE(INFO "BOOST: ${Boost_LIBRARIES}")
+FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
+                                            system
+                                            filesystem
+                                            serialization)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -117,7 +100,6 @@ FIND_PACKAGE(ZMQ REQUIRED)
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
 # Google Test
-MESSAGE(STATUS "GTEST directory: ${GTEST_SRC_DIR}")
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
 ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
@@ -128,8 +110,8 @@ TARGET_LINK_LIBRARIES(gtest logging)
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
+                    "${STATELINE_SOURCE_DIR}/external"
                      ${ZMQ_INCLUDE_DIR}
-                     ${GLOG_INCLUDE_DIR}
                      ${Boost_INCLUDE_DIR}
                      ${EIGEN3_INCLUDE_DIR}
                      ${GTEST_DIR}

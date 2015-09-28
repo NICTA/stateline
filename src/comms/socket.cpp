@@ -12,7 +12,8 @@
 
 #include <sstream>
 #include <iomanip>
-#include <glog/logging.h>
+#include <easylogging/easylogging++.h>
+#include <random>
 
 namespace stateline
 {
