@@ -9,14 +9,23 @@ RUN apt-get update && apt-get install -y \
   unzip \
   nmap
 
-RUN mkdir -p /stateline /usr/local/src/stateline /tmp/build && git clone https://github.com/NICTA/stateline.git /usr/local/src/stateline && cp /usr/local/src/stateline/tools /usr/local/
-WORKDIR /usr/local
-RUN ./tools/fetch-deps .
+ENV PREREQ_DIR /usr/local
+
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib
+
+RUN mkdir -p /stateline /usr/local/src/stateline /tmp/build/prereqs \
+  && git clone https://github.com/NICTA/stateline.git /usr/local/src/stateline \
+  && cp -R /usr/local/src/stateline/tools /tmp/build/prereqs \
+  && cd /tmp/build/prereqs \
+  && ./tools/fetch-deps . \
+  && rm -r /tmp/build/prereqs
 
 # get stateline inside and compiled
-WORKDIR /tmp/build
-RUN cmake /usr/local/src/stateline -DCMAKE_BUILD_TYPE=Release -DLOCAL_INSTALL=OFF -DPREREQ_DIR=/usr/local/build/prereqs && make && make install
-ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib
+RUN  cd /tmp/build \
+  && cmake /usr/local/src/stateline -DCMAKE_BUILD_TYPE=Release -DLOCAL_INSTALL=OFF -DPREREQ_DIR=/usr/local \
+  && make \
+  && make install \
+  && rm -r /tmp/build
 
 # Clean up APT when done
 RUN apt-get purge -y git cmake bzip2 wget unzip && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

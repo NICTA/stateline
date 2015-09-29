@@ -58,6 +58,7 @@ cd ../..
 
 wget -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
 [ -d gtest-1.7.0 ] || unzip -o gtest-1.7.0.zip
+cp -r gtest-1.7.0 $PREREQ_DIR/src
 
 #######################################
 # zeromq 4.0.3
