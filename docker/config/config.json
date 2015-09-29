@@ -4,7 +4,7 @@
     "min": [-10,  0, -10, -10],
     "max": [ 10, 10,  10,   2]
   },
-  "duration": 20,
+  "nsamples": 1000000,
   "sigma": 1.0,
   "nJobTypes": 3,
   "annealLength": 50,
