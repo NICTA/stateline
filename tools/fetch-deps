@@ -1,11 +1,12 @@
-#!/bin/bash
+#!/bin/bash -e
 
-export STATELINE_SOURCE_DIR=$(pwd)
+STATELINE_SOURCE_DIR=$(pwd)
+PREREQ_DIR="$STATELINE_SOURCE_DIR/build/prereqs"
 
 # Determine platform specific variables
 if [ "$(uname)" == "Darwin" ]; then
   echo "Detected Mac OS X. Using Clang..."
-  N_PROCESSORS="$(sysctl -n hw.ncpu)"
+  N_PROCESSORS="$(getconf _NPROCESSORS_ONLN)"
   B2_EXTRA_FLAGS='toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" '
 else
   echo "Detected Linux. Using GCC..."
@@ -17,8 +18,8 @@ printf "Using %d cores to build.\n" "$N_PROCESSORS"
 
 # Create a prereqs folder if no prefix is specified
 if [ $# -eq 0 ]; then
-  mkdir -p build/prereqs
-  cd build/prereqs
+  mkdir -p $PREREQ_DIR
+  cd $PREREQ_DIR
 fi
 
 # Create folders for the dependencies
@@ -37,7 +38,7 @@ wget -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0
 cd boost_1_59_0
 ./bootstrap.sh
 ./b2 -j $N_PROCESSORS --layout=versioned variant=debug,release threading=multi runtime-link=static link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
-cd ..
+cd "$PREREQ_DIR/src"
 
 #######################################
 # Eigen 3.2.0
@@ -50,7 +51,7 @@ mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
 make install
-cd ../..
+cd "$PREREQ_DIR/src"
 
 #######################################
 # google-test (gtest) 1.7.0
@@ -58,7 +59,7 @@ cd ../..
 
 wget -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
 [ -d gtest-1.7.0 ] || unzip -o gtest-1.7.0.zip
-cp -r gtest-1.7.0 $PREREQ_DIR/src
+# cp -r gtest-1.7.0 "$PREREQ_DIR/src"
 
 #######################################
 # zeromq 4.0.3
@@ -70,7 +71,7 @@ cd zeromq-4.0.3
 ./configure --prefix=$PREREQ_DIR
 make -j $N_PROCESSORS
 make install
-cd ..
+cd "$PREREQ_DIR/src"
 
 #######################################
 # cppzeromq 2358037407 (commit hash)
@@ -78,7 +79,7 @@ cd ..
 
 wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O cppzmq-master.zip
 [ -d cppzmq-master ] || unzip -o cppzmq-master.zip
-cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
+cp cppzmq-master/zmq.hpp "$PREREQ_DIR/include"
 
 #######################################
 # json
@@ -86,4 +87,4 @@ cp cppzmq-master/zmq.hpp $PREREQ_DIR/include
 
 wget -c https://github.com/nlohmann/json/archive/master.zip -O json-master.zip
 [ -d json-master ] || unzip -o json-master.zip
-cp json-master/src/json.hpp $PREREQ_DIR/include
+cp json-master/src/json.hpp "$PREREQ_DIR/include"
