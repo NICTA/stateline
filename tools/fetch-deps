@@ -1,32 +1,43 @@
-#!/bin/bash -e
+#!/bin/sh -e
 
 STATELINE_SOURCE_DIR=$(pwd)
-PREREQ_DIR="$STATELINE_SOURCE_DIR/build/prereqs"
+
+N_PROCESSORS="$(getconf _NPROCESSORS_ONLN)"
 
 # Determine platform specific variables
 if [ "$(uname)" == "Darwin" ]; then
   echo "Detected Mac OS X. Using Clang..."
-  N_PROCESSORS="$(getconf _NPROCESSORS_ONLN)"
   B2_EXTRA_FLAGS='toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" '
 else
   echo "Detected Linux. Using GCC..."
-  N_PROCESSORS="$(nproc)"
   B2_EXTRA_FLAGS='toolset=gcc'
 fi
 
-printf "Using %d cores to build.\n" "$N_PROCESSORS"
+printf "Using %d cores to build.\n" "${N_PROCESSORS}"
+
+if [ $# -gt 0 ]
+then
+    PREREQ_DIR=$1
+    echo "Explicitly setting prereq dir to '${PREREQ_DIR}'."
+else
+    if [ -z "${PREREQ_DIR}" ]
+    then
+        PREREQ_DIR="${STATELINE_SOURCE_DIR}/build/prereqs"
+        echo "Prereq dir environment variable neither set and nor specified explicitly."
+        echo "Defaulting to '${PREREQ_DIR}'."
+    else
+        echo "Prereq dir environment variable set to '${PREREQ_DIR}'."
+    fi
+fi
 
 # Create a prereqs folder if no prefix is specified
 if [ $# -eq 0 ]; then
-  mkdir -p $PREREQ_DIR
-  cd $PREREQ_DIR
+  mkdir -p ${PREREQ_DIR}
+  cd ${PREREQ_DIR}
 fi
 
 # Create folders for the dependencies
-mkdir -p src
-mkdir -p include
-mkdir -p lib
-mkdir -p bin
+mkdir -p src include lib bin 
 cd src
 
 #######################################
