@@ -15,7 +15,7 @@ Building
 --------
 To build Stateline, you will need:
 * GCC 4.8.2/Clang 6.0 or newer
-* CMake 3.0 or newer
+* CMake 3.0 or newer ([link](https://cmake.org/install/))
 
 The simplest way to build Stateline running is to clone the repository and fetch the dependencies:
 
@@ -40,12 +40,12 @@ this port open or exposed on the Docker containers.
 
 Running C++ Demo
 ----------------
-To see Stateline in action, open two terminals and run the following commands in a build directory:
+To see Stateline in action, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
 
 Run the Stateline server in Terminal 1:
 
 ```bash
-$ ./stateline --config=cpp-demo-config.json
+$ ./stateline --config=demo-config.json
 ```
 
 Run a Stateline worker in Terminal 2:
@@ -54,37 +54,33 @@ Run a Stateline worker in Terminal 2:
 $ ./demo-worker
 ```
 
-Now, in your build directory, you should see a folder called cpp-demo-chains. This folder contains samples from the demo MCMC. Running
-
-```bash
-$ python vis.py cpp-demo-output/0.csv
-```
-
-will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [triangle-plot](https://github.com/dfm/triangle.py) module.
-
 Running Python Demo
 -------------------
-There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. Again, open two terminals and run the following commands in a build directory:
+There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. This demo requires the [zmq] module (install via `pip  install zmq`). Again, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
 
 Run the Stateline server in Terminal 1:
 
 ```bash
-$ ./stateline --config=python-demo-config.json
+$ ./stateline --config=demo-config.json
 ```
 
 Run a Stateline worker in Terminal 2:
 
 ```bash
-$ python demo-worker.py
+$ python ./demo-worker.py
 ```
 
-And again, running
+Output
+-------------------
+
+After running one of the above examples,  you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
 
 ```bash
-$ python vis.py python-demo-output/0.csv
+$ python vis.py demo-output/0.csv
 ```
 
-will launch a Python script that visualises the samples of the first chain.
+will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [corner-plot](https://github.com/dfm/corner.py) module (formerly triangle-plot).
+
 
 Documentation
 -------------
