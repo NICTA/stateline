@@ -9,16 +9,13 @@ RUN apt-get update && apt-get install -y \
   unzip \
   nmap
 
-ENV PREREQ_DIR /usr/local
+ENV PREREQ_DIR /usr/local 
 
 ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib
 
-RUN mkdir -p /stateline /usr/local/src/stateline /tmp/build/prereqs \
+RUN mkdir -p /stateline /usr/local/src/stateline /tmp/stateline \
   && git clone https://github.com/NICTA/stateline.git /usr/local/src/stateline \
-  && cp -R /usr/local/src/stateline/tools /tmp/build/prereqs \
-  && cd /tmp/build/prereqs \
-  && ./tools/fetch-deps . \
-  && rm -r /tmp/build/prereqs
+  && BUILD_DIR=/tmp/stateline ./usr/local/src/stateline/tools/fetch-deps 
 
 # get stateline inside and compiled
 RUN  cd /tmp/build \

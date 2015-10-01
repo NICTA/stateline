@@ -97,4 +97,4 @@ wget -c https://github.com/nlohmann/json/archive/master.zip -O ${BUILD_DIR}/json
 [ -d ${BUILD_DIR}/json-master ] || unzip -o ${BUILD_DIR}/json-master.zip -d ${BUILD_DIR}
 cp ${BUILD_DIR}/json-master/src/json.hpp $PREREQ_DIR/include
 
-# rm -rf ${BUILD_DIR}
+rm -rf ${BUILD_DIR}
