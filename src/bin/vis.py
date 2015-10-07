@@ -11,9 +11,9 @@ with open(sys.argv[1], 'r') as csvfile:
 
 ndims = len(samples[0])
 if ndims > 1:
-    import triangle
+    import corner
 
-    triangle.corner(np.asarray(samples, dtype=float))
+    corner.corner(np.asarray(samples, dtype=float))
     plt.show()
 else:
     plt.hist(np.asarray(samples, dtype=float).ravel())
