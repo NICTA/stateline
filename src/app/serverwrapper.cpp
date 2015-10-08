@@ -102,7 +102,8 @@ namespace stateline
       try
       {
         std::tie(id, state) = sampler.step(sigmaAdapter.sigmas(), betaAdapter.betas());
-        nsamples++;
+        if (id % s.nchains == 0)
+          nsamples++;
       }
       catch (...)
       {
