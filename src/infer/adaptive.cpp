@@ -53,7 +53,7 @@ namespace stateline
       for (uint i = 0; i < nChains * nStacks; i++)
       {
         lengths_[i] = 1; // assuming we're not recovering
-        acceptRates_[i] = 1.0;
+        acceptRates_[i] = s_.optimalAcceptRate;
         acceptBuffers_.push_back(boost::circular_buffer<bool>(s_.windowSize));
         acceptBuffers_[i].push_back(true); // first state always accepts
       }
@@ -137,7 +137,7 @@ namespace stateline
 
       for (uint i = 0; i < nChains * nStacks; i++)
       {
-        swapRates_[i] = 0.0;
+        swapRates_[i] = s_.optimalSwapRate;
         swapBuffers_.push_back(boost::circular_buffer<bool>(s_.windowSize));
         swapBuffers_[i].push_back(false); // gets rid of a nan, not really needed
       }
