@@ -84,10 +84,12 @@ namespace stateline
           std::pair<uint, uint> jobTypesRange;
           std::map<std::string, Job> workInProgress;
           std::map<uint, boost::circular_buffer<uint>> times;
+          std::chrono::high_resolution_clock::time_point lastResultTime;
 
           Worker(std::vector<std::string> address,
                  std::pair<uint, uint> jobTypesRange)
-            : address(std::move(address)), jobTypesRange(std::move(jobTypesRange))
+            : address(std::move(address)), jobTypesRange(std::move(jobTypesRange)),
+            lastResultTime(std::chrono::high_resolution_clock::now())
           {
           }
         };

@@ -177,9 +177,13 @@ namespace stateline
 
       Job& j = worker.workInProgress[jobID];
       // timing information
-      auto elapsedTime = std::chrono::high_resolution_clock::now() - j.startTime;
+      auto now = std::chrono::high_resolution_clock::now();
+      // estimate time the worker spent on this job
+      auto elapsedTime = now - std::max(j.startTime, worker.lastResultTime);
+
       uint usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
       worker.times[j.type].push_back(usecs);
+      worker.lastResultTime = now;
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];
       r.nDone++;
