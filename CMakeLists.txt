@@ -111,11 +111,11 @@ TARGET_LINK_LIBRARIES(gtest logging)
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     "${STATELINE_SOURCE_DIR}/external"
-                     ${ZMQ_INCLUDE_DIR}
-                     ${Boost_INCLUDE_DIR}
-                     ${EIGEN3_INCLUDE_DIR}
-                     ${GTEST_DIR}
-                     ${GTEST_INCLUDE_DIR})
+                    SYSTEM "${ZMQ_INCLUDE_DIR}"
+                    SYSTEM "${Boost_INCLUDE_DIR}"
+                    SYSTEM "${EIGEN3_INCLUDE_DIR}"
+                    SYSTEM "${GTEST_DIR}"
+                    SYSTEM "${GTEST_INCLUDE_DIR}")
 
 ##############################################################################
 # TESTING

@@ -1,39 +1,28 @@
 #!/bin/bash
 
 if [ $# -eq 0 ]; then
-  echo "Usage: $0 configure <debug|release>" 1>&2
+  echo "Usage: $0 <debug|release>" 1>&2
   exit 1
 fi
 
 STATELINE_SOURCE_DIR=$(pwd)
 
 # Set PREREQ_DIR
-[ $# -le 0 ] || PREREQ_DIR=$1
-if [ -z "${PREREQ_DIR}" ]
-then
-    echo "PREREQ_DIR neither set and nor specified explicitly. Setting to default."
-    PREREQ_DIR="${STATELINE_SOURCE_DIR}/build/prereqs"
+if [ -z "${PREREQ_DIR}" ]; then
+  PREREQ_DIR="${STATELINE_SOURCE_DIR}/build/prereqs"
 fi
 echo "PREREQ_DIR set to '${PREREQ_DIR}'."
 
 # Set BUILD_DIR
-[ $# -le 1 ] || BUILD_DIR=$2
-if [ -z "${BUILD_DIR}" ]
-then
-    echo "BUILD_DIR neither set and nor specified explicitly. Setting to default."
-    BUILD_DIR="${STATELINE_SOURCE_DIR}/build/tmp"
+if [ -z "${BUILD_DIR}" ]; then
+  BUILD_DIR="${STATELINE_SOURCE_DIR}/build/$1"
 fi
 echo "BUILD_DIR set to '${BUILD_DIR}'."
 
-cd $BUILD_DIR
+mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 if [ $1 = "debug" ]; then
-  mkdir -p debug
-  cd debug
   cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR ${@:2}
 elif [ $1 = "release" ]; then
-  mkdir -p release
-  cd release
   cmake $STATELINE_SOURCE_DIR -DSTATELINE_BINARY_DIR=$(pwd) -DSTATELINE_SOURCE_DIR=$STATELINE_SOURCE_DIR -DPREREQ_DIR=$PREREQ_DIR -DCMAKE_BUILD_TYPE=Release ${@:2}
 fi
-
