@@ -179,16 +179,19 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-SET(STATELINE_COMMON router messages ${ZMQ_LIBRARY} logging)
-SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
-SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
-
 ADD_LIBRARY(statelineserver SHARED src/app/serverwrapper.cpp src/app/logging.cpp)
-TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
+TARGET_LINK_LIBRARIES(statelineserver commoncomms
+                                      servercomms
+                                      serverwrapper
+                                      mcmc
+                                      ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_LIBRARY(statelineclient SHARED src/app/workerwrapper.cpp src/app/logging.cpp)
-TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
+TARGET_LINK_LIBRARIES(statelineclient commoncomms
+                                      clientcomms
+                                      workerwrapper
+                                      ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
 install (TARGETS statelineserver
