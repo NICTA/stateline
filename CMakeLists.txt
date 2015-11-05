@@ -195,6 +195,14 @@ ADD_LIBRARY(statelineclient SHARED src/app/workerwrapper.cpp src/app/logging.cpp
 TARGET_LINK_LIBRARIES(statelineclient ${STATELINE_COMMON} ${STATELINE_CLIENT})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
+##############################################################################
+# Move the frontend code to the build folder
+##############################################################################
+FILE(COPY frontend DESTINATION ${STATELINE_BINARY_DIR})
+
+##############################################################################
+# Install binaries
+##############################################################################
 install (TARGETS statelineserver
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)

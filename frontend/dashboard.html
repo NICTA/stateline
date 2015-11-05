@@ -7,23 +7,39 @@
   <body>
     <div id="chart"></div>
     <script type="text/javascript">
-      var data = {};
+      var columns = [
+        ['x', 0],
+      ];
 
       var chart = c3.generate({
         bindto: '#chart',
         data: {
-          json: data
+          x: 'x',
+          columns: columns
         }
       });
 
-      d3.json("localhost:8080/chains", function(error, json) {
-        console.log(json);
-        if (error) return console.warn(error);
+      setInterval(function() {
+        d3.json("http://localhost:8080/chains", function(error, json) {
+            console.log(json);
+            if (error) return console.warn(error);
 
-        chart.load({
-          json: json,
-        });
-      });
+            for (var i = 0; i < json.length; i++) {
+              chain = json[i];
+              if (columns[chain.id + 1]) {
+                columns[chain.id + 1].push(chain.length);
+              } else {
+                columns[chain.id + 1] = [chain.id.toString(), chain.length];
+              }
+            }
+            columns[0].push(columns[0][columns[0].length - 1] + 1);
+            console.log(columns)
+
+            chart.load({
+              columns: columns
+            });
+          });
+      }, 1000);
     </script>
   </body>
 </html>

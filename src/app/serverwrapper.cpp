@@ -13,9 +13,10 @@ namespace stateline
       json res;
       for (uint i = 0; i < chains.numTotalChains(); i++)
       {
-        res[std::to_string(i)] = {
+        res.push_back(json({
+          { "id", i },
           { "length", chains.length(i) }
-        };
+        }));
       }
       return res;
     }
