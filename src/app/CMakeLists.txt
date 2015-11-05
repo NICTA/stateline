@@ -8,3 +8,6 @@
 ADD_LIBRARY(logging logging.cpp)
 ADD_LIBRARY(workerwrapper workerwrapper.cpp)
 ADD_LIBRARY(serverwrapper serverwrapper.cpp)
+ADD_LIBRARY(api api.cpp)
+
+TARGET_LINK_LIBRARIES(serverwrapper api)

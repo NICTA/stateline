@@ -12,7 +12,6 @@
 #include <boost/program_options.hpp>
 #include <json.hpp>
 
-
 #include "../app/serverwrapper.hpp"
 #include "../app/logging.hpp"
 #include "../app/serial.hpp"

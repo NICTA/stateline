@@ -19,8 +19,6 @@
 #include "../infer/chainarray.hpp"
 #include "../infer/sampler.hpp"
 
-
-
 namespace stateline
 {
   struct StatelineSettings
@@ -78,5 +76,6 @@ namespace stateline
       zmq::context_t* context_;
       std::future<void> serverThread_;
       std::future<void> samplerThread_;
+      std::future<void> apiServerThread_;
   };
 }

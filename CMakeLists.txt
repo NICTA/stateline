@@ -91,7 +91,11 @@ ENDIF()
 FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
                                             system
                                             filesystem
-                                            serialization)
+                                            regex
+                                            coroutine
+                                            thread
+                                            date_time
+                                            context)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -184,7 +188,7 @@ SET(STATELINE_SERVER serverwrapper mcmc delegator requester serverheartbeat)
 SET(STATELINE_CLIENT workerwrapper minion worker clientheartbeat)
 
 ADD_LIBRARY(statelineserver SHARED src/app/serverwrapper.cpp src/app/logging.cpp)
-TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER})
+TARGET_LINK_LIBRARIES(statelineserver ${STATELINE_COMMON} ${STATELINE_SERVER} ${Boost_LIBRARIES})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_LIBRARY(statelineclient SHARED src/app/workerwrapper.cpp src/app/logging.cpp)
