@@ -1,4 +1,5 @@
 #include "serverwrapper.hpp"
+#include "api.hpp"
 #include "../comms/delegator.hpp"
 #include "../infer/sampler.hpp"
 #include "../infer/adaptive.hpp"
@@ -134,7 +135,6 @@ namespace stateline
     running = false;
   }
 
-
   ServerWrapper::ServerWrapper(uint port, const StatelineSettings& s)
     : port_(port), settings_(s)
   {
@@ -146,8 +146,9 @@ namespace stateline
     context_ = new zmq::context_t{1};
 
     serverThread_ = std::async(std::launch::async, runServer, std::ref(*context_), port_, std::ref(running_));
-    samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_), 
+    samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_),
         std::ref(*context_), std::ref(running_));
+    apiServerThread_ = std::async(std::launch::async, runApiServer, 8080, std::ref(running_));
   }
 
   void ServerWrapper::stop()

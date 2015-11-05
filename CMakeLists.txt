@@ -91,7 +91,11 @@ ENDIF()
 FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
                                             system
                                             filesystem
-                                            serialization)
+                                            regex
+                                            coroutine
+                                            thread
+                                            date_time
+                                            context)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
