@@ -1,0 +1,29 @@
+<html>
+  <head>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.10/c3.min.js" charset="utf-8"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.10/c3.min.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div id="chart"></div>
+    <script type="text/javascript">
+      var data = {};
+
+      var chart = c3.generate({
+        bindto: '#chart',
+        data: {
+          json: data
+        }
+      });
+
+      d3.json("localhost:8080/chains", function(error, json) {
+        console.log(json);
+        if (error) return console.warn(error);
+
+        chart.load({
+          json: json,
+        });
+      });
+    </script>
+  </body>
+</html>
