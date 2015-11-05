@@ -42,6 +42,10 @@ namespace stateline
     defaultConf.setGlobally(
         el::ConfigurationType::Filename, filename);
 
+    // TODO: currently only verbose logging works. Normal hierarchical logging
+    // is a bit tricky on easylogging. Will implement if needed.
+    el::Loggers::setVerboseLevel(vLevel);
+
     LOG(INFO) << "Logging initialised with level " << normLog << " and verbosity " << vLevel;
   }
 
