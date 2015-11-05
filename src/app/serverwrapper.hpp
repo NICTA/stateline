@@ -15,6 +15,7 @@
 #include <zmq.hpp>
 #include <json.hpp>
 #include "jsonsettings.hpp"
+#include "api.hpp"
 #include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
 #include "../infer/sampler.hpp"
@@ -74,6 +75,7 @@ namespace stateline
       StatelineSettings settings_;
       bool running_;
       zmq::context_t* context_;
+      ApiResources api_;
       std::future<void> serverThread_;
       std::future<void> samplerThread_;
       std::future<void> apiServerThread_;

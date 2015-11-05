@@ -1,5 +1,4 @@
 #include "serverwrapper.hpp"
-#include "api.hpp"
 #include "../comms/delegator.hpp"
 #include "../infer/sampler.hpp"
 #include "../infer/adaptive.hpp"
@@ -7,6 +6,21 @@
 
 namespace stateline
 {
+  namespace
+  {
+    json to_json(const mcmc::ChainArray& chains)
+    {
+      json res;
+      for (uint i = 0; i < chains.numTotalChains(); i++)
+      {
+        res[std::to_string(i)] = {
+          { "length", chains.length(i) }
+        };
+      }
+      return res;
+    }
+  }
+
   void runServer(zmq::context_t& context, uint port, bool& running)
   {
     auto settings = comms::DelegatorSettings::Default(port);
@@ -52,7 +66,7 @@ namespace stateline
     return {sampleVec[minEnergyIndex], minEnergy};
   }
 
-  void runSampler(const StatelineSettings& s, zmq::context_t& context, bool& running)
+  void runSampler(const StatelineSettings& s, zmq::context_t& context, ApiResources& api, bool& running)
   {
     mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
     mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
@@ -117,6 +131,9 @@ namespace stateline
       covEstimator.update(id, state.sample);
       proposal.update(id, covEstimator.covariances()[id]);
 
+      // Update the API
+      api.set("chains", to_json(chains));
+
       logger.update(id, state,
           sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
           betaAdapter.betas(), betaAdapter.swapRates());
@@ -139,8 +156,8 @@ namespace stateline
 
     serverThread_ = std::async(std::launch::async, runServer, std::ref(*context_), port_, std::ref(running_));
     samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_),
-        std::ref(*context_), std::ref(running_));
-    apiServerThread_ = std::async(std::launch::async, runApiServer, 8080, std::ref(running_));
+        std::ref(*context_), std::ref(api_), std::ref(running_));
+    apiServerThread_ = std::async(std::launch::async, runApiServer, 8080, std::ref(api_), std::ref(running_));
   }
 
   void ServerWrapper::stop()
@@ -165,6 +182,4 @@ namespace stateline
   {
     stop();
   }
-
-
 }
