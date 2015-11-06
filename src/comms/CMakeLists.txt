@@ -19,7 +19,8 @@ ADD_LIBRARY(delegator OBJECT delegator.cpp)
 ADD_LIBRARY(requester OBJECT requester.cpp)
 ADD_LIBRARY(servercomms $<TARGET_OBJECTS:serverheartbeat>
                         $<TARGET_OBJECTS:delegator>
-                        $<TARGET_OBJECTS:requester>)
+                        $<TARGET_OBJECTS:requester>
+                        $<TARGET_OBJECTS:router>)
 
 # Client specific libraries
 ADD_LIBRARY(clientheartbeat OBJECT clientheartbeat.cpp)
