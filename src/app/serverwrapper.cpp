@@ -105,8 +105,14 @@ namespace stateline
         if (id % s.nchains == 0)
           nsamples++;
       }
+      catch (std::exception const& e)
+      {
+        LOG(INFO) << "Error in sampler step - aborting:";
+        LOG(INFO) << e.what();
+      }
       catch (...)
       {
+        LOG(INFO) << "Error in sampler step - aborting:";
         break;
       }
 
@@ -120,9 +126,11 @@ namespace stateline
           sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
           betaAdapter.betas(), betaAdapter.swapRates());
     }
-
     // Finish any outstanding jobs
+    LOG(INFO) << "Finished MCMC job with " << nsamples << " samples.";
     sampler.flush();
+    if (running == false)
+        LOG(INFO) << "Running == False";
     running = false;
   }
 
