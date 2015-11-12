@@ -82,12 +82,15 @@ make install
 cd -
 
 #######################################
-# cppzeromq 2358037407 (commit hash)
+# cppzeromq (fixed commit hash)
 #######################################
 
-wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O ${BUILD_DIR}/cppzmq-master.zip
-[ -d ${BUILD_DIR}/cppzmq-master ] || unzip -o ${BUILD_DIR}/cppzmq-master.zip -d ${BUILD_DIR}
-cp ${BUILD_DIR}/cppzmq-master/zmq.hpp $PREREQ_DIR/include
+wget -c https://github.com/zeromq/cppzmq/archive/4d79066be3c3ed0.zip -O ${BUILD_DIR}/cppzmq.zip
+[ -d ${BUILD_DIR}/cppzmq.zip ] || unzip -o ${BUILD_DIR}/cppzmq.zip -d ${BUILD_DIR}
+# Just in case its left around from a previous run...
+rm ${BUILD_DIR}/cppzmq-master.zip || true
+mv ${BUILD_DIR}/cppzmq-* ${BUILD_DIR}/cppzmq
+cp ${BUILD_DIR}/cppzmq/zmq.hpp $PREREQ_DIR/include
 
 #######################################
 # json
