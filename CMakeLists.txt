@@ -188,6 +188,7 @@ TARGET_LINK_LIBRARIES(statelineserver commoncomms
                                       servercomms
                                       serverwrapper
                                       mcmc
+                                      ${Boost_LIBRARIES}
                                       ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 

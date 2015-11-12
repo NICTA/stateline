@@ -16,7 +16,7 @@
     <header style="margin-top: 8rem;">
       <h2 class="title">Stateline Dashboard</h2>
       <hr>
-      <div class="alert" id="alert-connection" style="display: none">No connection. Is the server running?</div>
+      <div class="alert" id="alert-connection" style="display: none">No connection. Is the server running? <a href="#" id="retry">Retry Now</a></div>
     </header>
 
     <div class="row" style="margin-top: 2rem;">
@@ -91,8 +91,12 @@
     charts.push(new Chart("chains", "#chart-swap-rate",
           makeSimpleCallback("id", "swapRate")));
 
-
     var retryTime = 1, curTime = 0;
+
+    d3.select('#retry').on('click', function() {
+      retryTime = 1;
+    });
+
     setInterval(function() {
       curTime++;
       if (curTime < retryTime) return;
@@ -105,7 +109,7 @@
           return;
         }
 
-        d3.select('#alert-connection').style("display", "hidden");
+        d3.select('#alert-connection').style("display", "none");
         for (var i = 0; i < charts.length; i++) {
           charts[i].update(json[charts[i].endpoint], json['config']);
         }
