@@ -6,22 +6,6 @@
 
 namespace stateline
 {
-  namespace
-  {
-    json to_json(const mcmc::ChainArray& chains)
-    {
-      json res;
-      for (uint i = 0; i < chains.numTotalChains(); i++)
-      {
-        res.push_back(json({
-          { "id", i },
-          { "length", chains.length(i) }
-        }));
-      }
-      return res;
-    }
-  }
-
   void runServer(zmq::context_t& context, uint port, bool& running)
   {
     auto settings = comms::DelegatorSettings::Default(port);
@@ -137,9 +121,6 @@ namespace stateline
 
       covEstimator.update(id, state.sample);
       proposal.update(id, covEstimator.covariances()[id]);
-
-      // Update the API
-      api.set("chains", to_json(chains));
 
       logger.update(id, state,
           sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),

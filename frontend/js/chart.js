@@ -5,7 +5,7 @@ var defaultOptions = {
 
 var Chart = function(endpoint, elemId, callback, options) {
   this.endpoint = endpoint;
-  this.columns = [['x', 0]];
+  this.columns = [['x']];
   this.callback = callback;
   this.chart = c3.generate({
     bindto: elemId,
@@ -51,6 +51,7 @@ Chart.prototype.update = function(data, config) {
 
   // Since we're only looking at a window, delete old data if we've reached window size
   if (this.columns[0].length - 1 > this.options['windowSize']) {
+    console.log(this.columns);
     for (var i = 0; i < this.columns.length; i++) {
       this.columns[i].splice(1, 1);
     }
