@@ -19,7 +19,6 @@ namespace stateline
 
     SlidingWindowSigmaSettings SlidingWindowSigmaSettings::fromJSON(const nlohmann::json& j)
     {
-      
       SlidingWindowSigmaSettings s;
       s.windowSize = readWithDefault("sigmaAdaption", "windowSize", 100000);
       s.coldSigma = readWithDefault(j, "sigma", 1.0);
@@ -108,14 +107,15 @@ namespace stateline
     SlidingWindowBetaSettings SlidingWindowBetaSettings::fromJSON(const nlohmann::json& j)
     {
       SlidingWindowBetaSettings s;
-      s.windowSize = readWithDefault(j, "betaConfig","windowSize", 100000);
-      s.betaFactor = readWithDefault(j, "parallelTempering","betaFactor", 1.5);
-      s.adaptionLength = readWithDefault(j, "betaConfig","adaptionLength", 100000);
-      s.nStepsPerAdapt = readWithDefault(j, "betaConfig","stepsPerAdapt", 2500);
-      s.optimalSwapRate = readWithDefault(j, "betaConfig","optimalSwapRate", 0.24);
-      s.adaptRate = readWithDefault(j, "betaConfig","adaptRate", 0.2);
-      s.minAdaptFactor = readWithDefault(j, "betaConfig","adaptFactor","min", 0.8);
-      s.maxAdaptFactor = readWithDefault(j, "betaConfig","adaptFactor","max", 1.25);
+      auto x = j["parallelTempering"];
+      s.windowSize = readWithDefault(x, "betaAdaption","windowSize", 100000);
+      s.betaFactor = readWithDefault(x, "betaFactor", 1.5);
+      s.adaptionLength = readWithDefault(x, "betaAdaption","adaptionLength", 100000);
+      s.nStepsPerAdapt = readWithDefault(x, "betaAdaption","stepsPerAdapt", 2500);
+      s.optimalSwapRate = readWithDefault(x, "betaAdaption","optimalSwapRate", 0.24);
+      s.adaptRate = readWithDefault(x, "betaAdaption","adaptRate", 0.2);
+      s.minAdaptFactor = readWithDefault(x, "betaAdaption","adaptFactor","min", 0.8);
+      s.maxAdaptFactor = readWithDefault(x, "betaAdaption","adaptFactor","max", 1.25);
       return s;
     }
 
