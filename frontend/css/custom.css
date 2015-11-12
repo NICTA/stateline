@@ -1,0 +1,11 @@
+.title {
+  text-align: center;
+}
+
+.alert {
+  border: 1px solid #FF992E;
+  padding: 2rem;
+  margin: 2rem;
+  width: 100%;
+  color: #FF992E;
+}

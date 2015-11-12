@@ -14,8 +14,10 @@
 #include <iomanip>
 #include <Eigen/Core>
 
+#include "../app/api.hpp"
 #include "../infer/datatypes.hpp"
 #include "../infer/diagnostics.hpp"
+#include "../infer/chainarray.hpp"
 
 namespace ch = std::chrono;
 
@@ -33,6 +35,8 @@ namespace stateline
             const std::vector<double>& acceptRates,
             const std::vector<double>& betas,
             const std::vector<double>& swapRates);
+
+        void updateApi(ApiResources& res, const ChainArray& array);
 
       private:
         ch::steady_clock::time_point lastPrintTime_;

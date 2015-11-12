@@ -10,6 +10,7 @@ namespace stateline
   class ApiResources {
     public:
       std::string get(const std::string& resource);
+      std::string getAll();
       void set(const std::string& resource, json data);
 
       friend void runApiServer(uint, bool&);

@@ -3,8 +3,10 @@
 #include <server_http.hpp>
 #include <future>
 #include <fstream>
+#include <boost/filesystem.hpp>
 
 using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+namespace fs = boost::filesystem;
 
 namespace stateline
 {
@@ -18,9 +20,23 @@ namespace stateline
   std::string ApiResources::get(const std::string& name)
   {
     mutex_.lock();
-    std::string result = resources_[name];
+    auto result = resources_[name];
     mutex_.unlock();
     return result;
+  }
+
+  std::string ApiResources::getAll()
+  {
+    mutex_.lock();
+    auto result = resources_;
+    mutex_.unlock();
+
+    std::string str = "{";
+    for (auto it = result.begin(); it != result.end(); ++it) {
+      if (it != result.begin()) str += ",";
+      str += "\"" + it->first + "\": " + it->second;
+    }
+    return str + "}";
   }
 
   void runApiServerThread(HttpServer& server)
@@ -44,44 +60,73 @@ namespace stateline
       resp << "HTTP/1.1 200 OK\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
     };
 
-    server.resource["^/$"]["GET"] =
+    server.resource["^/all$"]["GET"] =
+      [&res](HttpServer::Response &resp, std::shared_ptr<HttpServer::Request> request)
+    {
+      std::string content = res.getAll();
+      resp << "HTTP/1.1 200 OK\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
+    };
+
+    // Adapted from https://github.com/eidheim/Simple-Web-Server/blob/master/http_examples.cpp
+    server.default_resource["GET"] =
       [](HttpServer::Response &resp, std::shared_ptr<HttpServer::Request> request)
     {
-      std::ifstream ifs("frontend/dashboard.html", std::ifstream::in | std::ifstream::binary);
-      if (!ifs)
+      fs::path webRoot("frontend");
+      if (!fs::exists(webRoot))
       {
-        std::string content = "Could not find 'frontend/dashboard.html' in build folder.";
+        std::string content = "Server is misconfigured.";
         resp << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
         return;
       }
 
-      // From the simple web example https://github.com/eidheim/Simple-Web-Server/blob/master/http_examples.cpp
-      ifs.seekg(0, std::ios::end);
-      size_t length = ifs.tellg();
+      auto path = webRoot;
+      path += request->path;
+      if (fs::is_directory(path))
+        path += "index.html";
 
-      ifs.seekg(0, std::ios::beg);
-
-      resp << "HTTP/1.1 200 OK\r\nContent-Length: " << length << "\r\n\r\n";
-
-      // Read and send 128 KB at a time
-      uint buffer_size=131072;
-      std::vector<char> buffer;
-      buffer.reserve(buffer_size);
-      uint read_length;
-      try
+      if (fs::exists(path) && fs::is_regular_file(path))
       {
-        while((read_length=ifs.read(&buffer[0], buffer_size).gcount())>0)
+        std::ifstream ifs(path.string(), std::ifstream::in | std::ifstream::binary);
+        if (!ifs)
         {
-          resp.write(&buffer[0], read_length);
-          resp.flush();
+          std::string content = "Not found.";
+          resp << "HTTP/1.1 404 Not Found\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
+          return;
         }
-      }
-      catch(const std::exception &e)
-      {
-        std::cerr << "Connection interrupted, closing file" << std::endl;
-      }
 
-      ifs.close();
+        // From the simple web example https://github.com/eidheim/Simple-Web-Server/blob/master/http_examples.cpp
+        ifs.seekg(0, std::ios::end);
+        size_t length = ifs.tellg();
+
+        ifs.seekg(0, std::ios::beg);
+
+        resp << "HTTP/1.1 200 OK\r\nContent-Length: " << length << "\r\n\r\n";
+
+        // Read and send 128 KB at a time
+        uint buffer_size=131072;
+        std::vector<char> buffer;
+        buffer.reserve(buffer_size);
+        uint read_length;
+        try
+        {
+          while((read_length=ifs.read(&buffer[0], buffer_size).gcount())>0)
+          {
+            resp.write(&buffer[0], read_length);
+            resp.flush();
+          }
+        }
+        catch(const std::exception &e)
+        {
+          std::cerr << "Connection interrupted, closing file" << std::endl;
+        }
+
+        ifs.close();
+      }
+      else
+      {
+        std::string content = "Not found.";
+        resp << "HTTP/1.1 404 Not Found\r\nContent-Length: " << content.length() << "\r\n\r\n" << content;
+      }
     };
 
     auto future = std::async(std::launch::async, runApiServerThread, std::ref(server));
