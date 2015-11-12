@@ -134,16 +134,18 @@ namespace stateline
     {
       uint diskLength = lengthOnDisk_[id];
       uint cacheLength = cache_[id].size();
+      uint newLength = diskLength + cacheLength;
 
       // for t=1 chains only (cold) chains only
       if (chainIndex(id) == 0)
       {
-        uint newLength = diskLength + cacheLength;
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
         writer_.append(id / numChains(), statesToBeSaved);
-        lengthOnDisk_[id] = newLength;
       }
+
+      // Update length on disk
+      lengthOnDisk_[id] = newLength;
 
       // Re-initialise the cache
       if (!cache_[id].empty())
