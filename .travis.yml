@@ -6,8 +6,8 @@ services:
   - docker
 
 before_install:
-  - docker build -t NICTA/stateline .
+  - docker build -t nicta/stateline .
   - docker ps -a
 
 script:
-  - docker run NICTA/stateline make test
+  - docker run nicta/stateline make test
