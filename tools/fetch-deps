@@ -100,4 +100,17 @@ wget -c https://github.com/nlohmann/json/archive/master.zip -O ${BUILD_DIR}/json
 [ -d ${BUILD_DIR}/json-master ] || unzip -o ${BUILD_DIR}/json-master.zip -d ${BUILD_DIR}
 cp ${BUILD_DIR}/json-master/src/json.hpp $PREREQ_DIR/include
 
+#######################################
+# google benchmark
+#######################################
+
+wget -c https://github.com/google/benchmark/archive/master.zip -O benchmark-master.zip
+[ -d benchmark-master ] || unzip -o benchmark-master.zip
+cd benchmark-master
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
+make install
+cd ../..
+
 rm -rf ${BUILD_DIR}
