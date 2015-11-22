@@ -44,68 +44,44 @@ mkdir -p ${PREREQ_DIR}/src ${PREREQ_DIR}/include ${PREREQ_DIR}/lib ${PREREQ_DIR}
 # Boost 1.59
 ######################################
 
-#wget -P ${BUILD_DIR} -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
-#[ -d ${BUILD_DIR}/boost_1_59_0 ] || tar -xvf ${BUILD_DIR}/boost_1_59_0.tar.gz -C ${BUILD_DIR}
-#cd ${BUILD_DIR}/boost_1_59_0
-#./bootstrap.sh 
-#./b2 -j $N_PROCESSORS --layout=versioned --without-python variant=debug,release threading=multi runtime-link=static link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
-#cd -
-#
-########################################
-## Eigen 3.2.0
-########################################
-#
-#wget -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O ${BUILD_DIR}/eigen_3.2.0.tar.gz
-#[ -d ${BUILD_DIR}/eigen-eigen-ffa86ffb5570 ] || tar -xvf ${BUILD_DIR}/eigen_3.2.0.tar.gz -C ${BUILD_DIR}
-#mkdir ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
-#cd ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
-#cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
-#make install
-#cd -
-#
-########################################
-## google-test (gtest) 1.7.0
-########################################
-#
-#wget -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
-#[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR} 
-#cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
-#
-########################################
-## zeromq 4.0.3
-########################################
-#
-#wget -P ${BUILD_DIR} -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
-#[ -d ${BUILD_DIR}/zeromq-4.0.3 ] || tar -xvf ${BUILD_DIR}/zeromq-4.0.3.tar.gz -C ${BUILD_DIR}
-#cd ${BUILD_DIR}/zeromq-4.0.3
-#./configure --prefix=$PREREQ_DIR
-#make -j $N_PROCESSORS
-#make install
-#cd -
-#
-########################################
-## cppzeromq 2358037407 (commit hash)
-########################################
-#
-#wget -c https://github.com/zeromq/cppzmq/archive/master.zip -O ${BUILD_DIR}/cppzmq-master.zip
-#[ -d ${BUILD_DIR}/cppzmq-master ] || unzip -o ${BUILD_DIR}/cppzmq-master.zip -d ${BUILD_DIR}
-#cp ${BUILD_DIR}/cppzmq-master/zmq.hpp $PREREQ_DIR/include
-#
-########################################
-## json
-########################################
-#
-#wget -c https://github.com/nlohmann/json/archive/master.zip -O ${BUILD_DIR}/json-master.zip
-#[ -d ${BUILD_DIR}/json-master ] || unzip -o ${BUILD_DIR}/json-master.zip -d ${BUILD_DIR}
-#cp ${BUILD_DIR}/json-master/src/json.hpp $PREREQ_DIR/include
+wget -P ${BUILD_DIR} -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
+[ -d ${BUILD_DIR}/boost_1_59_0 ] || tar -xvf ${BUILD_DIR}/boost_1_59_0.tar.gz -C ${BUILD_DIR}
+cd ${BUILD_DIR}/boost_1_59_0
+./bootstrap.sh 
+./b2 -j $N_PROCESSORS --layout=versioned --without-python variant=debug,release threading=multi runtime-link=static link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
+cd -
 
 #######################################
-# simple-web-server
+# Eigen 3.2.0
 #######################################
 
-wget -c https://github.com/eidheim/Simple-Web-Server/archive/master.zip -O ${BUILD_DIR}/simple-web-server-master.zip
-[ -d ${BUILD_DIR}/simple-web-server-master ] || unzip -o ${BUILD_DIR}/simple-web-server-master.zip -d ${BUILD_DIR}
-cp ${BUILD_DIR}/simple-web-server-master/server_http.hpp $PREREQ_DIR/include
+wget -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O ${BUILD_DIR}/eigen_3.2.0.tar.gz
+[ -d ${BUILD_DIR}/eigen-eigen-ffa86ffb5570 ] || tar -xvf ${BUILD_DIR}/eigen_3.2.0.tar.gz -C ${BUILD_DIR}
+mkdir ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
+cd ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
+cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
+make install
+cd -
+
+#######################################
+# google-test (gtest) 1.7.0
+#######################################
+
+wget -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
+[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR} 
+cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
+
+#######################################
+# zeromq 4.0.3
+#######################################
+
+wget -P ${BUILD_DIR} -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
+[ -d ${BUILD_DIR}/zeromq-4.0.3 ] || tar -xvf ${BUILD_DIR}/zeromq-4.0.3.tar.gz -C ${BUILD_DIR}
+cd ${BUILD_DIR}/zeromq-4.0.3
+./configure --prefix=$PREREQ_DIR
+make -j $N_PROCESSORS
+make install
+cd -
 
 #######################################
 # Clean up

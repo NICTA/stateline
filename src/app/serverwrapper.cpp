@@ -109,6 +109,7 @@ namespace stateline
       {
         LOG(INFO) << "Error in sampler step - aborting:";
         LOG(INFO) << e.what();
+        break;
       }
       catch (...)
       {
