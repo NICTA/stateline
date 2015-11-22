@@ -14,7 +14,6 @@ FUNCTION(ADD_BINARY name library)
 
   TARGET_LINK_LIBRARIES(${name}
     ${library}
-    stats
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY})
   INSTALL (TARGETS ${name} RUNTIME DESTINATION bin)
