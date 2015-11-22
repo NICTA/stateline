@@ -24,7 +24,6 @@
 #include "../app/commandline.hpp"
 #include "../comms/worker.hpp"
 #include "../app/signal.hpp"
-#include "../stats/mixture.hpp"
 #include "../comms/thread.hpp"
 
 namespace sl = stateline;
