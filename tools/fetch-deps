@@ -7,11 +7,9 @@ N_PROCESSORS="$(getconf _NPROCESSORS_ONLN)"
 # Determine platform specific variables
 if [ "$(uname)" == "Darwin" ]; then
   echo "Detected Mac OS X. Using Clang..."
-  TOOLSET='Clang'
   B2_EXTRA_FLAGS='toolset=clang cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" '
 else
   echo "Detected Linux. Using GCC..."
-  TOOLSET='GCC'
   B2_EXTRA_FLAGS='toolset=gcc'
 fi
 
@@ -68,7 +66,7 @@ cd -
 #######################################
 
 wget -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
-[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR} 
+[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR}
 cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
 
 #######################################
