@@ -1,1 +1,1 @@
-docker build -t stateline-env tools
+docker build -t alistaireid/pystateline:stateline-env tools

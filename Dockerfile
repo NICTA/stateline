@@ -1,4 +1,4 @@
-FROM stateline-env
+FROM alistaireid/pystateline:stateline-env
 MAINTAINER Lachlan McCalman <lachlan.mccalman@nicta.com.au>
 
 COPY . /usr/local/src/stateline/
