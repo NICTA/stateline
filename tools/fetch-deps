@@ -66,7 +66,7 @@ cd -
 #######################################
 
 wget -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
-[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR} 
+[ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR}
 cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
 
 #######################################
@@ -80,24 +80,5 @@ cd ${BUILD_DIR}/zeromq-4.0.3
 make -j $N_PROCESSORS
 make install
 cd -
-
-#######################################
-# cppzeromq (fixed commit hash)
-#######################################
-
-wget -c https://github.com/zeromq/cppzmq/archive/4d79066be3c3ed0.zip -O ${BUILD_DIR}/cppzmq.zip
-[ -d ${BUILD_DIR}/cppzmq.zip ] || unzip -o ${BUILD_DIR}/cppzmq.zip -d ${BUILD_DIR}
-# Just in case its left around from a previous run...
-rm ${BUILD_DIR}/cppzmq-master.zip || true
-mv ${BUILD_DIR}/cppzmq-* ${BUILD_DIR}/cppzmq
-cp ${BUILD_DIR}/cppzmq/zmq.hpp $PREREQ_DIR/include
-
-#######################################
-# json
-#######################################
-
-wget -c https://github.com/nlohmann/json/archive/master.zip -O ${BUILD_DIR}/json-master.zip
-[ -d ${BUILD_DIR}/json-master ] || unzip -o ${BUILD_DIR}/json-master.zip -d ${BUILD_DIR}
-cp ${BUILD_DIR}/json-master/src/json.hpp $PREREQ_DIR/include
 
 rm -rf ${BUILD_DIR}
