@@ -19,13 +19,30 @@
       <div class="alert" id="alert-connection" style="display: none">No connection. Is the server running? <a href="#" id="retry">Retry Now</a></div>
     </header>
 
-    <div class="row" style="margin-top: 2rem;">
+    <div class="row full-row">
+      <div class="one-half column">
+        <h4 class="title">Worker Information</h4>
+        <table class="u-full-width">
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Number of workers connected</strong></td>
+              <td><span id="widget-workers-connected">1</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div class="one-half column">
         <h4 class="title">Number of Samples</h4>
         <div class="chart" id="chart-number-of-samples"></div>
       </div>
     </div>
-    <div class="row" style="margin-top: 2rem;">
+    <div class="row full-row">
       <div class="one-half column">
         <h4 class="title">Energy</h4>
         <div class="chart" id="chart-energy"></div>
@@ -35,20 +52,20 @@
         <div class="chart" id="chart-min-energy"></div>
       </div>
     </div>
-    <div class="row" style="margin-top: 2rem;">
+    <div class="row full-row">
       <div class="one-half column">
         <h4 class="title">Sigma</h4>
         <div class="chart" id="chart-sigma"></div>
       </div>
       <div class="one-half column">
-        <h4 class="title">Beta</h4>
-        <div class="chart" id="chart-beta"></div>
-      </div>
-    </div>
-    <div class="row" style="margin-top: 2rem;">
-      <div class="one-half column">
         <h4 class="title">Accept Rate</h4>
         <div class="chart" id="chart-accept-rate"></div>
+      </div>
+    </div>
+    <div class="row full-row">
+      <div class="one-half column">
+        <h4 class="title">Beta</h4>
+        <div class="chart" id="chart-beta"></div>
       </div>
       <div class="one-half column">
         <h4 class="title">Swap Rate</h4>
@@ -113,6 +130,8 @@
         for (var i = 0; i < charts.length; i++) {
           charts[i].update(json[charts[i].endpoint], json['config']);
         }
+
+        d3.select('#widget-workers-connected').text(json['workers']['count']);
       });
     }, 1000);
   </script>
