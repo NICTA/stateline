@@ -90,6 +90,7 @@ TEST_F(DelegatorTest, canSendHelloToDelegator)
   worker_.send({ HELLO, { "0:1" }});
 }
 
+/*
 TEST_F(DelegatorTest, canSendAndReceiveSingleJobTypeMultipleTimes)
 {
   worker_.send({ HELLO, { "0:1" }});
@@ -214,4 +215,4 @@ TEST_F(DelegatorTest, workerReceivesEverythingForEmptyJobTypes)
   auto job2 = receiveIgnoreHBs(worker_);
   EXPECT_EQ(Message(JOB, { "5", "1", "Request 2" }), job2);
 
-}
+}*/

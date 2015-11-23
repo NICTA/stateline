@@ -10,4 +10,4 @@ before_install:
   - docker ps -a
 
 script:
-  - docker run nicta/stateline make run-test-all
+    - docker run -w /usr/local/build nicta/stateline make run-test-all
