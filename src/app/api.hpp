@@ -13,7 +13,6 @@ namespace stateline
       std::string getAll();
       void set(const std::string& resource, json data);
 
-      friend void runApiServer(uint, bool&);
     private:
       std::map<std::string, std::string> resources_;
       std::mutex mutex_;
