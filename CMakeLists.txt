@@ -176,11 +176,9 @@ MACRO(ADD_SUBPROJECT directory)
 ENDMACRO(ADD_SUBPROJECT directory)
 
 ADD_SUBPROJECT(src/app)
-ADD_SUBPROJECT(src/stats)
 ADD_SUBPROJECT(src/comms)
 ADD_SUBPROJECT(src/db)
 ADD_SUBPROJECT(src/infer)
-ADD_SUBPROJECT(src/likelihood)
 ADD_SUBPROJECT(src/bin)
 
 ##############################################################################
