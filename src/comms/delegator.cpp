@@ -120,10 +120,13 @@ namespace stateline
       // Worker can now be 'connected'
       // add jobtypes
       std::pair<uint, uint> jobTypeRange;
-      if (msg.data[0] == "") {
+      if (msg.data[0] == "")
+      {
         jobTypeRange.first = 0;
         jobTypeRange.second = nJobTypes_;
-      } else {
+      }
+      else
+      {
         std::vector<std::string> jobTypes;
         boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
         assert(jobTypes.size() == 2);
@@ -137,6 +140,7 @@ namespace stateline
 
       std::string id = w.address.front();
       workers_.insert(std::make_pair(id, w));
+      workerCount_++;
       LOG(INFO)<< "Worker " << id << " connected, supporting jobtypes: " << msg.data[0];
     }
 
@@ -258,6 +262,9 @@ namespace stateline
       for (auto const& j : w.workInProgress)
         jobQueue_.push_front(j.second);
       workers_.erase(workerId);
+
+      workerCount_--;
+
       LOG(INFO)<< "Worker " << workerId << " disconnected: re-assigning their jobs";
     }
 
@@ -268,6 +275,5 @@ namespace stateline
       // front so disconnect will work in both cases
       disconnectWorker(msgToWorker);
     }
-
   } // namespace stateline
 } // namespace comms

@@ -81,4 +81,8 @@ make -j $N_PROCESSORS
 make install
 cd -
 
+#######################################
+# Clean up
+#######################################
+
 rm -rf ${BUILD_DIR}

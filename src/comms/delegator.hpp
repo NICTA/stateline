@@ -14,6 +14,7 @@
 #include <set>
 #include <string>
 #include <list>
+#include <atomic>
 
 #include <zmq.hpp>
 #include <boost/circular_buffer.hpp>
@@ -51,6 +52,8 @@ namespace stateline
         ~Delegator();
 
         void start();
+
+        uint workerCount() const { return workerCount_.load(); }
 
       private:
         struct Request
@@ -150,8 +153,8 @@ namespace stateline
         bool& running_;
         uint nextJobId_;
 
-        // Number of job types
-        uint nJobTypes_;
+        uint nJobTypes_; // Number of job types
+        std::atomic<uint> workerCount_;
     };
 
   } // namespace comms

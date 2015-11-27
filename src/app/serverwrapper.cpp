@@ -1,15 +1,20 @@
 #include "serverwrapper.hpp"
-#include "../comms/delegator.hpp"
 #include "../infer/sampler.hpp"
 #include "../infer/adaptive.hpp"
 #include "../infer/logging.hpp"
 
 namespace stateline
 {
-  void runServer(zmq::context_t& context, uint port, bool& running)
+  namespace
   {
-    auto settings = comms::DelegatorSettings::Default(port);
-    comms::Delegator delegator(context, settings, running);
+    void updateWorkerApi(ApiResources& api, comms::Delegator& delegator)
+    {
+      api.set("workers", json({{ "count", delegator.workerCount() }}));
+    }
+  }
+
+  void runServer(comms::Delegator& delegator)
+  {
     delegator.start();
   }
 
@@ -51,7 +56,7 @@ namespace stateline
     return {sampleVec[minEnergyIndex], minEnergy};
   }
 
-  void runSampler(const StatelineSettings& s, zmq::context_t& context, bool& running)
+  void runSampler(const StatelineSettings& s, zmq::context_t& context, ApiResources& api, comms::Delegator& delegator, bool& running)
   {
     mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
     mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
@@ -85,10 +90,6 @@ namespace stateline
     mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
 
     mcmc::TableLogger logger(s.nstacks, s.nchains, s.ndims, s.msLoggingRefresh);
-
-    // Record the starting time of the MCMC so we can stop the simulation once
-    // the time limit is reached.
-    auto startTime = ch::steady_clock::now();
 
     // Chain ID and corresponding state.
     uint id;
@@ -126,7 +127,11 @@ namespace stateline
       logger.update(id, state,
           sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
           betaAdapter.betas(), betaAdapter.swapRates());
+
+      logger.updateApi(api, chains);
+      updateWorkerApi(api, delegator);
     }
+
     // Finish any outstanding jobs
     LOG(INFO) << "Finished MCMC job with " << nsamples << " samples.";
     sampler.flush();
@@ -135,20 +140,22 @@ namespace stateline
     running = false;
   }
 
-
   ServerWrapper::ServerWrapper(uint port, const StatelineSettings& s)
-    : port_(port), settings_(s)
+    : settings_(s)
+    , running_(false)
+    , context_{new zmq::context_t{1}}
+    , delegator_{*context_, comms::DelegatorSettings::Default(port), running_}
   {
   }
 
   void ServerWrapper::start()
   {
     running_ = true;
-    context_ = new zmq::context_t{1};
 
-    serverThread_ = std::async(std::launch::async, runServer, std::ref(*context_), port_, std::ref(running_));
-    samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_), 
-        std::ref(*context_), std::ref(running_));
+    serverThread_ = std::async(std::launch::async, runServer, std::ref(delegator_));
+    samplerThread_ = std::async(std::launch::async, runSampler, std::cref(settings_),
+        std::ref(*context_), std::ref(api_), std::ref(std::ref(delegator_)), std::ref(running_));
+    apiServerThread_ = std::async(std::launch::async, runApiServer, 8080, std::ref(api_), std::ref(running_));
   }
 
   void ServerWrapper::stop()
@@ -173,6 +180,4 @@ namespace stateline
   {
     stop();
   }
-
-
 }

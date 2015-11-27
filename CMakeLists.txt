@@ -91,7 +91,11 @@ ENDIF()
 FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
                                             system
                                             filesystem
-                                            serialization)
+                                            regex
+                                            coroutine
+                                            thread
+                                            date_time
+                                            context)
 
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
@@ -113,6 +117,7 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     "${STATELINE_SOURCE_DIR}/external"
                     "${STATELINE_SOURCE_DIR}/external/cppzmq"
                     "${STATELINE_SOURCE_DIR}/external/json"
+                    "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
                     SYSTEM "${Boost_INCLUDE_DIR}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}"
@@ -186,6 +191,7 @@ TARGET_LINK_LIBRARIES(statelineserver commoncomms
                                       servercomms
                                       serverwrapper
                                       mcmc
+                                      ${Boost_LIBRARIES}
                                       ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -196,6 +202,14 @@ TARGET_LINK_LIBRARIES(statelineclient commoncomms
                                       ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
+##############################################################################
+# Move the frontend code to the build folder
+##############################################################################
+FILE(COPY frontend DESTINATION ${STATELINE_BINARY_DIR})
+
+##############################################################################
+# Install binaries
+##############################################################################
 install (TARGETS statelineserver
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)
