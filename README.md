@@ -181,4 +181,4 @@ If you find a bug, please open an [issue](http://github.com/NICTA/stateline/issu
 
 Contributing 
 ------------
-Contributions and comments are welcome. Please read our [style guide](docs/CodeGuidelines.md) before submitting a pull request.
+Contributions and comments are welcome. Please read our [style guide](https://github.com/NICTA/stateline/wiki/Coding-Style-Guidelines) before submitting a pull request.
