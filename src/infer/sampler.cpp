@@ -111,7 +111,7 @@ namespace stateline
         chains_(chainArray),
         propFn_(propFn),
         nstacks_(chains_.numStacks()),
-        nchains_(chains_.numChains()),
+        nchains_(chains_.numTemps()),
         propStates_(nstacks_*nchains_),
         swapInterval_(swapInterval),
         numOutstandingJobs_(0),
@@ -164,7 +164,7 @@ namespace stateline
         // Unlock this chain, propgating the lock downwards
         unlock(id);
       }
-      else if (chains_.isHottestInStack(id) && chains_.length(id) % swapInterval_ == 0 && chains_.numChains() > 1)
+      else if (chains_.isHottestInStack(id) && chains_.length(id) % swapInterval_ == 0 && chains_.numTemps() > 1)
       {
         // The hottest chain is ready to swap. Lock the next chain
         // to prevent it from proposing any more
@@ -217,7 +217,7 @@ namespace stateline
       propose(id + 1);
 
       // Check if this was the coldest chain
-      if (id % chains_.numChains() != 0)
+      if (id % chains_.numTemps() != 0)
       {
         // Lock the chain that is below (colder) than this.
         locked_[id - 1] = true;

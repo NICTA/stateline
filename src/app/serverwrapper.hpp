@@ -19,42 +19,53 @@
 #include "../infer/sampler.hpp"
 #include "../comms/delegator.hpp"
 
+// Ideal config file should look like:
+// {
+// "min": [-10, 0, -10, -10],
+// "max": [ 10, 10, 10, 2],
+// "nSamplesTotal": 10000,
+// "nJobTypes": 3,
+// "optimalAcceptRate": 0.234,
+// "outputPath": "demo-output",
+// "loggingRateSec": 1,
+// "nStacks": 2,
+// "nTemperatures": 4,
+// "swapInterval": 10
+// }
+
 namespace stateline
 {
   struct StatelineSettings
   {
       uint ndims;
       uint nstacks;
-      uint nchains;
-      uint annealLength;
+      // uint nchains;
+      uint ntemps;
+      // uint annealLength;
       uint nsamples;
       uint swapInterval;
-      int msLoggingRefresh;
-      mcmc::SlidingWindowSigmaSettings sigmaSettings;
-      mcmc::SlidingWindowBetaSettings betaSettings;
-      mcmc::ChainSettings chainSettings;
+      // int msLoggingRefresh;
+      uint msLoggingRefresh;
       uint nJobTypes;
+      // mcmc::SlidingWindowSigmaSettings sigmaSettings;
+      // mcmc::SlidingWindowBetaSettings betaSettings;
+      double optimalAcceptRate;
+      std::string outputPath;
+      // mcmc::ChainSettings chainSettings;
       mcmc::ProposalBounds proposalBounds;
 
       static StatelineSettings fromJSON(const nlohmann::json& j)
       {
         StatelineSettings s;
-        s.ndims = readSettings<uint>(j, "dimensionality");
-        s.nstacks = readSettings<uint>(j, "parallelTempering", "stacks");
-        s.nchains = readSettings<uint>(j, "parallelTempering", "chains");
-        s.annealLength = readSettings<uint>(j, "annealLength");
-        s.nsamples = readSettings<uint>(j, "nsamples");
-        s.swapInterval = readSettings<uint>(j,"parallelTempering","swapInterval");
-        s.msLoggingRefresh = readSettings<int>(j, "msLoggingRefresh");
-        s.sigmaSettings = mcmc::SlidingWindowSigmaSettings::fromJSON(j);
-        s.betaSettings = mcmc::SlidingWindowBetaSettings::fromJSON(j);
-        s.chainSettings.databasePath = readSettings<std::string>(j, "output", "directory");
-        s.chainSettings.chainCacheLength = readSettings<uint>(j,"output", "cacheLength");
+        s.nstacks = readSettings<uint>(j, "nStacks");
+        s.ntemps = readSettings<uint>(j, "nTemperatures");
+        s.nsamples = readSettings<uint>(j, "nSamplesTotal");
+        s.swapInterval = readSettings<uint>(j,"swapInterval");
+        s.msLoggingRefresh = (uint)(readSettings<double>(j, "loggingRateSec")*1000.0);
         s.nJobTypes = readSettings<uint>(j, "nJobTypes");
-
-        if (j.count("boundaries"))
-          s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
-
+        s.outputPath = readSettings<std::string>(j, "outputPath");
+        s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
+        s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
         return s;
       }
   };

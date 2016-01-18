@@ -19,10 +19,6 @@ namespace stateline
 {
   namespace mcmc
   {
-    ChainSettings::ChainSettings()
-      : databasePath("chains"), chainCacheLength(10)
-    {
-    }
 
     //! Returns true if we want to accept the MCMC step.
     //!
@@ -71,25 +67,24 @@ namespace stateline
     }
 
 
-    ChainArray::ChainArray(uint nStacks, uint nChains,
-                           const ChainSettings& settings)
-        : writer_(settings.databasePath, nStacks),
+    ChainArray::ChainArray(uint nStacks, uint nTemps, const std::string& outputPath)
+        : writer_(outputPath, nStacks),
           nstacks_(nStacks),
-          nchains_(nChains),
-          cacheLength_(settings.chainCacheLength),
-          lengthOnDisk_(nStacks * nChains, 0),
-          beta_(nStacks * nChains),
-          sigma_(nStacks * nChains),
-          cache_(nStacks * nChains),
-          lastState_(nStacks * nChains)
+          ntemps_(nTemps),
+          cacheLength_(10000), //TODO this needs determining somehow
+          lengthOnDisk_(nStacks * nTemps, 0),
+          beta_(nStacks * nTemps),
+          sigma_(nStacks * nTemps),
+          cache_(nStacks * nTemps),
+          lastState_(nStacks * nTemps)
     {
-      for (uint i=0; i < nstacks_*nchains_; i++)
+      for (uint i=0; i < nstacks_*ntemps_; i++)
         cache_[i].reserve(cacheLength_);
     }
 
     ChainArray::~ChainArray()
     {
-      for (uint i = 0; i < nstacks_*nchains_; i++)
+      for (uint i = 0; i < nstacks_*ntemps_; i++)
       {
         if (cache_[i].size() > 0)
           flushToDisk(i);
@@ -141,7 +136,7 @@ namespace stateline
       {
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
         std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
-        writer_.append(id / numChains(), statesToBeSaved);
+        writer_.append(id / numTemps(), statesToBeSaved);
       }
 
       // Update length on disk
@@ -174,7 +169,7 @@ namespace stateline
       {
         if (chainIndex(id) == 0)
         {
-          writer_.replaceLast(id / numChains(), state);
+          writer_.replaceLast(id / numTemps(), state);
         }
         lastState_[id] = state;
       }
@@ -234,29 +229,29 @@ namespace stateline
       return nstacks_;
     }
 
-    uint ChainArray::numChains() const
+    uint ChainArray::numTemps() const
     {
-      return nchains_;
+      return ntemps_;
     }
 
     uint ChainArray::numTotalChains() const
     {
-      return numChains() * numStacks();
+      return numTemps() * numStacks();
     }
 
     uint ChainArray::stackIndex(uint id) const
     {
-      return id / numChains();
+      return id / numTemps();
     }
 
     uint ChainArray::chainIndex(uint id) const
     {
-      return id % numChains();
+      return id % numTemps();
     }
 
     bool ChainArray::isHottestInStack(uint id) const
     {
-      return chainIndex(id) == numChains() - 1;
+      return chainIndex(id) == numTemps() - 1;
     }
 
     bool ChainArray::isColdestInStack(uint id) const

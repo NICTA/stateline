@@ -90,7 +90,7 @@ namespace stateline
     {
       res.set("config", json({
         { "stacks", chains.numStacks() },
-        { "chainsPerStack", chains.numChains() }
+        { "chainsPerStack", chains.numTemps() }
       }));
 
       json result;

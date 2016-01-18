@@ -61,7 +61,6 @@ int main(int ac, char *av[])
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
 
   sl::ServerWrapper s(port, settings);
-
   s.start();
 
   while(!sl::global::interruptedBySignal && s.isRunning())

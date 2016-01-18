@@ -22,62 +22,39 @@ namespace stateline
           const StatelineSettings& s, comms::Requester& requester,
           const mcmc::ProposalBounds& bounds)
   {
-    uint n = s.annealLength;
-
-    std::vector<Eigen::VectorXd> sampleVec(n);
+    Eigen::VectorXd sample;
 
     std::vector<uint> jobTypes(s.nJobTypes);
     std::iota(jobTypes.begin(), jobTypes.end(), 0);
 
-    // Send n random samples to workers to be evaluated
-    for (uint i=0; i<n; ++i)
-    {
-      sampleVec[i] = mcmc::bouncyBounds(Eigen::VectorXd::Random(s.ndims), 
-              bounds.min, bounds.max);
-      requester.submit(i, jobTypes, sampleVec[i]);
-    }
-
-    // Retrieve all results and select sample with lowest energy
-    uint minEnergyIndex = 0;
-    double minEnergy = std::numeric_limits<double>::max();
-
-    for (uint i=0; i<n; ++i)
-    {
-      auto result = requester.retrieve();
-      uint id = result.first;
-      double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
-      if (energy < minEnergy)
-      {
-        minEnergyIndex = id;
-        minEnergy = energy;
-      }
-    }
-
-    return {sampleVec[minEnergyIndex], minEnergy};
+  // Send a random sample to workers to be evaluated
+    sample = mcmc::bouncyBounds(Eigen::VectorXd::Random(s.ndims), 
+            bounds.min, bounds.max);
+    requester.submit(0, jobTypes, sample); //job id zero because we dont care
+    auto result = requester.retrieve();
+    double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
+    return {sample, energy};
   }
 
   void runSampler(const StatelineSettings& s, zmq::context_t& context, ApiResources& api, comms::Delegator& delegator, bool& running)
   {
-    mcmc::SlidingWindowSigmaAdapter sigmaAdapter(s.nstacks, s.nchains, s.ndims, s.sigmaSettings);
-    mcmc::SlidingWindowBetaAdapter betaAdapter(s.nstacks, s.nchains, s.betaSettings);
-    mcmc::GaussianCovProposal proposal(s.nstacks, s.nchains, s.ndims, s.proposalBounds);
-    mcmc::CovarianceEstimator covEstimator(s.nstacks, s.nchains, s.ndims);
+    mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
+    mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
+    mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
+    mcmc::CovarianceEstimator covEstimator(s.nstacks, s.ntemps, s.ndims);
     comms::Requester requester(context);
 
     // Create a chain array.
-    mcmc::ChainArray chains(s.nstacks, s.nchains, s.chainSettings);
+    mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
 
-    LOG(INFO) << "Initialising chains using annealLength = " << s.annealLength;
-
-    for (uint i = 0; i < s.nstacks * s.nchains; i++)
+    for (uint i = 0; i < s.nstacks * s.ntemps; i++)
     {
       // Generate the initial sample/energy for this chain
       Eigen::VectorXd sample;
       double energy;
       std::tie(sample,energy) = generateInitialSample(s,requester, s.proposalBounds);
-
       // Initialise this chain with the evaluated sample
-      chains.initialise(i, sample, energy, sigmaAdapter.sigmas()[i], betaAdapter.betas()[i]);
+      chains.initialise(i, sample, energy, sigmaAdapter.estimates()[i], betaAdapter.estimates()[i]);
       LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
     }
 
@@ -89,7 +66,7 @@ namespace stateline
     // and how often to attempt swaps.
     mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
 
-    mcmc::TableLogger logger(s.nstacks, s.nchains, s.ndims, s.msLoggingRefresh);
+    mcmc::TableLogger logger(s.nstacks, s.ntemps, s.ndims, s.msLoggingRefresh);
 
     // Chain ID and corresponding state.
     uint id;
@@ -102,8 +79,8 @@ namespace stateline
       // 'id' is the ID of the chain and 'state' is the next state in that chain.
       try
       {
-        std::tie(id, state) = sampler.step(sigmaAdapter.sigmas(), betaAdapter.betas());
-        if (id % s.nchains == 0)
+        std::tie(id, state) = sampler.step(sigmaAdapter.estimates(), betaAdapter.estimates());
+        if (id % s.ntemps == 0)
           nsamples++;
       }
       catch (std::exception const& e)
@@ -125,8 +102,8 @@ namespace stateline
       proposal.update(id, covEstimator.covariances()[id]);
 
       logger.update(id, state,
-          sigmaAdapter.sigmas(), sigmaAdapter.acceptRates(),
-          betaAdapter.betas(), betaAdapter.swapRates());
+          sigmaAdapter.estimates(), sigmaAdapter.rates(),
+          betaAdapter.estimates(), betaAdapter.rates());
 
       logger.updateApi(api, chains);
       updateWorkerApi(api, delegator);

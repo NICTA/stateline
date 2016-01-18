@@ -19,125 +19,29 @@ namespace stateline
 {
   namespace mcmc
   {
-    struct SlidingWindowSigmaSettings
-    {
-      //! The number of states in the sliding window used to calculate the
-      //! acceptance rate
-      uint windowSize;
-
-      //! The value of sigma for the coldest (beta=1) chain
-      double coldSigma;
-
-      //! The geometric factor for each hotter chain's sigma
-      double sigmaFactor;
-
-      //! The time constant of the diminishing adaption
-      uint adaptionLength;
-
-      //! The number of steps between adaptions
-      uint nStepsPerAdapt;
-
-      //! The accept rate being targeted by the adaption of sigma
-      double optimalAcceptRate;
-
-      //! The multiplicative rate at which adaption occurs
-      double adaptRate;
-
-      //! The minimum multiplicative factor by which sigma can change in a
-      //! single adaption
-      double minAdaptFactor;
-
-      //! The maximum multiplicative factor by which sigma can change in a
-      //! single adaption
-      double maxAdaptFactor;
-
-      static SlidingWindowSigmaSettings fromJSON(const nlohmann::json& config);
-    };
-
-    class SlidingWindowSigmaAdapter
+    
+    class RegressionAdapter
     {
       public:
-        SlidingWindowSigmaAdapter( uint nStacks, uint nChains, uint nDims, 
-            const SlidingWindowSigmaSettings& settings);
+        RegressionAdapter( uint nStacks, uint nTemps, double optimalRate);
 
         void update(uint chainID, const State& state);
 
-        const std::vector<double> &sigmas() const;
+        const std::vector<double> &estimates() const;
 
-        const std::vector<double> &acceptRates() const;
-
+        const std::vector<double> &rates() const;
       private:
-        void adaptSigma(uint id);
-
-        uint nChains_;
-        std::vector<boost::circular_buffer<bool>> acceptBuffers_;
-        std::vector<double> sigmas_;
-        std::vector<double> acceptRates_;
-        std::vector<uint> lengths_;
-        SlidingWindowSigmaSettings s_;
+        uint nStacks_;
+        uint nTemps_;
+        double optimalRate_;
+        std::vector<double> estimates_;
+        std::vector<double> rates_;
     };
-
-    struct SlidingWindowBetaSettings
-    {
-      //! The number of states in the sliding window used to calculate the
-      //! swap rate
-      uint windowSize;
-
-      //! The geometric factor for each hotter chain's sigma
-      double betaFactor;
-
-      //! The time constant of the diminishing adaption
-      uint adaptionLength;
-
-      //! The number of steps between adaptions
-      uint nStepsPerAdapt;
-
-      //! The swap rate being targeted by the adaption of beta
-      double optimalSwapRate;
-
-      //! The multiplicative rate at which adaption occurs
-      double adaptRate;
-
-      //! The minimum multiplicative factor by which beta can change in a
-      //! single adaption
-      double minAdaptFactor;
-
-      //! The maximum multiplicative factor by which beta can change in a
-      //! single adaption
-      double maxAdaptFactor;
-
-      static SlidingWindowBetaSettings fromJSON(const nlohmann::json& config);
-    };
-
-    class SlidingWindowBetaAdapter
-    {
-      public:
-        SlidingWindowBetaAdapter(uint nStacks, uint nChains, 
-            const SlidingWindowBetaSettings& settings);
-        
-        void update(uint id, State s);
-
-        const std::vector<double> &betas() const;
-        
-        const std::vector<double> &swapRates() const;
-
-      private:
-        
-        void adaptBeta(uint id);
-
-        uint nChains_;
-        std::vector<double> betas_;
-        std::vector<double> swapRates_;
-        std::vector<boost::circular_buffer<bool>> swapBuffers_;
-        std::vector<uint> lengths_;
-        SlidingWindowBetaSettings s_;
-    };
-
 
     class CovarianceEstimator
     {
       public:
-        CovarianceEstimator(uint nStacks, uint nChains, uint nDims);
+        CovarianceEstimator(uint nStacks, uint nTemps, uint nDims);
         void update(uint i, const Eigen::VectorXd& sample);
         const std::vector<Eigen::MatrixXd> &covariances() const;
 
