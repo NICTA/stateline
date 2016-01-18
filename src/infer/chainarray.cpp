@@ -71,15 +71,13 @@ namespace stateline
         : writer_(outputPath, nStacks),
           nstacks_(nStacks),
           ntemps_(nTemps),
-          cacheLength_(10000), //TODO this needs determining somehow
           lengthOnDisk_(nStacks * nTemps, 0),
           beta_(nStacks * nTemps),
           sigma_(nStacks * nTemps),
           cache_(nStacks * nTemps),
-          lastState_(nStacks * nTemps)
+          lastState_(nStacks * nTemps),
+          lastFlushTime_(std::chrono::high_resolution_clock::now())
     {
-      for (uint i=0; i < nstacks_*ntemps_; i++)
-        cache_[i].reserve(cacheLength_);
     }
 
     ChainArray::~ChainArray()
@@ -110,8 +108,21 @@ namespace stateline
 
       cache_[id].back().accepted = accepted;
       cache_[id].back().swapType = SwapType::NoAttempt;
-      if (cache_[id].size() == cacheLength_)
-        flushToDisk(id);
+      
+      //Flush the chains every so often
+      const uint flushTime = 10; //TODO make a setting
+      auto now = std::chrono::high_resolution_clock::now();
+      uint secs = std::chrono::duration_cast<std::chrono::seconds>(
+      now - lastFlushTime_).count();
+      if (secs >= flushTime)
+      {
+        lastFlushTime_ = now;
+        for (uint i = 0; i < nstacks_*ntemps_; i++)
+        {
+          if (cache_[i].size() > 0)
+            flushToDisk(i);
+        }
+      }
 
       return accepted;
     }

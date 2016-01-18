@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <chrono>
 #include "../db/db.hpp"
 #include "../infer/datatypes.hpp"
 
@@ -164,12 +165,12 @@ namespace stateline
         db::CSVChainArrayWriter writer_;
         uint nstacks_;
         uint ntemps_;
-        uint cacheLength_;
         std::vector<uint> lengthOnDisk_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
         std::vector<State> lastState_;
+        std::chrono::high_resolution_clock::time_point lastFlushTime_;
     };
 
   } // namespace mcmc
