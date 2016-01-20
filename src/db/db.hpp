@@ -31,12 +31,11 @@ namespace stateline
     {
       public:
         CSVChainArrayWriter(const std::string& directory, uint numChains);
-        void append(int id, const std::vector<mcmc::State>& states);
-        void replaceLast(int id, const mcmc::State& state);
+        void append(int id, std::vector<mcmc::State>::iterator start,
+          std::vector<mcmc::State>::iterator end);
 
       private:
         std::vector<std::fstream> chainFiles_;
-        std::vector<std::streampos> lastLinePos_;
     };
 
   } // namespace db

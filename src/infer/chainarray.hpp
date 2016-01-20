@@ -169,7 +169,6 @@ namespace stateline
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
-        std::vector<State> lastState_;
         std::chrono::high_resolution_clock::time_point lastFlushTime_;
     };
 
