@@ -36,25 +36,31 @@ namespace stateline
     return {sample, energy};
   }
 
+
   void runSampler(const StatelineSettings& s, zmq::context_t& context, ApiResources& api, comms::Delegator& delegator, bool& running)
   {
+
+    // Allocate adapters and proposal
     mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
     mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
     mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
-    mcmc::CovarianceEstimator covEstimator(s.nstacks, s.ntemps, s.ndims);
+    mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
     comms::Requester requester(context);
 
-    // Create a chain array.
-    mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
-
+    // Initialise chains to valid states
+    // TODO(AL) This loop could be parallelised, but it would take care...
     for (uint i = 0; i < s.nstacks * s.ntemps; i++)
     {
-      // Generate the initial sample/energy for this chain
+      // Draw an initial sample and compute its energy
       Eigen::VectorXd sample;
       double energy;
-      std::tie(sample,energy) = generateInitialSample(s,requester, s.proposalBounds);
+      std::tie(sample, energy) = generateInitialSample(s,requester,
+              s.proposalBounds);
+
       // Initialise this chain with the evaluated sample
-      chains.initialise(i, sample, energy, sigmaAdapter.estimates()[i], betaAdapter.estimates()[i]);
+      chains.initialise(i, sample, energy, sigmaAdapter.estimates()[i],
+              betaAdapter.estimates()[i]);
+
       LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
     }
 
@@ -62,9 +68,8 @@ namespace stateline
     std::vector<uint> jobTypes(s.nJobTypes);
     std::iota(jobTypes.begin(), jobTypes.end(), 0);
 
-    // A sampler just takes the worker interface, chain array, proposal function,
-    // and how often to attempt swaps.
-    mcmc::Sampler sampler(requester, jobTypes, chains, proposal, s.swapInterval);
+    mcmc::Sampler sampler(requester, jobTypes, chains, proposal, sigmaAdapter,
+            betaAdapter, s.swapInterval);
 
     mcmc::TableLogger logger(s.nstacks, s.ntemps, s.ndims, s.msLoggingRefresh);
 
@@ -72,14 +77,16 @@ namespace stateline
     uint id;
     mcmc::State state;
 
+    // Main Loop
+    // TODO(Al) confirm that sampler.step does not have to be thread-safe
+    //          as I believe there is only one main loop running.
     uint nsamples = 0;
     while (nsamples < s.nsamples && running)
     {
-      // Ask the sampler to return the next state of a chain.
-      // 'id' is the ID of the chain and 'state' is the next state in that chain.
       try
       {
-        std::tie(id, state) = sampler.step(sigmaAdapter.estimates(), betaAdapter.estimates());
+        std::tie(id, state) = sampler.step();
+        // 'id' is the ID of the chain and 'state' is its newest state.
         if (id % s.ntemps == 0)
           nsamples++;
       }
@@ -94,19 +101,16 @@ namespace stateline
         LOG(INFO) << "Error in sampler step - aborting:";
         break;
       }
+    
+      // All the adaption can now be found in sampler.step
 
-      sigmaAdapter.update(id, state);
-      betaAdapter.update(id, state);
-
-      covEstimator.update(id, state.sample);
-      proposal.update(id, covEstimator.covariances()[id]);
-
+      // Log the update
       logger.update(id, state,
-          sigmaAdapter.estimates(), sigmaAdapter.rates(),
-          betaAdapter.estimates(), betaAdapter.rates());
-
+          sigmaAdapter.sigmas(), sigmaAdapter.rates(),
+          betaAdapter.betas(), betaAdapter.rates());
       logger.updateApi(api, chains);
       updateWorkerApi(api, delegator);
+
     }
 
     // Finish any outstanding jobs

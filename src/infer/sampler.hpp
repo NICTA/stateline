@@ -86,6 +86,8 @@ namespace stateline
 
         ProposalBounds bounds_;
         ProposalFunction proposeFn_;
+      
+        mcmc::CovarianceEstimator covarianceEstimator_;
     };
 
     class Sampler
@@ -95,11 +97,13 @@ namespace stateline
                 std::vector<uint> jobTypes,
                 ChainArray& chainArray,
                 const ProposalFunction& propFn,
+                const RegressionAdapter& sigmaAdapter,
+                const RegressionAdapter& betaAdapter,
                 uint swapInterval);
 
         ~Sampler();
       
-        std::pair<uint, State> step(const std::vector<double>& sigmas, const std::vector<double>& betas);
+        std::pair<uint, State> step();
 
         void flush();
 
@@ -116,8 +120,12 @@ namespace stateline
         // The MCMC chain wrapper
         ChainArray& chains_;
         
+        // Not a reference because possibly std function?
         ProposalFunction propFn_;
-        
+
+        RegressionAdapter& sigmaAdapter_;
+        RegressionAdapter& betaAdapter_;
+
         // convenience variables
         const uint nstacks_;
         const uint nchains_;

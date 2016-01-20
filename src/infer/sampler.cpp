@@ -10,7 +10,6 @@
 //!
 
 #include "infer/sampler.hpp"
-
 #include <functional>
 #include <iostream>
 
@@ -56,22 +55,26 @@ namespace stateline
       return result;
     }
 
-    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint nDims,
-                                             const ProposalBounds& bounds)
-      : gen_(std::random_device()()), sigL_(nStacks * nChains), bounds_(bounds)
+    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint
+            nDims, const ProposalBounds& bounds)
+      : gen_(std::random_device()()), sigL_(nStacks * nChains),
+      bounds_(bounds), covarianceEstimator_(nStacks, nChains, nDims)
     {
+
       for (uint i = 0; i < nStacks * nChains; i++)
-        update(i, Eigen::MatrixXd::Identity(nDims, nDims)); 
+        sigL_[id] = Eigen::MatrixXd::Identity(nDims, nDims); 
 
       if ((bounds_.min.rows() == nDims) && (bounds_.max.rows() == nDims))
       {
         LOG(INFO) << "Using a bounded Gaussian proposal function";
-        proposeFn_ = std::bind(&GaussianCovProposal::boundedPropose, this, ph::_1, ph::_2, ph::_3);
+        proposeFn_ = std::bind(&GaussianCovProposal::boundedPropose, this,
+                ph::_1, ph::_2, ph::_3);
       }
       else
       {
         LOG(INFO) << "Using a Gaussian proposal function";
-        proposeFn_ = std::bind(&GaussianCovProposal::propose, this, ph::_1, ph::_2, ph::_3);
+        proposeFn_ = std::bind(&GaussianCovProposal::propose, this, ph::_1,
+                ph::_2, ph::_3);
       }
     }
 
@@ -96,8 +99,10 @@ namespace stateline
       return proposeFn_(id, sample, sigma);
     }
 
-    void GaussianCovProposal::update(uint id, const Eigen::MatrixXd &cov)
+    void GaussianCovProposal::update(uint id, const Eigen::VectorXd &sample)
     {
+      covEstimator.update(id, sample);
+      Eigen::MatrixXd cov = covEstimator.covariances()[id];
       sigL_[id] = cov.llt().matrixL();
     }
 
@@ -105,11 +110,15 @@ namespace stateline
                      std::vector<uint> jobTypes,
                      ChainArray& chainArray,
                      const ProposalFunction& propFn,
+                     const RegressionAdapter& sigmaAdapter,
+                     const RegressionAdapter& betaAdapter,
                      uint swapInterval)
       : requester_(requester),
         jobTypes_(std::move(jobTypes)),
         chains_(chainArray),
         propFn_(propFn),
+        sigmaAdapter_(sigmaAdapter),
+        betaAdapter_(betaAdapter),
         nstacks_(chains_.numStacks()),
         nchains_(chains_.numTemps()),
         propStates_(nstacks_*nchains_),
@@ -132,51 +141,86 @@ namespace stateline
         flush();
     }
     
-    std::pair<uint, State> Sampler::step(const std::vector<double>& sigmas, const std::vector<double>& betas)
+    std::pair<uint, State> Sampler::step()
     {
+
       haveFlushed_ = false;
+
       // Listen for replies. As soon as a new state comes back,
       // add it to the corresponding chain, and submit a new proposed state
-
-      auto result = requester_.retrieve();
+      auto result = requester_.retrieve();  // id, likelihood factors
       uint id = result.first;
       double energy = 0.0;
       for (const auto& r : result.second)
       {
         energy += r;
       }
-
       numOutstandingJobs_--;
 
-      // Update the parameters for this id
-      chains_.setSigma(id, sigmas[id]);
-      chains_.setBeta(id, betas[id]);
+      // Retrieve the sigma and beta values of this chain:
+      double this_sigma = sigmaAdapter_.sigmas()[id];  // historical sigma
+      double this_beta = betaAdapter_.betas()[id];  // historical beta
 
-      // Handle the new proposal and add a new state to the chain
+      // TODO(Al): make sigma and beta arguments to .append rather than part
+      //           of chain state - all this block should be one call.
+      // Esp considering the adapters trace their last use...
+      chains_.setSigma(id, this_sigma);
+      chains_.setBeta(id, this_beta);
       chains_.append(id, propStates_[id], energy);
+      State state = chains_.lastState(id); 
+      bool accepted = state.accepted
 
-      // Check if this chain was locked. If it was locked, it means that
-      // the chain above (hotter) locked it so that it can swap with it
+      sigmaAdapter_.update(id, this_sigma, 1./this_beta, state.accepted);
+      proposal_.update(id, state.sample);  // update sample covariance
+      // the new sigma is generated in propose
+
       if (locked_[id])
       {
-        // Try swapping this chain with the one above it
-        chains_.swap(id, id + 1);
-        // Unlock this chain, propgating the lock downwards
-        unlock(id);
+        // If this chain was locked, it means that the chain above (hotter)
+        // locked it and is waiting for swap.
+        bool swapped = chains_.swap(id, id + 1) == SwapType::Accept;  // TODO(Al)...
+
+        unlock(id);  // Proposes for id+1 (getting it moving again) and 
+                     // Propagates the lock to id-1 ready for this swap
+                     // Handles getting proposals back into system
+
+
+        // AL UPTOHERE!
+        // we can set beta any time
+        // Beta - consider swapping coldest to hottest?
+        // Constrained update the predictor? or batch update
+        // Could make it that each time it sets beta to the min of one above
+        // and target value... that would make sense, and allow it to continue
+        // to grow.
+        betaAdapter_.betaUpdate(id,  state.swapType==SwapType.Accept);
+        
+        // Assign a new beta that is not more than the temperature of the
+        // parent chain
+
       }
       else if (chains_.isHottestInStack(id) && chains_.length(id) % swapInterval_ == 0 && chains_.numTemps() > 1)
       {
-        // The hottest chain is ready to swap. Lock the next chain
-        // to prevent it from proposing any more
+        // The hottest chain is ready to swap. 
         locked_[id - 1] = true;
       }
       else
       {
-        propose(id);
+        propose(id);  // computes a new sigma
       }
-
+          
+            
       return {id, chains_.lastState(id)};
     }
+
+
+    void Sampler::propose(uint id)
+    {
+      double sigma = sigmaAdapter_.sigma(id);
+      propStates_[id] = propFn_(id, chains_.lastState(id).sample, sigma);
+      requester_.submit(id, jobTypes_, propStates_[id]);
+      numOutstandingJobs_++;
+    }
+
 
     void Sampler::flush()
     {
@@ -197,14 +241,6 @@ namespace stateline
       // Manually flush any chain states that are in memory to disk
       for (uint i = 0; i < chains_.numTotalChains(); i++)
         chains_.flushToDisk(i);
-    }
-
-    void Sampler::propose(uint id)
-    {
-      propStates_[id] = propFn_(id, chains_.lastState(id).sample, chains_.sigma(id));
-
-      requester_.submit(id, jobTypes_, propStates_[id]);
-      numOutstandingJobs_++;
     }
 
     void Sampler::unlock(uint id)
