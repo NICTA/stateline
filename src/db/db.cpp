@@ -25,7 +25,7 @@ namespace stateline
     }
 
     CSVChainArrayWriter::CSVChainArrayWriter(const std::string& directory, uint numChains)
-          : chainFiles_(numChains), lastLinePos_(numChains)
+          : chainFiles_(numChains)
     {
       for (uint i = 0; i < numChains; i++) {
         chainFiles_[i].open(directory + "/" + std::to_string(i) + ".csv",
@@ -34,28 +34,17 @@ namespace stateline
       }
     }
 
-    void CSVChainArrayWriter::append(int id, const std::vector<mcmc::State>& states)
+    void CSVChainArrayWriter::append(int id, std::vector<mcmc::State>::iterator start,
+        std::vector<mcmc::State>::iterator end)
     {
       // TODO: needs to be transactional
       assert(id >= 0 && id < chainFiles_.size());
-
-      for (const auto& state : states)
-      {
-        // Store the position of the last line
-        lastLinePos_[id] = chainFiles_[id].tellg();
-        chainFiles_[id] << state << "\n";
-      }
-
+      
+      std::for_each(start, end, [&](const mcmc::State &s){
+          chainFiles_[id] << s << "\n";});
+    
       chainFiles_[id] << std::flush;
     }
-
-    void CSVChainArrayWriter::replaceLast(int id, const mcmc::State& state)
-    {
-      // PRECONDITION: just flushed
-      chainFiles_[id].seekg(lastLinePos_[id]);
-      chainFiles_[id] << state << "\n";
-    }
-
   } // namespace db
 } // namespace stateline
 

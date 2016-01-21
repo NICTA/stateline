@@ -75,7 +75,6 @@ namespace stateline
           beta_(nStacks * nTemps),
           sigma_(nStacks * nTemps),
           cache_(nStacks * nTemps),
-          lastState_(nStacks * nTemps),
           lastFlushTime_(std::chrono::high_resolution_clock::now())
     {
     }
@@ -83,10 +82,7 @@ namespace stateline
     ChainArray::~ChainArray()
     {
       for (uint i = 0; i < nstacks_*ntemps_; i++)
-      {
-        if (cache_[i].size() > 0)
-          flushToDisk(i);
-      }
+        flushToDisk(i);
     }
 
     uint ChainArray::length(uint id) const
@@ -118,10 +114,7 @@ namespace stateline
       {
         lastFlushTime_ = now;
         for (uint i = 0; i < nstacks_*ntemps_; i++)
-        {
-          if (cache_[i].size() > 0)
-            flushToDisk(i);
-        }
+          flushToDisk(i);
       }
 
       return accepted;
@@ -133,57 +126,37 @@ namespace stateline
       setSigma(id, sigma);
       setBeta(id, beta);
       cache_[id].push_back({ sample, energy, sigma_[id], beta_[id], true, SwapType::NoAttempt});
-      lastState_[id] = cache_[id].back();
     }
 
     void ChainArray::flushToDisk(uint id)
     {
-      uint diskLength = lengthOnDisk_[id];
       uint cacheLength = cache_[id].size();
-      uint newLength = diskLength + cacheLength;
+      if (cacheLength == 0)
+        return;
+
+      uint diskLength = lengthOnDisk_[id];
+      uint newLength = diskLength + cacheLength - 1; //keep one state
 
       // for t=1 chains only (cold) chains only
       if (chainIndex(id) == 0)
       {
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
-        std::vector<State> statesToBeSaved(std::begin(cache_[id]), std::end(cache_[id]));
-        writer_.append(id / numTemps(), statesToBeSaved);
+        writer_.append(id / numTemps(), std::begin(cache_[id]), 
+            std::end(cache_[id])-1);
       }
 
       // Update length on disk
       lengthOnDisk_[id] = newLength;
 
-      // Re-initialise the cache
-      if (!cache_[id].empty())
-      {
-        lastState_[id] = cache_[id].back();
-        cache_[id].clear();
-      }
+      // Clear all but the last element
+      mcmc::State recent = cache_[id].back();
+      cache_[id].clear();
+      cache_[id].push_back(recent);
     }
 
     State ChainArray::lastState(uint id) const
     {
-      if (cache_[id].empty()) {
-        return lastState_[id];
-      } else {
-        return cache_[id].back();
-      }
-    }
-
-    void ChainArray::setLastState(uint id, const State& state)
-    {
-      if (!cache_[id].empty())
-      {
-        cache_[id].back() = state;
-      }
-      else
-      {
-        if (chainIndex(id) == 0)
-        {
-          writer_.replaceLast(id / numTemps(), state);
-        }
-        lastState_[id] = state;
-      }
+      return cache_[id].back();
     }
 
     SwapType ChainArray::swap(uint id1, uint id2)
@@ -204,13 +177,13 @@ namespace stateline
         std::swap(stateh.energy, statel.energy);
         std::swap(stateh.accepted, statel.accepted);
         statel.swapType = SwapType::Accept;
-        setLastState(hId, stateh);
-        setLastState(lId, statel);
+        cache_[hId].back() = stateh;
+        cache_[lId].back() = statel;
       }
       else
       {
         statel.swapType = SwapType::Reject;
-        setLastState(lId, statel);
+        cache_[lId].back() = statel;
       }
       return swapped ? SwapType::Accept : SwapType::Reject;
     }
