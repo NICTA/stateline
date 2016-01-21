@@ -25,11 +25,11 @@ namespace stateline
         RegressionAdapter( uint nStacks, uint nTemps, double optimalRate);
 
         void update(uint chainID, double sigm, double t, bool accepted);
-        void RegressionAdapter::betaUpdate(uint chainID, double bl, double bh, bool acc);
+        void betaUpdate(uint chainID, double bl, double bh, bool acc);
 
-        double predict(uint chainID, double t);
+        double predict(uint chainID, double t) const;
         double computeSigma(uint chainID, double t);
-        void RegressionAdapter::computeBetaStack(uint chainID);
+        void computeBetaStack(uint chainID);
 
         const std::vector<double>& rates() const;
         const std::vector<double>& values() const;
@@ -50,7 +50,7 @@ namespace stateline
         std::vector<double> count_;
 
         // For estimating the accept rates using a rolling window
-        const int n_window_ = 1000;
+        const uint n_window_ = 1000;
         std::vector<std::deque<int>> window_;
         std::vector<int> window_sum_;
         std::vector<double> rates_;

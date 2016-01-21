@@ -58,11 +58,11 @@ namespace stateline
     GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint
             nDims, const ProposalBounds& bounds)
       : gen_(std::random_device()()), sigL_(nStacks * nChains),
-      bounds_(bounds), covarianceEstimator_(nStacks, nChains, nDims)
+      bounds_(bounds), covEstimator_(nStacks, nChains, nDims)
     {
 
       for (uint i = 0; i < nStacks * nChains; i++)
-        sigL_[id] = Eigen::MatrixXd::Identity(nDims, nDims); 
+        sigL_[i] = Eigen::MatrixXd::Identity(nDims, nDims); 
 
       if ((bounds_.min.rows() == nDims) && (bounds_.max.rows() == nDims))
       {
@@ -101,22 +101,23 @@ namespace stateline
 
     void GaussianCovProposal::update(uint id, const Eigen::VectorXd &sample)
     {
-      covEstimator.update(id, sample);
-      Eigen::MatrixXd cov = covEstimator.covariances()[id];
+      covEstimator_.update(id, sample);
+      Eigen::MatrixXd cov = covEstimator_.covariances()[id];
       sigL_[id] = cov.llt().matrixL();
     }
-
+    
+    //ProposalFunction& proposal,
     Sampler::Sampler(comms::Requester& requester, 
                      std::vector<uint> jobTypes,
                      ChainArray& chainArray,
-                     const ProposalFunction& propFn,
-                     const RegressionAdapter& sigmaAdapter,
-                     const RegressionAdapter& betaAdapter,
+                     mcmc::GaussianCovProposal& proposal, 
+                     RegressionAdapter& sigmaAdapter,
+                     RegressionAdapter& betaAdapter,
                      uint swapInterval)
       : requester_(requester),
         jobTypes_(std::move(jobTypes)),
         chains_(chainArray),
-        propFn_(propFn),
+        proposal_(proposal),
         sigmaAdapter_(sigmaAdapter),
         betaAdapter_(betaAdapter),
         nstacks_(chains_.numStacks()),
@@ -160,9 +161,9 @@ namespace stateline
 
       // Adapt sigma:
       double temper = 1./state.beta;
-      sigmaAdapter_.update(id, state.sigma(id), temper, state.accepted);
+      sigmaAdapter_.update(id, state.sigma, temper, state.accepted);
       proposal_.update(id, state.sample);
-      chains_.setSigma(id, sigmaAdapter_.sigma(id, temper));
+      chains_.setSigma(id, sigmaAdapter_.computeSigma(id, temper));
 
       // Apply swapping logic:
       if (locked_[id])
@@ -176,7 +177,7 @@ namespace stateline
 
         // Apply temperature update logic:
         betaAdapter_.betaUpdate(id, chains_.beta(id), chains_.beta(id+1), swapped);
-        if chains_.isColdestInStack(id)
+        if (chains_.isColdestInStack(id))
         {
             // Cache a new beta vector for this STACK 
             betaAdapter_.computeBetaStack(id);
@@ -186,7 +187,7 @@ namespace stateline
             // This is a good time to update the temperature because it is
             // right at the beginning of a new swap interval.
             // Note - this introduces a lag of one update interval
-            chains_.setBeta(id, betaAdapter_.values()[id];
+            chains_.setBeta(id, betaAdapter_.values()[id]);
         }
       }
       else if (chains_.isHottestInStack(id)
@@ -209,8 +210,9 @@ namespace stateline
 
     void Sampler::propose(uint id)
     {
-      double sigma = sigmaAdapter_.sigma(id);
-      propStates_[id] = propFn_(id, chains_.lastState(id).sample, sigma);
+      // todo(Al) - should we be getting this from the chains directly?
+      double sigma = sigmaAdapter_.values()[id];
+      propStates_[id] = proposal_(id, chains_.lastState(id).sample, sigma);
       requester_.submit(id, jobTypes_, propStates_[id]);
       numOutstandingJobs_++;
     }

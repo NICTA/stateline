@@ -13,6 +13,7 @@
 
 #include "../comms/requester.hpp"
 #include "../infer/datatypes.hpp"
+#include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
 #include "../app/jsonsettings.hpp"
 
@@ -77,7 +78,7 @@ namespace stateline
 
         Eigen::VectorXd operator()(uint id, const Eigen::VectorXd &sample, double sigma);
 
-        void update(uint id, const Eigen::MatrixXd &cov);
+        void update(uint id, const Eigen::VectorXd &sample);
 
       private:
         std::mt19937 gen_;
@@ -86,19 +87,20 @@ namespace stateline
 
         ProposalBounds bounds_;
         ProposalFunction proposeFn_;
-      
-        mcmc::CovarianceEstimator covarianceEstimator_;
+
+        mcmc::CovarianceEstimator covEstimator_;
     };
 
     class Sampler
     {
       public:
+        // look into ProposalFunction& proposal
         Sampler(comms::Requester& requester, 
                 std::vector<uint> jobTypes,
                 ChainArray& chainArray,
-                const ProposalFunction& propFn,
-                const RegressionAdapter& sigmaAdapter,
-                const RegressionAdapter& betaAdapter,
+                mcmc::GaussianCovProposal& proposal, 
+                RegressionAdapter& sigmaAdapter,
+                RegressionAdapter& betaAdapter,
                 uint swapInterval);
 
         ~Sampler();
@@ -121,7 +123,10 @@ namespace stateline
         ChainArray& chains_;
         
         // Not a reference because possibly std function?
-        ProposalFunction propFn_;
+        ///ProposalFunction proposal_;
+        // Actually, now its always a Gaussian Covariance which simplifies
+        // adaption
+        mcmc::GaussianCovProposal& proposal_; 
 
         RegressionAdapter& sigmaAdapter_;
         RegressionAdapter& betaAdapter_;

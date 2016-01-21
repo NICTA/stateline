@@ -64,8 +64,8 @@ namespace stateline
           betaAdapter.computeBetaStack(i);
 
       // Initialise this chain with the evaluated sample
-      chains.initialise(i, sample, energy, sigmaAdapter.estimates()[i],
-              betaAdapter.estimates()[i]);
+      chains.initialise(i, sample, energy, sigmaAdapter.values()[i],
+              betaAdapter.values()[i]);
 
       LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
     }
