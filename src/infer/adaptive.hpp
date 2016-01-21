@@ -25,34 +25,36 @@ namespace stateline
         RegressionAdapter( uint nStacks, uint nTemps, double optimalRate);
 
         void update(uint chainID, double sigm, double t, bool accepted);
+        void RegressionAdapter::betaUpdate(uint chainID, double bl, double bh, bool acc);
 
-        double pick(uint chainID, double t) const
+        double predict(uint chainID, double t);
+        double computeSigma(uint chainID, double t);
+        void RegressionAdapter::computeBetaStack(uint chainID);
 
-        const std::vector<double> &rates() const;
+        const std::vector<double>& rates() const;
+        const std::vector<double>& values() const;
 
       private:
+        // Sane log max and min values for safety
         const double min_logsigma_ = -8;
         const double max_logsigma_ = 3;
-        const int n_window_ = 1000;
 
         uint nStacks_;
         uint nTemps_;
-        
         double optimalRate_;
 
-        // For estimating proposal lenghts
-        // NOTE: if these were 2 and not 3, fixed-size measures required
-        // http://eigen.tuxfamily.org/dox-devel/group__TopicFixedSizeVectorizable.html
-        std::vector<Eigen::VectorXd> mu_xy_;
-        std::vector<Eigen::VectorXd> weight_;
-        std::vector<Eigen::MatrixXd> mu_xx_;
+        // For estimating proposal lenghts (watch out for alloc in Vector2,4)
+        std::vector<Eigen::Vector3d> mu_xy_;
+        std::vector<Eigen::Matrix3d> mu_xx_;
+        std::vector<Eigen::Vector3d> weight_;
         std::vector<double> count_;
 
-        // For estimating accept rates
+        // For estimating the accept rates using a rolling window
+        const int n_window_ = 1000;
         std::vector<std::deque<int>> window_;
         std::vector<int> window_sum_;
         std::vector<double> rates_;
-        std::vector<double> estimates_;
+        std::vector<double> values_;
     };
 
 

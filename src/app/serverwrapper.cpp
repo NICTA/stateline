@@ -47,15 +47,21 @@ namespace stateline
     mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
     comms::Requester requester(context);
 
+
     // Initialise chains to valid states
     // TODO(AL) This loop could be parallelised, but it would take care...
     for (uint i = 0; i < s.nstacks * s.ntemps; i++)
     {
+
       // Draw an initial sample and compute its energy
       Eigen::VectorXd sample;
       double energy;
       std::tie(sample, energy) = generateInitialSample(s,requester,
               s.proposalBounds);
+
+      // Init betas
+      if (i % s.ntemps == 0)
+          betaAdapter.computeBetaStack(i);
 
       // Initialise this chain with the evaluated sample
       chains.initialise(i, sample, energy, sigmaAdapter.estimates()[i],
@@ -106,8 +112,8 @@ namespace stateline
 
       // Log the update
       logger.update(id, state,
-          sigmaAdapter.sigmas(), sigmaAdapter.rates(),
-          betaAdapter.betas(), betaAdapter.rates());
+          sigmaAdapter.values(), sigmaAdapter.rates(),
+          betaAdapter.values(), betaAdapter.rates());
       logger.updateApi(api, chains);
       updateWorkerApi(api, delegator);
 

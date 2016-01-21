@@ -13,7 +13,7 @@
 #include "../app/jsonsettings.hpp"
 #include <Eigen/Dense>
 #include <vector>
-#include <deque>
+#include <deque>    
 #include <math.h>
 
 
@@ -24,31 +24,30 @@ namespace stateline
 
     RegressionAdapter::RegressionAdapter(uint nStacks, uint nTemps, double optimalRate)
       : nStacks_(nStacks), nTemps_(nTemps), optimalRate_(optimalRate),
-      mu_xy_(nTemps), weight_(nTemps), mu_xx_(nTemps), count_(nTemps),
+      mu_xy_(nTemps), mu_xx_(nTemps), weight_(nTemps), count_(nTemps),
       window_(nTemps*nStacks), window_sum(nTemps*nStacks, 0), 
-      rates_(nStacks*nTemps, optimalRate_), 
-      estimates_(nStacks*nTemps, 1.)
+      rates_(nStacks*nTemps, optimalRate), values_(nStacks*nTemps, 1.),
     {
-
-      // Initialise linear models so initial choice is 1.0.
-      // Also, intial count is nonzero for stability with few samples
+      // Initialial output is 1.0.
+      // Intial count is nonzero for stability with few samples
       double initial_count=10.;
       Eigen::Vector3d mu_xy(1., 0., optimalRate_); 
       for (int t=0; t<nTemps; t++)
       {
         mu_xy_[t] = mu_xy;
         mu_xx_[t].setIdentity();
+        weight_[t] = mu_xy;
         count_[t] = initial_count;
       }
       
     }
 
-    void RegressionAdapter::update(uint chainID, double sigm, double t, bool acc)
+    // Generic Learner
+    void RegressionAdapter::update(uint chainID, double val, double t, bool acc)
     {
-
       // Update regressor weights
       uint tempID = chainID % nTemps_;
-      Eigen::Vector3d x(-log(sigm), t, 1.);  // 3x1
+      Eigen::Vector3d x(-log(val), t, 1.);  // 3x1
       double y = acc;
       counts_[tempID] ++;
       double alpha = 1. / counts_[tempID];  // compute this way so it goes to 0
@@ -70,27 +69,58 @@ namespace stateline
       rates_[chainID] = (double) window_sum_[chainID] / (double) n;
     }
 
-    const std::vector<double>& RegressionAdapter::sigma( uint chainID, double t) const
+    // Generic predictor
+    const std::vector<double>& RegressionAdapter::predict( uint chainID, double t) const
     {
-      // For a given temperature, pick a sigma for this chain ID
+      // Invert the linear model for tempID
       uint tempID = chainID % nTemps_;
       Eigen::Vector3d &W = weights[tempID]
+      double x = -(optimalRate_ - W[1]*t - W[2]) / W[0];
+      x = std::max(std::min(x, max_logsigma), min_logsigma);
+      return exp(x);  // convert from log-space
+    }
 
-      // Invert the linear model
-      double sigma = (optimalRate_ - W[1]*t - W[2]) / W[0];
-      sigma = std::min(std::max(v, -max_logsigma), -min_logsigma);
-      sigma = np.exp(-sigma);  // compute sigma
+    void RegressionAdapter::betaUpdate(uint chainID, double bl, double bh, bool acc)
+    {
 
-      // lazy logging for sigma - it will be the last one used...
-      estimates_[chainID] = sigma;
+      // Forward transform is:
+      // temp(t+1) = (1. + predict(i, temp(t))) * temp(t)
 
-      return sigma;  // actual sigma
+      // Inverse transform is:
+      // predict(t, temp(t)) = temp(t+1)/temp(t) - 1. = beta(t)/beta(t+1) - 1.
+      
+      // Therefore learning step is:
+      update(chainID, bl/bh - 1., 1./bl, acc) 
+    }
+
+    void RegressionAdapter::computeBetaStack(uint chainID)
+    {
+      // Queries the model for an entire stack (based on the chain ID)
+      // chainID is the coldest chain in its stack
+      // Results are cached in values_
+      
+      // t(i+1) = (1. + predict(i, t(i))) * t(i)
+
+      double temp = 1.;
+      for (int i=1; i<nTemps; i++)
+      {
+        // Note, chainID + i-1 % nTemps = i-1
+        temp = (1. + predict(i-1, temp));  // ratio of 2 initially...
+        values_[chainID+i] = 1./temp;          
+      }
+    }
+
+    const std::vector<double>& RegressionAdapter::computeSigma( uint chainID, double t)
+    {
+      double sigma = predict(chainID, t);
+      values_[chainID] = sigma;  // save the last value used.
+      return sigma;
     }
 
     // For logging and remembering the last used values
-    const std::vector<double>& RegressionAdapter::estimates() const
+    const std::vector<double>& RegressionAdapter::values() const
     {
-      return estimates_;
+      return values_;
     }
 
     // For logging only

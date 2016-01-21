@@ -141,75 +141,69 @@ namespace stateline
         flush();
     }
     
+
     std::pair<uint, State> Sampler::step()
     {
 
-      haveFlushed_ = false;
-
-      // Listen for replies. As soon as a new state comes back,
-      // add it to the corresponding chain, and submit a new proposed state
-      auto result = requester_.retrieve();  // id, likelihood factors
+      // Retrieve a result {id, likelihood factors}
+      auto result = requester_.retrieve();
       uint id = result.first;
       double energy = 0.0;
       for (const auto& r : result.second)
-      {
         energy += r;
-      }
       numOutstandingJobs_--;
 
-      // Retrieve the sigma and beta values of this chain:
-      double this_sigma = sigmaAdapter_.sigmas()[id];  // historical sigma
-      double this_beta = betaAdapter_.betas()[id];  // historical beta
-
-      // TODO(Al): make sigma and beta arguments to .append rather than part
-      //           of chain state - all this block should be one call.
-      // Esp considering the adapters trace their last use...
-      chains_.setSigma(id, this_sigma);
-      chains_.setBeta(id, this_beta);
-      chains_.append(id, propStates_[id], energy);
+      // Advance the Markov chain (accept or reject logic inside append)
+      chains_.append(id, propStates_[id], energy);  // TODO: return something?
       State state = chains_.lastState(id); 
-      bool accepted = state.accepted
+      haveFlushed_ = false;
 
-      sigmaAdapter_.update(id, this_sigma, 1./this_beta, state.accepted);
-      proposal_.update(id, state.sample);  // update sample covariance
-      // the new sigma is generated in propose
+      // Adapt sigma:
+      double temper = 1./state.beta;
+      sigmaAdapter_.update(id, state.sigma(id), temper, state.accepted);
+      proposal_.update(id, state.sample);
+      chains_.setSigma(id, sigmaAdapter_.sigma(id, temper));
 
+      // Apply swapping logic:
       if (locked_[id])
       {
-        // If this chain was locked, it means that the chain above (hotter)
-        // locked it and is waiting for swap.
-        bool swapped = chains_.swap(id, id + 1) == SwapType::Accept;  // TODO(Al)...
+        // The chain above is waiting -> attempt a swap
+        // TODO(Al) - make swap return a bool?
+        bool swapped = chains_.swap(id, id + 1) == SwapType::Accept;  
 
-        unlock(id);  // Proposes for id+1 (getting it moving again) and 
-                     // Propagates the lock to id-1 ready for this swap
-                     // Handles getting proposals back into system
+        // Propagate the swap to the rung below:
+        unlock(id);  // Proposes for id+1 and locks id-1
 
-
-        // AL UPTOHERE!
-        // we can set beta any time
-        // Beta - consider swapping coldest to hottest?
-        // Constrained update the predictor? or batch update
-        // Could make it that each time it sets beta to the min of one above
-        // and target value... that would make sense, and allow it to continue
-        // to grow.
-        betaAdapter_.betaUpdate(id,  state.swapType==SwapType.Accept);
-        
-        // Assign a new beta that is not more than the temperature of the
-        // parent chain
-
+        // Apply temperature update logic:
+        betaAdapter_.betaUpdate(id, chains_.beta(id), chains_.beta(id+1), swapped);
+        if chains_.isColdestInStack(id)
+        {
+            // Cache a new beta vector for this STACK 
+            betaAdapter_.computeBetaStack(id);
+        }
+        else
+        {
+            // This is a good time to update the temperature because it is
+            // right at the beginning of a new swap interval.
+            // Note - this introduces a lag of one update interval
+            chains_.setBeta(id, betaAdapter_.values()[id];
+        }
       }
-      else if (chains_.isHottestInStack(id) && chains_.length(id) % swapInterval_ == 0 && chains_.numTemps() > 1)
+      else if (chains_.isHottestInStack(id)
+              && chains_.length(id) % swapInterval_ == 0 
+              && chains_.numTemps() > 1)
       {
-        // The hottest chain is ready to swap. 
+        // Start a swap cascade from the hottest chain.
         locked_[id - 1] = true;
       }
       else
       {
-        propose(id);  // computes a new sigma
+        // No swap attempt - continue chain.
+        propose(id);  
       }
           
-            
       return {id, chains_.lastState(id)};
+
     }
 
 
