@@ -24,8 +24,8 @@ namespace stateline
     // Sane log max and min values for safety
     // They also control the initial guess
     const double min_logsigma_ = -10.;
-    const double max_logsigma_ = 3.;
-    const double log_beta_factor_ = 5.;  // the min and max were selected for sigma
+    const double max_logsigma_ = 10.;
+    const double log_beta_factor_ = 0.;  // the min and max were selected for sigma
     const double initial_count_ = 50.;  // controlls convergence rate
     const double temp_variance_ = 10.;  // Initial guess of temp variance
     const uint n_window_ = 1000;  // length of logging window
@@ -91,7 +91,7 @@ namespace stateline
       // Invert the linear model for tempID
       uint tempID = chainID % nTemps_;
       const Eigen::Vector3d &W = weight_[tempID];
-      const double eps = 1e-10;
+      const double eps = 1e-3;  // min gradient of this parameter with accept rate
       double denom = std::max(eps, W[0]);
       double numer = -(optimalRate_ - W[1]*t - W[2]);
       numer = std::max(std::min(numer, denom*max_logsigma_), denom*min_logsigma_);
@@ -122,7 +122,7 @@ namespace stateline
       // Therefore learning step is:
       double target = (bl/bh - 1.) / exp(log_beta_factor_);
       target = std::min(std::max(target, exp(min_logsigma_)), exp(max_logsigma_));
-      update(chainID, target, 1./bl, acc);
+      update(chainID, target, -log(bl), acc);
     }
 
     void RegressionAdapter::computeBetaStack(uint chainID)
@@ -136,7 +136,7 @@ namespace stateline
       for (uint i=1; i<nTemps_; i++)
       {
         // Note, chainID + i-1 % nTemps = i-1
-        double logfactor = predict(i-1, temp) + log_beta_factor_;
+        double logfactor = predict(i-1, log(temp)) + log_beta_factor_;
         temp *= (1. + exp(logfactor));  // ratio of 2 initially...
         /* temp *= 3; // for now... */
         values_[chainID+i] = 1./temp;          

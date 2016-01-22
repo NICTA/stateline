@@ -160,10 +160,11 @@ namespace stateline
       haveFlushed_ = false;
 
       // Adapt sigma:
-      double temper = 1./state.beta;
-      sigmaAdapter_.update(id, state.sigma, temper, state.accepted);
+      double logtemper = -log(state.beta);  
+      // TODO: check what happens to beta after a swap?
+      sigmaAdapter_.update(id, state.sigma, logtemper, state.accepted);
       proposal_.update(id, state.sample);
-      chains_.setSigma(id, sigmaAdapter_.computeSigma(id, temper));
+      chains_.setSigma(id, sigmaAdapter_.computeSigma(id, logtemper));
 
       // Apply swapping logic:
       if (locked_[id])
@@ -176,23 +177,15 @@ namespace stateline
         unlock(id);  // Proposes for id+1 and locks id-1
 
         // Apply temperature update logic:
-        // the parameter for id controls ratio of id+1 to id
-        /* std::cout << "Updating " << id << ", with " << chains_.beta(id) << */
-        /*     "and " << chains_.beta(id+1) << "\n"; */
         betaAdapter_.betaUpdate(id, chains_.beta(id), chains_.beta(id+1), swapped);
 
         if (chains_.isColdestInStack(id))
-        {
-            // Cache a new beta vector for this STACK 
             betaAdapter_.computeBetaStack(id);
-        }
-        else
-        {
-            // This is a good time to update the temperature because it is
-            // right at the beginning of a new swap interval.
-            // Note - this introduces a lag of one update interval
-            chains_.setBeta(id, betaAdapter_.values()[id]);
-        }
+
+        // We just finished an interval - set last interval's optimum
+        // temperature to the guy we just unlocked...
+        chains_.setBeta(id+1, betaAdapter_.values()[id+1]);
+
       }
       else if (chains_.isHottestInStack(id)
               && chains_.length(id) % swapInterval_ == 0 

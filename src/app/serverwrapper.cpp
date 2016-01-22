@@ -42,7 +42,7 @@ namespace stateline
 
     // Allocate adapters and proposal
     mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
-    mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
+    mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate);
     mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
     mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
     comms::Requester requester(context);

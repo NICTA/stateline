@@ -1,12 +1,13 @@
 {
 "min": [-10, 0, -10, -10],
 "max": [ 10, 10, 10, 2],
-"nSamplesTotal": 10000,
+"nSamplesTotal": 60000,
 "nJobTypes": 3,
 "optimalAcceptRate": 0.234,
+"optimalSwapRate": 0.3874,
 "outputPath": "demo-output",
 "loggingRateSec": 1,
 "nStacks": 2,
-"nTemperatures": 4,
+"nTemperatures": 5,
 "swapInterval": 10
 }

@@ -50,6 +50,7 @@ namespace stateline
       // mcmc::SlidingWindowSigmaSettings sigmaSettings;
       // mcmc::SlidingWindowBetaSettings betaSettings;
       double optimalAcceptRate;
+      double optimalSwapRate;
       std::string outputPath;
       // mcmc::ChainSettings chainSettings;
       mcmc::ProposalBounds proposalBounds;
@@ -65,6 +66,7 @@ namespace stateline
         s.nJobTypes = readSettings<uint>(j, "nJobTypes");
         s.outputPath = readSettings<std::string>(j, "outputPath");
         s.optimalAcceptRate = readSettings<double>(j, "optimalAcceptRate");
+        s.optimalSwapRate = readSettings<double>(j, "optimalSwapRate");
         s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
         s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
         return s;
