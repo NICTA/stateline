@@ -16,7 +16,7 @@
 
 #include <easylogging/easylogging++.h>
 
-INITIALIZE_EASYLOGGINGPP;
+INITIALIZE_EASYLOGGINGPP
 
 namespace stateline
 {

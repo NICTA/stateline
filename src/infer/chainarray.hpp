@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <chrono>
 #include "../db/db.hpp"
 #include "../infer/datatypes.hpp"
 
@@ -18,27 +19,13 @@ namespace stateline
 {
   namespace mcmc
   {
-    //! Settings for interacting with the MCMC Chain Array
-    //!
-    struct ChainSettings
-    {
-      //! Path to the folder directory containing the database.
-      std::string databasePath;
-
-      //
-      uint chainCacheLength;
-
-      //! Default settings
-      ChainSettings();
-    };
-
     //! Manager for all the states and handle reading / writing from / to database.
     //!
     //! \section id The chain ID used by MCMC sampler.
     //!
     //! This class works with Ids:
     //! \code
-    //! if nStacks = 2, nChains = 4
+    //! if nStacks = 2, nTemps = 4
     //! id 0 = stack 1 chain 1 // lowest temperature chain of stack 1
     //! id 1 = stack 1 chain 2 // high temperature chain of stack 1
     //! id 2 = stack 1 chain 3 // high temperature chain of stack 1
@@ -56,10 +43,10 @@ namespace stateline
         //! Create a chain array.
         //! 
         //! \param nStacks The number of stacks. Each stack have the same temperature sequence.
-        //! \param nChains The number of chains in each stack.
+        //! \param nTemps The number of chains in each stack.
         //! \param settings The Chain array settings object
         //
-        ChainArray(uint nStacks, uint nChains, const ChainSettings& settings);
+        ChainArray(uint nStacks, uint nTemps, const std::string& outputPath);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
@@ -145,13 +132,13 @@ namespace stateline
         //!
         uint numStacks() const;
 
-        //! Get the number of chains per stack.
+        //! Get the number of chains (ie temperatures) per stack.
         //!
         //! \return The number of chains in each stack of the chain array.
         //!
-        uint numChains() const;
+        uint numTemps() const;
 
-        //! Get the total number of chains in every stack.
+        //! Get the total number of chains over all stacks.
         //!
         //! \return The total number of chains in the chain array.
         //!
@@ -177,13 +164,12 @@ namespace stateline
         //mutable db::Database db_; // Mutable so that chain queries can be const
         db::CSVChainArrayWriter writer_;
         uint nstacks_;
-        uint nchains_;
-        uint cacheLength_;
+        uint ntemps_;
         std::vector<uint> lengthOnDisk_;
         std::vector<double> beta_;
         std::vector<double> sigma_;
         std::vector<std::vector<State>> cache_;
-        std::vector<State> lastState_;
+        std::chrono::high_resolution_clock::time_point lastFlushTime_;
     };
 
   } // namespace mcmc

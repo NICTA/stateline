@@ -13,6 +13,7 @@
 
 #include "../comms/requester.hpp"
 #include "../infer/datatypes.hpp"
+#include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
 #include "../app/jsonsettings.hpp"
 
@@ -37,30 +38,28 @@ namespace stateline
       static ProposalBounds fromJSON(const nlohmann::json& j)
       {
         ProposalBounds b;
-        uint nDims = readSettings<uint>(j,"dimensionality");
-        uint nMin = readSettings<std::vector<double>>(j, "boundaries", "min").size();
-        uint nMax = readSettings<std::vector<double>>(j, "boundaries", "max").size();
+        std::vector<double> vmin = readSettings<std::vector<double>>(j, "min");
+        std::vector<double> vmax = readSettings<std::vector<double>>(j, "max");
 
-        if ((nMin != 0) || (nMax != 0))
+        uint nMin = vmin.size();
+        uint nMax = vmax.size();
+        if (nMin != nMax)
         {
-          if ((nMin != nDims) || (nMax != nDims))
-          {
-            LOG(ERROR) << "Proposal bounds dimension mismatch: ndim="
-                       << nDims <<", nMin=" << nMin << ", nMax=" << nMax;
-          }
-          else
-          {
+          LOG(FATAL) << "Proposal bounds dimension mismatch: nMin=" 
+              << nMin << ", nMax=" << nMax;
+        }
+        else
+        {
+            uint nDims = nMax;
             b.min.resize(nDims);
             b.max.resize(nDims);
-            std::vector<double> vmin = readSettings<std::vector<double>>(j, "boundaries", "min");
-            std::vector<double> vmax = readSettings<std::vector<double>>(j, "boundaries", "max");
             for (uint i=0; i < nDims; ++i)
             {
               b.min[i] = vmin[i];
               b.max[i] = vmax[i];
             }
-          }
         }
+
         return b;
       }
     };
@@ -77,7 +76,7 @@ namespace stateline
 
         Eigen::VectorXd operator()(uint id, const Eigen::VectorXd &sample, double sigma);
 
-        void update(uint id, const Eigen::MatrixXd &cov);
+        void update(uint id, const Eigen::VectorXd &sample);
 
       private:
         std::mt19937 gen_;
@@ -86,20 +85,25 @@ namespace stateline
 
         ProposalBounds bounds_;
         ProposalFunction proposeFn_;
+
+        mcmc::CovarianceEstimator covEstimator_;
     };
 
     class Sampler
     {
       public:
+        // look into ProposalFunction& proposal
         Sampler(comms::Requester& requester, 
                 std::vector<uint> jobTypes,
                 ChainArray& chainArray,
-                const ProposalFunction& propFn,
+                mcmc::GaussianCovProposal& proposal, 
+                RegressionAdapter& sigmaAdapter,
+                RegressionAdapter& betaAdapter,
                 uint swapInterval);
 
         ~Sampler();
       
-        std::pair<uint, State> step(const std::vector<double>& sigmas, const std::vector<double>& betas);
+        std::pair<uint, State> step();
 
         void flush();
 
@@ -116,8 +120,15 @@ namespace stateline
         // The MCMC chain wrapper
         ChainArray& chains_;
         
-        ProposalFunction propFn_;
-        
+        // Not a reference because possibly std function?
+        ///ProposalFunction proposal_;
+        // Actually, now its always a Gaussian Covariance which simplifies
+        // adaption
+        mcmc::GaussianCovProposal& proposal_; 
+
+        RegressionAdapter& sigmaAdapter_;
+        RegressionAdapter& betaAdapter_;
+
         // convenience variables
         const uint nstacks_;
         const uint nchains_;
