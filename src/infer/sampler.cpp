@@ -176,7 +176,11 @@ namespace stateline
         unlock(id);  // Proposes for id+1 and locks id-1
 
         // Apply temperature update logic:
+        // the parameter for id controls ratio of id+1 to id
+        /* std::cout << "Updating " << id << ", with " << chains_.beta(id) << */
+        /*     "and " << chains_.beta(id+1) << "\n"; */
         betaAdapter_.betaUpdate(id, chains_.beta(id), chains_.beta(id+1), swapped);
+
         if (chains_.isColdestInStack(id))
         {
             // Cache a new beta vector for this STACK 
@@ -260,7 +264,6 @@ namespace stateline
         propose(id);
       }
     }
-
   
   }
 }

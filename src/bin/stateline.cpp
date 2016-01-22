@@ -59,7 +59,7 @@ int main(int ac, char *av[])
   json config = initConfig(vm);
   uint port = vm["port"].as<uint>();
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
-
+  
   sl::ServerWrapper s(port, settings);
   s.start();
 

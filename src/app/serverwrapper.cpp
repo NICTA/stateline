@@ -67,7 +67,10 @@ namespace stateline
       chains.initialise(i, sample, energy, sigmaAdapter.values()[i],
               betaAdapter.values()[i]);
 
-      LOG(INFO) << "Initialising chain " << i << " with energy: " << energy;
+      LOG(INFO) << "Initialising chain " << i << " with energy: " << energy
+          << "sigma: " << sigmaAdapter.values()[i] << " and beta "
+          << betaAdapter.values()[i];
+
     }
 
     // Create job types from 0 to max number of job types

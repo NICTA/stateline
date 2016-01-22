@@ -21,23 +21,37 @@ namespace stateline
 {
   namespace mcmc
   {
+    // Sane log max and min values for safety
+    // They also control the initial guess
+    const double min_logsigma_ = -10.;
+    const double max_logsigma_ = 3.;
+    const double log_beta_factor_ = 5.;  // the min and max were selected for sigma
+    const double initial_count_ = 50.;  // controlls convergence rate
+    const double temp_variance_ = 10.;  // Initial guess of temp variance
+    const uint n_window_ = 1000;  // length of logging window
 
     RegressionAdapter::RegressionAdapter(uint nStacks, uint nTemps, double optimalRate)
       : nStacks_(nStacks), nTemps_(nTemps), optimalRate_(optimalRate),
       mu_xy_(nTemps), mu_xx_(nTemps), weight_(nTemps), count_(nTemps),
       window_(nTemps*nStacks), window_sum_(nTemps*nStacks, 0), 
-      rates_(nStacks*nTemps, optimalRate), values_(nStacks*nTemps, 1.)
+      rates_(nStacks*nTemps, 0./0.), values_(nStacks*nTemps, 1.)
     {
       // Initialial output is 1.0.
       // Intial count is nonzero for stability with few samples
-      double initial_count=10.;
-      Eigen::Vector3d mu_xy(1., 0., optimalRate_); 
+      Eigen::Vector3d bound1(-max_logsigma_, 0., 1.);
+      Eigen::Vector3d bound2(-min_logsigma_, 0., 1.);
+
+      Eigen::Matrix3d mu_xx =  0.5 * bound1 * bound1.transpose() +
+          0.5 * bound2 * bound2.transpose();
+      
+      Eigen::Vector3d mu_xy = 0.5*bound2;
+
       for (uint t=0; t<nTemps; t++)
       {
         mu_xy_[t] = mu_xy;
-        mu_xx_[t].setIdentity();
+        mu_xx_[t] = mu_xx;
         weight_[t] = mu_xy;
-        count_[t] = initial_count;
+        count_[t] = initial_count_;
       }
       
     }
@@ -45,14 +59,17 @@ namespace stateline
     // Generic Learner
     void RegressionAdapter::update(uint chainID, double val, double t, bool acc)
     {
+        
       // Update regressor weights
       uint tempID = chainID % nTemps_;
-      Eigen::Vector3d x(-log(val), t, 1.);  // 3x1
-      double y = acc;
-      count_[tempID] ++;
+      double logval = std::min(std::max(log(val), min_logsigma_), max_logsigma_);  // clip to valid
+      Eigen::Vector3d x(-logval, t, 1.);  // 3x1
+      double y = acc;  // double version of accept
+      count_[tempID] ++;  // already type double
       double alpha = 1. / count_[tempID];  // compute this way so it goes to 0
       mu_xx_[tempID] = mu_xx_[tempID] * (1. - alpha) + x * x.transpose() * alpha;
-      mu_xy_[tempID] = mu_xy_[tempID] * (1. - alpha) + x * y * alpha;
+      Eigen::Vector3d &mu_xy = mu_xy_[tempID];
+      mu_xy = mu_xy * (1. - alpha) + x * y * alpha;
       weight_[tempID] = mu_xx_[tempID].colPivHouseholderQr().solve(mu_xy_[tempID]);
 
       // Update the accept rate logging
@@ -74,9 +91,23 @@ namespace stateline
       // Invert the linear model for tempID
       uint tempID = chainID % nTemps_;
       const Eigen::Vector3d &W = weight_[tempID];
-      double x = -(optimalRate_ - W[1]*t - W[2]) / W[0];
-      x = std::max(std::min(x, max_logsigma_), min_logsigma_);
-      return exp(x);  // convert from log-space
+      const double eps = 1e-10;
+      double denom = std::max(eps, W[0]);
+      double numer = -(optimalRate_ - W[1]*t - W[2]);
+      numer = std::max(std::min(numer, denom*max_logsigma_), denom*min_logsigma_);
+      double x = numer / denom;
+
+      // check for NaNs (hopefully never...):
+      if (x != x)
+      {
+        std::cout << "\nChain " << chainID << " has NaN prediction weights " << W.transpose() << "\n";
+        std::cout << mu_xx_[tempID] << "\n";
+        std::cout << "And covariance:\n";
+        std::cout << mu_xy_[tempID].transpose() << "\n";
+        throw 15;
+      }
+
+      return x;  // convert from log-space in calling function
     }
 
     void RegressionAdapter::betaUpdate(uint chainID, double bl, double bh, bool acc)
@@ -89,7 +120,9 @@ namespace stateline
       // predict(t, temp(t)) = temp(t+1)/temp(t) - 1. = beta(t)/beta(t+1) - 1.
       
       // Therefore learning step is:
-      update(chainID, bl/bh - 1., 1./bl, acc);
+      double target = (bl/bh - 1.) / exp(log_beta_factor_);
+      target = std::min(std::max(target, exp(min_logsigma_)), exp(max_logsigma_));
+      update(chainID, target, 1./bl, acc);
     }
 
     void RegressionAdapter::computeBetaStack(uint chainID)
@@ -97,21 +130,22 @@ namespace stateline
       // Queries the model for an entire stack (based on the chain ID)
       // chainID is the coldest chain in its stack
       // Results are cached in values_
-      
       // t(i+1) = (1. + predict(i, t(i))) * t(i)
 
       double temp = 1.;
       for (uint i=1; i<nTemps_; i++)
       {
         // Note, chainID + i-1 % nTemps = i-1
-        temp = (1. + predict(i-1, temp));  // ratio of 2 initially...
+        double logfactor = predict(i-1, temp) + log_beta_factor_;
+        temp *= (1. + exp(logfactor));  // ratio of 2 initially...
+        /* temp *= 3; // for now... */
         values_[chainID+i] = 1./temp;          
       }
     }
 
     double RegressionAdapter::computeSigma(uint chainID, double t)
     {
-      double sigma = predict(chainID, t);
+      double sigma = exp(predict(chainID, t));
       values_[chainID] = sigma;  // save the last value used.
       return sigma;
     }

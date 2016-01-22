@@ -38,30 +38,28 @@ namespace stateline
       static ProposalBounds fromJSON(const nlohmann::json& j)
       {
         ProposalBounds b;
-        uint nDims = readSettings<uint>(j,"dimensionality");
-        uint nMin = readSettings<std::vector<double>>(j, "boundaries", "min").size();
-        uint nMax = readSettings<std::vector<double>>(j, "boundaries", "max").size();
+        std::vector<double> vmin = readSettings<std::vector<double>>(j, "min");
+        std::vector<double> vmax = readSettings<std::vector<double>>(j, "max");
 
-        if ((nMin != 0) || (nMax != 0))
+        uint nMin = vmin.size();
+        uint nMax = vmax.size();
+        if (nMin != nMax)
         {
-          if ((nMin != nDims) || (nMax != nDims))
-          {
-            LOG(ERROR) << "Proposal bounds dimension mismatch: ndim="
-                       << nDims <<", nMin=" << nMin << ", nMax=" << nMax;
-          }
-          else
-          {
+          LOG(FATAL) << "Proposal bounds dimension mismatch: nMin=" 
+              << nMin << ", nMax=" << nMax;
+        }
+        else
+        {
+            uint nDims = nMax;
             b.min.resize(nDims);
             b.max.resize(nDims);
-            std::vector<double> vmin = readSettings<std::vector<double>>(j, "boundaries", "min");
-            std::vector<double> vmax = readSettings<std::vector<double>>(j, "boundaries", "max");
             for (uint i=0; i < nDims; ++i)
             {
               b.min[i] = vmin[i];
               b.max[i] = vmax[i];
             }
-          }
         }
+
         return b;
       }
     };

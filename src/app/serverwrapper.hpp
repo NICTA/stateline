@@ -64,6 +64,7 @@ namespace stateline
         s.msLoggingRefresh = (uint)(readSettings<double>(j, "loggingRateSec")*1000.0);
         s.nJobTypes = readSettings<uint>(j, "nJobTypes");
         s.outputPath = readSettings<std::string>(j, "outputPath");
+        s.optimalAcceptRate = readSettings<double>(j, "optimalAcceptRate");
         s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
         s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
         return s;

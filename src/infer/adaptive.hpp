@@ -35,9 +35,6 @@ namespace stateline
         const std::vector<double>& values() const;
 
       private:
-        // Sane log max and min values for safety
-        const double min_logsigma_ = -8;
-        const double max_logsigma_ = 3;
 
         uint nStacks_;
         uint nTemps_;
@@ -50,7 +47,6 @@ namespace stateline
         std::vector<double> count_;
 
         // For estimating the accept rates using a rolling window
-        const uint n_window_ = 1000;
         std::vector<std::deque<int>> window_;
         std::vector<int> window_sum_;
         std::vector<double> rates_;
