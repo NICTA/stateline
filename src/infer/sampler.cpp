@@ -162,7 +162,7 @@ namespace stateline
       // Adapt sigma:
       double logtemper = -log(state.beta);  
       // TODO: check what happens to beta after a swap?
-      sigmaAdapter_.update(id, state.sigma, logtemper, state.accepted);
+      sigmaAdapter_.update(id, log(state.sigma), logtemper, state.accepted);
       proposal_.update(id, state.sample);
       chains_.setSigma(id, sigmaAdapter_.computeSigma(id, logtemper));
 

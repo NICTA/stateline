@@ -22,7 +22,7 @@ namespace stateline
     class RegressionAdapter
     {
       public:
-        RegressionAdapter( uint nStacks, uint nTemps, double optimalRate);
+        RegressionAdapter( uint nStacks, uint nTemps, double optimalRate, double min_cap, double max_cap);
 
         void update(uint chainID, double sigm, double t, bool accepted);
         void betaUpdate(uint chainID, double bl, double bh, bool acc);
@@ -38,6 +38,8 @@ namespace stateline
 
         uint nStacks_;
         uint nTemps_;
+        double min_cap_;
+        double max_cap_;
         double optimalRate_;
 
         // For estimating proposal lenghts (watch out for alloc in Vector2,4)

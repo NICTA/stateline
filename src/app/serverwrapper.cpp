@@ -41,8 +41,9 @@ namespace stateline
   {
 
     // Allocate adapters and proposal
-    mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate);
-    mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate);
+    const double max_log_ratio = 10.;
+    mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate, -max_log_ratio, max_log_ratio);
+    mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate, 0., max_log_ratio);
     mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
     mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
     comms::Requester requester(context);
