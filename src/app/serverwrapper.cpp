@@ -28,8 +28,12 @@ namespace stateline
     std::iota(jobTypes.begin(), jobTypes.end(), 0);
 
   // Send a random sample to workers to be evaluated
-    sample = mcmc::bouncyBounds(Eigen::VectorXd::Random(s.ndims), 
-            bounds.min, bounds.max);
+    if (s.useInitial)
+        sample = mcmc::bouncyBounds(s.initial, bounds.min, bounds.max);
+    else
+        sample = mcmc::bouncyBounds(Eigen::VectorXd::Random(s.ndims), 
+                bounds.min, bounds.max);
+
     requester.submit(0, jobTypes, sample); //job id zero because we dont care
     auto result = requester.retrieve();
     double energy = std::accumulate(std::begin(result.second), std::end(result.second), 0.0);
@@ -41,8 +45,9 @@ namespace stateline
   {
 
     // Allocate adapters and proposal
-    const double max_log_ratio = 10.;
-    mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate, -max_log_ratio, max_log_ratio);
+    const double max_log_ratio = 4.;  // or would 10 be a better range
+    const double min_log_ratio = -8.;
+    mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate, min_log_ratio, max_log_ratio);
     mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate, 0., max_log_ratio);
     mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
     mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);

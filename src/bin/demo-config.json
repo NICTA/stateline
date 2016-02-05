@@ -6,6 +6,7 @@
 "optimalAcceptRate": 0.234,
 "optimalSwapRate": 0.3874,
 "outputPath": "demo-output",
+"useInitial": false,
 "loggingRateSec": 1,
 "nStacks": 2,
 "nTemperatures": 5,

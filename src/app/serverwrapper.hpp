@@ -47,6 +47,11 @@ namespace stateline
       // int msLoggingRefresh;
       uint msLoggingRefresh;
       uint nJobTypes;
+
+      bool useInitial;
+
+      Eigen::VectorXd initial;
+
       // mcmc::SlidingWindowSigmaSettings sigmaSettings;
       // mcmc::SlidingWindowBetaSettings betaSettings;
       double optimalAcceptRate;
@@ -54,6 +59,7 @@ namespace stateline
       std::string outputPath;
       // mcmc::ChainSettings chainSettings;
       mcmc::ProposalBounds proposalBounds;
+      
 
       static StatelineSettings fromJSON(const nlohmann::json& j)
       {
@@ -67,6 +73,18 @@ namespace stateline
         s.outputPath = readSettings<std::string>(j, "outputPath");
         s.optimalAcceptRate = readSettings<double>(j, "optimalAcceptRate");
         s.optimalSwapRate = readSettings<double>(j, "optimalSwapRate");
+        s.useInitial = readSettings<bool>(j, "useInitial");
+
+        if (s.useInitial)
+        {
+            std::vector<double> tmp;
+            tmp = readSettings<std::vector<double>>(j, "initial");
+            uint nDims = tmp.size();
+            s.initial.resize(nDims);
+            for (uint i=0; i < nDims; ++i)
+                s.initial[i] = tmp[i];
+        }
+
         s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
         s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
         return s;

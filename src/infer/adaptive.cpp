@@ -24,7 +24,7 @@ namespace stateline
   {
 
     // Not neccessary for the user to tune these...
-    const double initial_count_ = 10.;  // To help initial convergence 
+    const double initial_count_ = 10.;  // To help initial stability 
     const double temp_variance_ = 10.;  // Initial guess of log-beta's variance
     const uint n_window_ = 1000;  // logging window (doesnt affect adaption)
 
