@@ -55,30 +55,28 @@ namespace stateline
       return result;
     }
 
-    GaussianCovProposal::GaussianCovProposal(uint nStacks, uint nChains, uint
-            nDims, const ProposalBounds& bounds)
-      : gen_(std::random_device()()), sigL_(nStacks * nChains),
-      bounds_(bounds), covEstimator_(nStacks, nChains, nDims)
+    GaussianProposal::GaussianProposal(uint nStacks, uint nChains, uint
+            nDims, const ProposalBounds& bounds, uint init_length)
+      : gen_(std::random_device()()), 
+      bounds_(bounds), 
+      proposalShape_(nStacks, nChains, nDims, bounds, init_length)
     {
-
-      for (uint i = 0; i < nStacks * nChains; i++)
-        sigL_[i] = Eigen::MatrixXd::Identity(nDims, nDims); 
 
       if ((bounds_.min.rows() == nDims) && (bounds_.max.rows() == nDims))
       {
         LOG(INFO) << "Using a bounded Gaussian proposal function";
-        proposeFn_ = std::bind(&GaussianCovProposal::boundedPropose, this,
+        proposeFn_ = std::bind(&GaussianProposal::boundedPropose, this,
                 ph::_1, ph::_2, ph::_3);
       }
       else
       {
         LOG(INFO) << "Using a Gaussian proposal function";
-        proposeFn_ = std::bind(&GaussianCovProposal::propose, this, ph::_1,
+        proposeFn_ = std::bind(&GaussianProposal::propose, this, ph::_1,
                 ph::_2, ph::_3);
       }
     }
 
-    Eigen::VectorXd GaussianCovProposal::propose(uint id, const Eigen::VectorXd &sample, double sigma)
+    Eigen::VectorXd GaussianProposal::propose(uint id, const Eigen::VectorXd &sample, double sigma)
     {
       uint n = sample.size();
 
@@ -86,31 +84,29 @@ namespace stateline
       for (uint i = 0; i < n; i++)
         randn(i) = rand_(gen_);
 
-      return sample + sigL_[id] * randn * sigma;
+      return sample + proposalShape_.Ns()[id] * randn * sigma;
     }
 
-    Eigen::VectorXd GaussianCovProposal::boundedPropose(uint id, const Eigen::VectorXd& sample, double sigma)
+    Eigen::VectorXd GaussianProposal::boundedPropose(uint id, const Eigen::VectorXd& sample, double sigma)
     {
       return bouncyBounds(propose(id, sample, sigma), bounds_.min, bounds_.max);
     }
 
-    Eigen::VectorXd GaussianCovProposal::operator()(uint id, const Eigen::VectorXd &sample, double sigma)
+    Eigen::VectorXd GaussianProposal::operator()(uint id, const Eigen::VectorXd &sample, double sigma)
     {
       return proposeFn_(id, sample, sigma);
     }
 
-    void GaussianCovProposal::update(uint id, const Eigen::VectorXd &sample)
+    void GaussianProposal::update(uint id, const Eigen::VectorXd &stepv)
     {
-      covEstimator_.update(id, sample);
-      Eigen::MatrixXd cov = covEstimator_.covariances()[id];
-      sigL_[id] = cov.llt().matrixL();
+      proposalShape_.update(id, stepv);
     }
     
     //ProposalFunction& proposal,
     Sampler::Sampler(comms::Requester& requester, 
                      std::vector<uint> jobTypes,
                      ChainArray& chainArray,
-                     mcmc::GaussianCovProposal& proposal, 
+                     mcmc::GaussianProposal& proposal, 
                      RegressionAdapter& sigmaAdapter,
                      RegressionAdapter& betaAdapter,
                      uint swapInterval)
@@ -155,16 +151,19 @@ namespace stateline
       numOutstandingJobs_--;
 
       // Advance the Markov chain (accept or reject logic inside append)
+      State previous_state = chains_.lastState(id);
       chains_.append(id, propStates_[id], energy);  // TODO: return something?
       State state = chains_.lastState(id); 
       haveFlushed_ = false;
 
-      // Adapt sigma:
-      double logtemper = -log(state.beta);  
-      // TODO: check what happens to beta after a swap?
+      // Adapt sigma (the scale of the proposal):
+      double logtemper = -log(state.beta); 
       sigmaAdapter_.update(id, log(state.sigma), logtemper, state.accepted);
-      proposal_.update(id, state.sample);
       chains_.setSigma(id, sigmaAdapter_.computeSigma(id, logtemper));
+
+      // Adapt the proposal shape:
+      if (state.accepted)
+          proposal_.update(id, state.sample - previous_state.sample);
 
       // Apply swapping logic:
       if (locked_[id])
@@ -185,7 +184,6 @@ namespace stateline
         // We just finished an interval - set last interval's optimum
         // temperature to the guy we just unlocked...
         chains_.setBeta(id+1, betaAdapter_.values()[id+1]);
-
       }
       else if (chains_.isHottestInStack(id)
               && chains_.length(id) % swapInterval_ == 0 

@@ -56,18 +56,20 @@ namespace stateline
     };
 
 
-    class CovarianceEstimator
+    class ProposalShaper
     {
       public:
-        CovarianceEstimator(uint nStacks, uint nTemps, uint nDims);
-        void update(uint i, const Eigen::VectorXd& sample);
-        const std::vector<Eigen::MatrixXd> &covariances() const;
+        ProposalShaper(uint nStacks, uint nTemps, uint nDims,
+                mcmc::ProposalBounds bounds, uint initial_count);
+        void update(uint i, const Eigen::VectorXd& stepv);
+        const std::vector<Eigen::MatrixXd> &Ns() const;
 
       private:
-        std::vector<uint> lengths_;
-        std::vector<Eigen::MatrixXd> covs_;
-        std::vector<Eigen::MatrixXd> a_;
-        std::vector<Eigen::VectorXd> u_;
+        double nDims_;
+        double prop_norm_;
+        std::vector<uint> count_;
+        std::vector<Eigen::MatrixXd> L_;
+        std::vector<Eigen::MatrixXd> N_;
     };
     
   }

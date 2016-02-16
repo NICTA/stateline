@@ -17,6 +17,13 @@ namespace stateline
 {
   namespace mcmc
   {
+
+    struct ProposalBounds
+    {
+      Eigen::VectorXd min;
+      Eigen::VectorXd max;
+    };
+    
     //! Used for recording swapping of chains.
     //!
     enum class SwapType

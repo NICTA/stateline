@@ -47,9 +47,10 @@ namespace stateline
     // Allocate adapters and proposal
     const double max_log_ratio = 4.;  // or would 10 be a better range
     const double min_log_ratio = -8.;
+    const uint initial_count = 1000;
     mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate, min_log_ratio, max_log_ratio);
     mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate, 0., max_log_ratio);
-    mcmc::GaussianCovProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds);
+    mcmc::GaussianProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds, initial_count);
     mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
     comms::Requester requester(context);
 

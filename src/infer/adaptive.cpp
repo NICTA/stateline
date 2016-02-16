@@ -152,31 +152,65 @@ namespace stateline
 
 
 
-    // TODO(Al) Incremental cholesky factor tracking
-    CovarianceEstimator::CovarianceEstimator(uint nStacks, uint nTemps, uint nDims)
-      : lengths_(nStacks * nTemps, 0),
-      covs_(nStacks * nTemps, Eigen::MatrixXd::Identity(nDims, nDims)),
-      a_(nStacks * nTemps, Eigen::MatrixXd::Identity(nDims, nDims)),
-      u_(nStacks * nTemps, Eigen::VectorXd::Zero(nDims))
+    ProposalShaper::ProposalShaper(uint nStacks, uint nTemps, 
+           uint nDims, ProposalBounds bounds, uint initial_count)
+      : nDims_(nDims),
+      count_(nStacks * nTemps, initial_count),
+      L_(nStacks * nTemps, Eigen::MatrixXd::Zero(nDims, nDims)),
+      N_(nStacks * nTemps, Eigen::MatrixXd::Zero(nDims, nDims))
     {
+        // automatically seed diagonals in proportion to range
+        Eigen::VectorXd range = (bounds.max - bounds.min) / 4.;
+        prop_norm_ = range.norm();  // save for later scaling
+        Eigen::VectorXd rnorm = range / range.norm();
+        for (uint i=0; i<nStacks*nTemps; i++)
+        {
+            L_[i].diagonal() = range;
+            N_[i].diagonal() = rnorm;
+        }
     }
 
-    void CovarianceEstimator::update(uint i, const Eigen::VectorXd &sample)
+    void ProposalShaper::update(uint i, const Eigen::VectorXd &sample)
     {
-      // TODO(Al): we should be estimating the cholesky decomposition online.
-      double n = (double)lengths_[i] + 10 * sample.size();
+      // As Al prototyped in python...
+      const double eps = 1e-18;
+      count_[i] ++;
+      Eigen::MatrixXd &R = L_[i];
+      
+      // Handle the incremental scaling
+      Eigen::VectorXd x = sample/std::sqrt(count_[i]);
+      R *= std::sqrt((count_[i]-1.)/count_[i]);
+      
+      // And update the estimator cholesky directly
+      for (int k=0; k<nDims_; k++)
+      {
+        double V = std::max(eps, R(k, k));
+        double r = std::sqrt(V*V + x[k]*x[k]);
+        double c = r / V;
+        double s = x[k] / V;
+        R(k, k) = r;
+        for (int j=k+1; j<nDims_; j++)
+        {
+          R(j, k) = (R(j, k) + s*x[j]) / c;
+          x[j] = c*x[j] - s*R(j, k);
+        }
+      }
 
-      a_[i] = a_[i] * (n / (n + 1)) + (sample * sample.transpose()) / (n + 1);
-      u_[i] = u_[i] * (n / (n + 1)) + sample / (n + 1);
+      // Cache a normalised version of this Gaussian...
+      N_[i] = R * (prop_norm_ / std::max(R.norm(), eps));
 
-      covs_[i] = a_[i] - (u_[i] * u_[i].transpose());// / (n + 1);
+      // Protection from numerical low rank proposals.
+      const double min_rank = 1e-4;
+      N_[i].diagonal().array() += min_rank;  // Dan says: What could go wrong?
+      /* Eigen::VectorXd diag = N_[i].diagonal(); */
+      /* for (int i=0; i< nDims_; i++) */
+      /*   diag[i] += min_rank; */
 
-      lengths_[i]++;
     }
 
-    const std::vector<Eigen::MatrixXd> &CovarianceEstimator::covariances() const
+    const std::vector<Eigen::MatrixXd> &ProposalShaper::Ns() const
     {
-      return covs_;
+      return N_;
     }
     
   } // mcmc

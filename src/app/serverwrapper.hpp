@@ -85,7 +85,7 @@ namespace stateline
                 s.initial[i] = tmp[i];
         }
 
-        s.proposalBounds = mcmc::ProposalBounds::fromJSON(j);
+        s.proposalBounds = mcmc::ProposalBoundsFromJSON(j);
         s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
         return s;
       }

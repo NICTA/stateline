@@ -30,13 +30,9 @@ namespace stateline
 
     //! Settings for the defining a hard boundary on the samples produced
     //! by the proposal function.
-    struct ProposalBounds
-    {
-      Eigen::VectorXd min;
-      Eigen::VectorXd max;
 
-      static ProposalBounds fromJSON(const nlohmann::json& j)
-      {
+    static ProposalBounds ProposalBoundsFromJSON(const nlohmann::json& j)
+    {
         ProposalBounds b;
         std::vector<double> vmin = readSettings<std::vector<double>>(j, "min");
         std::vector<double> vmax = readSettings<std::vector<double>>(j, "max");
@@ -45,8 +41,8 @@ namespace stateline
         uint nMax = vmax.size();
         if (nMin != nMax)
         {
-          LOG(FATAL) << "Proposal bounds dimension mismatch: nMin=" 
-              << nMin << ", nMax=" << nMax;
+            LOG(FATAL) << "Proposal bounds dimension mismatch: nMin=" 
+                << nMin << ", nMax=" << nMax;
         }
         else
         {
@@ -55,21 +51,21 @@ namespace stateline
             b.max.resize(nDims);
             for (uint i=0; i < nDims; ++i)
             {
-              b.min[i] = vmin[i];
-              b.max[i] = vmax[i];
+                b.min[i] = vmin[i];
+                b.max[i] = vmax[i];
             }
         }
 
         return b;
-      }
-    };
+    }
 
     using ProposalFunction = std::function<Eigen::VectorXd(uint id, const Eigen::VectorXd &sample, double sigma)>;
 
-    class GaussianCovProposal
+    class GaussianProposal
     {
       public:
-        GaussianCovProposal(uint nStacks, uint nChains, uint nDims, const ProposalBounds& bounds);
+        GaussianProposal(uint nStacks, uint nChains, uint nDims, 
+                const ProposalBounds& bounds, uint init_length);
 
         Eigen::VectorXd propose(uint id, const Eigen::VectorXd &sample, double sigma);
         Eigen::VectorXd boundedPropose(uint id, const Eigen::VectorXd &sample, double sigma);
@@ -80,13 +76,12 @@ namespace stateline
 
       private:
         std::mt19937 gen_;
-        std::normal_distribution<> rand_; // Standard normal
-        std::vector<Eigen::MatrixXd> sigL_;
+        std::normal_distribution<> rand_; // Standard normal generator
 
         ProposalBounds bounds_;
         ProposalFunction proposeFn_;
 
-        mcmc::CovarianceEstimator covEstimator_;
+        mcmc::ProposalShaper proposalShape_;
     };
 
     class Sampler
@@ -96,7 +91,7 @@ namespace stateline
         Sampler(comms::Requester& requester, 
                 std::vector<uint> jobTypes,
                 ChainArray& chainArray,
-                mcmc::GaussianCovProposal& proposal, 
+                mcmc::GaussianProposal& proposal, 
                 RegressionAdapter& sigmaAdapter,
                 RegressionAdapter& betaAdapter,
                 uint swapInterval);
@@ -124,7 +119,7 @@ namespace stateline
         ///ProposalFunction proposal_;
         // Actually, now its always a Gaussian Covariance which simplifies
         // adaption
-        mcmc::GaussianCovProposal& proposal_; 
+        mcmc::GaussianProposal& proposal_; 
 
         RegressionAdapter& sigmaAdapter_;
         RegressionAdapter& betaAdapter_;
