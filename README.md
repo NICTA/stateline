@@ -1,6 +1,6 @@
 #stateline
 
-[![Build Status](https://travis-ci.org/NICTA/stateline.svg)](https://travis-ci.org/NICTA/stateline)
+[![Build Status](https://travis-ci.org/NICTA/stateline.png)](https://travis-ci.org/NICTA/stateline)
 
 
 - [Introduction](#introduction)
@@ -35,7 +35,7 @@ MCMC is a widely used algorithm for sampling from a probability distribution giv
 An effective algorithm to sample in high dimensions is a random-walk Markov chain, which uses the current state of a chain of samples to propose a new state. The proposal is usually a simple distribution g, such as a Gaussian centered on the current state. This allows the algorithm to exploit the structure of the posterior - if we propose a state similar to the last draw, then it is likely to be accepted. With a well designed proposal scheme, an efficient acceptance rate can be achieved even in high dimensions. This comes at the cost of sample correlation, because the draws are no longer independent. To actually achieve independent draws from the posterior requires taking multiple Markov steps. The simplest form of random-walk MCMC is the Metropolis Hastings algorithm, which accepts a step from x to x’ with probability A:
 
 <p align="center">
-    <img src="docs/images/mh_accept.svg" height="40">
+    <img src="docs/images/mh_accept.png" height="40">
 </p>
 
 Here, P is the (unnormalised) target density and g is the density of the proposal function for a transition from x to x’. Through detailed balance, the resulting draws have the same equilibrium distribution as the target distribution.
@@ -60,13 +60,13 @@ Even with a well tuned proposal distribution, MCMC chains tend to become trapped
 On the other hand, the modes on the right distribution are bridged so a markov chain would be able to mix between them effectively. Parallel tempering (Metropolis-Coupled Markov-Chain Monte-Carlo) exploits this concept by constructing multiple chains, one exploring the base distribution, and the others at increasingly higher ‘temperatures’. The high temperature chains see a distribution equivalent to the original density raised to a fractional power, bringing the distribution closer to uniform (the distribution on the right had a temperature of 8 times the one on the left). The acceptance criterion is therefore modified to take into account temperature T:
 
 <p align="center">
-    <img src="docs/images/pt_accept.svg" height="40">
+    <img src="docs/images/pt_accept.png" height="40">
 </p>
 
 Now the high temperature chains exchange information by proposing exchanges of state (the exchanges are themselves a markov chain), with the probability given by:
 
 <p align="center">
-    <img src="docs/images/pt_swap.svg" height="70">
+    <img src="docs/images/pt_swap.png" height="70">
 </p>
 
 Here Ti is the temperature of the i’th temperature chain, 𝛷 is the target density and θi is the state of chain i.
