@@ -54,22 +54,47 @@ To run the python demos, you will also need:
 
 ##Installation
 
-The simplest way to build Stateline running is to clone the repository and fetch the dependencies:
+First clone the repository and enter the directory:
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline && ./tools/fetch-deps
+$ cd stateline 
 ```
 
-This will automatically download and build the necessary dependencies into `build/prereqs`. Then, to build Stateline in debug, run:
+The simplest way to build Stateline is to use the `fetch-deps` script that will automatically download and build the dependencies required. By default, it will dowload them into a `prereqs` subdirectory of the stateline repository. It will also create a build subdirectory for the stateline binaries.
 
 ```bash
-$ ./tools/configure debug
-$ cd build/debug && make
+$ ./tools/fetch-deps
 ```
 
-You usually only need to configure once, so just run `make` next time you want to re-compile. Only when you make significant changes to the build procedures will you need to run `./tools/configure`. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
+If you would like to specify the build and prereq directories manually, you can:
 
+```bash
+$ export BUILD_DIR=<my build dir>
+$ export PREREQ_DIR=<my prereq dir>
+$ ./tools/fetch-deps
+```
+
+Next, run the configure script which will point cmake to correct prereq and build directories:
+
+```bash
+$ ./tools/configure release
+```
+
+Substitute `release` with `debug` or `relwithdebinfo` if you would prefer these build types.
+You should only need to run this configure script once (even if you are developing stateline itself). From then on, just run make from your build directory:
+
+```bash
+$ cd build
+$ make
+```
+
+If you would like to install stateline, run
+```bash
+$ make install
+```
+
+which will output headers, libraries and binaries into an `install` subdirectory of the build directory. From there you may copy them to the appropriate folders in your operating system.
 
 ##Getting Started
 ###Configuration
