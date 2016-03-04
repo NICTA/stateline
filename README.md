@@ -29,12 +29,28 @@ Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) samplin
 
 ##System Requirements
 
-Currently, Stateline runs on Linux-based operating systems only, though there
-is also a Dockerfile.
+Stateline has been sucsessfully compiled on Linux and OSX machines. We don't currently support Windows. For large-scale deployments, we recommend using Docker (and the dockerfile included in this repo).
 
-* GCC 4.8.2/Clang 6.0 or newer
-* CMake 3.0 or newer 
+To build stateline, you will need the following:
 
+* GCC 4.8.2/Clang 6.0+
+* CMake 3.0+
+* zlib 
+
+Stateline will automatically download and build the other prerequisite libraries in requires. However, if you would like to use
+operating system or other copies, you will also need:
+
+* Boost 1.59+
+* Eigen 3.2.0+
+* google-test 1.7.0+
+* zeromq 4.0+
+
+To run the python demos, you will also need:
+
+* Python 2.7/3.4+
+* Pyzmq
+* numpy
+* corner-plot (python library)
 
 ##Installation
 
