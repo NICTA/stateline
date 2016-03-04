@@ -103,28 +103,98 @@ To run the python demos, you will also need:
 
 ##Installation
 
-The simplest way to build Stateline running is to clone the repository and fetch the dependencies:
+First clone the repository and enter the directory:
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline && ./tools/fetch-deps
+$ cd stateline 
 ```
 
-This will automatically download and build the necessary dependencies into `build/prereqs`. Then, to build Stateline in debug, run:
+The simplest way to build Stateline is to use the `fetch-deps` script that will automatically download and build the dependencies required. By default, it will dowload them into a `prereqs` subdirectory of the stateline repository. It will also create a build subdirectory for the stateline binaries.
 
 ```bash
-$ ./tools/configure debug
-$ cd build/debug && make
+$ ./tools/fetch-deps
 ```
 
-You usually only need to configure once, so just run `make` next time you want to re-compile. Only when you make significant changes to the build procedures will you need to run `./tools/configure`. More information about building can be found [here](https://github.com/NICTA/stateline/wiki/Installation-Guide).
+If you would like to specify the build and prereq directories manually, you can:
 
+```bash
+$ export BUILD_DIR=<my build dir>
+$ export PREREQ_DIR=<my prereq dir>
+$ ./tools/fetch-deps
+```
+
+Next, run the configure script which will point cmake to correct prereq and build directories:
+
+```bash
+$ ./tools/configure release
+```
+
+Substitute `release` with `debug` or `relwithdebinfo` if you would prefer these build types.
+You should only need to run this configure script once (even if you are developing stateline itself). From then on, just run make from your build directory:
+
+```bash
+$ cd build
+$ make
+```
+
+If you would like to install stateline, run
+```bash
+$ make install
+```
+
+which will output headers, libraries and binaries into an `install` subdirectory of the build directory. From there you may copy them to the appropriate folders in your operating system.
 
 ##Getting Started
+
 ###Configuration
+
+Stateline is configured through a json file. An example file is given below:
+
+```json
+{
+"nJobTypes": 3,
+"nStacks": 2,
+"nTemperatures": 5,
+"nSamplesTotal": 60000,
+
+"min": [-10, 0, -10, -10],
+"max": [ 10, 10, 10, 2],
+
+
+"swapInterval": 10
+"optimalAcceptRate": 0.234,
+"optimalSwapRate": 0.3874,
+
+"outputPath": "demo-output",
+"loggingRateSec": 1,
+}
+```
+`nJobTypes`: The number of terms that the likelihood factorises into. In other words, if `nJobTypes` = 10, each evaluation of the likelihood for a state will be separated into 10 jobs, that state along with the job index 1-10 will sent to the workers for evaluation, and the resulting log-likelihoods from each worker will be summed into a single value for that state. This corresponds to a factorizing likelihood with 10 terms.
+
+`nStacks`: The number of totally separate sets of chains run simultaineously. Stateline runs 'stacks' of chains at different temperatures that swap states as part of parallel tempering. However, one good way to test for convergence is to run additonal stacks that are separately initialised (and that do not swap with eachother), then look at how similiar the statistics of each stack are. Multiple stacks is also another way to utilize additional computing resources to get more samples more quickly as they are evaluated in parallel by stateline workers.
+
+`nTemperaturesTotal`: The number of chains in a single parallel tempering stack. The temperatures of these chains are automatically determined. More complex and higher-dimensional likelihoods will need more chains in each stack. See the tips and tricks section for how to estimate a reasonable value.
+
+`nSamplesTotal`: The total number of samples *from all stacks* that will be sampled before the program ends. There is no automatic decimation or burn-in at the moment -- these are raw samples straight from the sampler so be sure to take that into account.
+
+`min`: Stateline requires hard bounds to be set on the parameter space. This is the minimum bound. Feel free to set this to all zeros and transform inside your likelihood if you prefer.
+
+`max`: Stateline requires hard bounds to be set on the parameter space. This is the maximum bound. Feel free to set this to all ones and transform inside your likelihood if you prefer.
+
+`swapInterval`: The number of states evaluated before the chains in a stack attempt a pairwise swap from hottest to coldest. A larger value is more computationally efficient, whilst a smaller value will produce better mixing of states between chains of different temperatures.
+
+`optimalAcceptRate`: The adaption mechanism in stateline will scale the Metropolis Hastings proposal distribution to attempt to hit this acceptance rate for each chain. 0.5 is theoretically optimal for a 1D Gaussian. 0.234 is the limit for a Gaussian as dimensionality goes to infinity... from there you're on your own (we usually use 0.234).
+
+`optimalSwapRate`: The adaption mechanism in stateline will change the temperatures of adjacent chains in a stack to attempt to hit this swap rate. A reasonable heuristic is to set it equal to the optimal accept rate.
+
+`ouputpath`: The directory (relative to the working directory) where the stateline server will save its output. It will be created if it does not already exist.
+
+`loggingRateSec`: The number of seconds between logging the state of the MCMC. Faster logging looks good in standard out, slower logging will save you disk space if you're redirecting to a file.
+
 ###C++ Example
 
-To see Stateline in action, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
+To see Stateline in action, open two terminals and run the following commands in a build directory:
 
 Run the Stateline server in Terminal 1:
 
