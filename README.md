@@ -21,7 +21,7 @@
 
 ##Introduction
 
-Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++11. It focuses on [parallel tempering](http://en.wikipedia.org/wiki/Parallel_tempering) methods which are highly parallelisable.
+Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements [parallel tempering](http://en.wikipedia.org/wiki/Parallel_tempering) and factorising likelihoods, in order to exploit parallelisation and distribution computing resources.
 
 ###Why Stateline
 
