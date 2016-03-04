@@ -162,7 +162,7 @@ Stateline is configured through a json file. An example file is given below:
 "max": [ 10, 10, 10, 2],
 
 
-"swapInterval": 10
+"swapInterval": 10,
 "optimalAcceptRate": 0.234,
 "optimalSwapRate": 0.3874,
 
