@@ -97,10 +97,55 @@ $ make install
 which will output headers, libraries and binaries into an `install` subdirectory of the build directory. From there you may copy them to the appropriate folders in your operating system.
 
 ##Getting Started
+
 ###Configuration
+
+Stateline is configured through a json file. An example file is given below:
+
+```json
+{
+"nJobTypes": 3,
+"nStacks": 2,
+"nTemperatures": 5,
+"nSamplesTotal": 60000,
+
+"min": [-10, 0, -10, -10],
+"max": [ 10, 10, 10, 2],
+
+
+"swapInterval": 10
+"optimalAcceptRate": 0.234,
+"optimalSwapRate": 0.3874,
+
+"outputPath": "demo-output",
+"loggingRateSec": 1,
+}
+```
+`nJobTypes`: The number of terms that the likelihood factorises into. In other words, if `nJobTypes` = 10, each evaluation of the likelihood for a state will be separated into 10 jobs, that state along with the job index 1-10 will sent to the workers for evaluation, and the resulting log-likelihoods from each worker will be summed into a single value for that state. This corresponds to a factorizing likelihood with 10 terms.
+
+`nStacks`: The number of totally separate sets of chains run simultaineously. Stateline runs 'stacks' of chains at different temperatures that swap states as part of parallel tempering. However, one good way to test for convergence is to run additonal stacks that are separately initialised (and that do not swap with eachother), then look at how similiar the statistics of each stack are. Multiple stacks is also another way to utilize additional computing resources to get more samples more quickly as they are evaluated in parallel by stateline workers.
+
+`nTemperaturesTotal`: The number of chains in a single parallel tempering stack. The temperatures of these chains are automatically determined. More complex and higher-dimensional likelihoods will need more chains in each stack. See the tips and tricks section for how to estimate a reasonable value.
+
+`nSamplesTotal`: The total number of samples *from all stacks* that will be sampled before the program ends. There is no automatic decimation or burn-in at the moment -- these are raw samples straight from the sampler so be sure to take that into account.
+
+`min`: Stateline requires hard bounds to be set on the parameter space. This is the minimum bound. Feel free to set this to all zeros and transform inside your likelihood if you prefer.
+
+`max`: Stateline requires hard bounds to be set on the parameter space. This is the maximum bound. Feel free to set this to all ones and transform inside your likelihood if you prefer.
+
+`swapInterval`: The number of states evaluated before the chains in a stack attempt a pairwise swap from hottest to coldest. A larger value is more computationally efficient, whilst a smaller value will produce better mixing of states between chains of different temperatures.
+
+`optimalAcceptRate`: The adaption mechanism in stateline will scale the Metropolis Hastings proposal distribution to attempt to hit this acceptance rate for each chain. 0.5 is theoretically optimal for a 1D Gaussian. 0.234 is the limit for a Gaussian as dimensionality goes to infinity... from there you're on your own (we usually use 0.234).
+
+`optimalSwapRate`: The adaption mechanism in stateline will change the temperatures of adjacent chains in a stack to attempt to hit this swap rate. A reasonable heuristic is to set it equal to the optimal accept rate.
+
+`ouputpath`: The directory (relative to the working directory) where the stateline server will save its output. It will be created if it does not already exist.
+
+`loggingRateSec`: The number of seconds between logging the state of the MCMC. Faster logging looks good in standard out, slower logging will save you disk space if you're redirecting to a file.
+
 ###C++ Example
 
-To see Stateline in action, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
+To see Stateline in action, open two terminals and run the following commands in a build directory:
 
 Run the Stateline server in Terminal 1:
 
