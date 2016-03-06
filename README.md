@@ -12,16 +12,20 @@
     - [Configuration](#configuration)
     - [C++ Example](#c++-example)
     - [Python Example](#python-example)
+    - [Other Languages](#other-languages)
 - [Interpreting Logging](#interpreting-logging)
 - [MCMC Output](#mcmc-output)
 - [Cluster Deployment](#cluster-deployment)
 - [Tips and Tricks](#tips-and-tricks)
-- [Development](#development)
+- [Workers in Other Languages](#workers-in-other-languages)
+- [Contributing to Development](#contributing-to-development)
 
 
 ##Introduction
 
 Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements [parallel tempering](http://en.wikipedia.org/wiki/Parallel_tempering) and factorising likelihoods, in order to exploit parallelisation and distribution computing resources.
+
+Stateline is composed of a server that samples from a given parameter space, and a set of workers that are directed by the server to evaluate a user's likelihood function. These workers can run on the same machine or communicate over the network as part of a distributed cluster. Stateline has workers implemented in C++ and Python, for which the user need only define their likelihood function. Building a worker in another language is simple as long as it has bindings for ZeroMQ.
 
 
 ###Why Stateline
@@ -224,6 +228,10 @@ Run a Stateline worker in Terminal 2:
 $ python ./demo-worker.py
 ```
 
+###Other Languages
+
+For details of implementing workers for other languages, see [Workers in Other Languages](#workers-in-other-languages).
+
 
 ##Interpreting Logging
 ##MCMC Output
@@ -251,90 +259,25 @@ occured, and 2 indicated a swap was attempted but was rejected.
 
 ##Cluster Deployment
 ##Tips and Tricks
-##Development
+##Workers in Other Languages
+##Contributing to Development
 
-
-Licence
--------
-Please see the LICENSE file, and COPYING and COPYING.LESSER.
-
-Bug Reports
------------
-If you find a bug, please open an [issue](http://github.com/NICTA/stateline/issues).
-
-Contributing 
-------------
 Contributions and comments are welcome. Please read our [style guide](https://github.com/NICTA/stateline/wiki/Coding-Style-Guidelines) before submitting a pull request.
 
+###Licence
+Please see the LICENSE file, and COPYING and COPYING.LESSER.
 
-##END OF MATERIAL
-
-##Adaption
-
-For each chain, Stateline automatically adapts the proposal width `sigma` to
-achieve a fixed acceptance rate (given in the config file as
-`optimalAcceptRate`). A sensible default for this optimal accept rate is 0.24,
-which has some theoretical justification, being the optimal accept rate for an
-infinite-dimensional Gaussian distribution. If your problem is 1D or 2D, then
-0.5 might be better.
-
-If the accept rate is too high, then the proposal distribution is too
-conservative and `sigma` needs to be increased. Conversely if the acceptance
-rate is too low then the algorithm is attempting jumps that are too large and
-`sigma` needs to be decreased. 
-
-In order to calculate how this should occur, stateline firsts needs to estimate
-what the current acceptance rate actually is. This is done via a sliding window
-average, whose size is controlled by the windowSize parameter in the config
-file.
-
-Every so often (at a rate determined by the `stepsPerAdapt` parameter in the
-config file), the algorithm will update each chain's `sigma` using the following
-rule:
-    
-    new_sigma = old_sigma * (bounded_adaption_factor ^ gamma)
-
-The `bounded_adaption_factor` variable is related to how quickly the
-`sigma` paramater should change for a given difference between the current accept
-rate and the optimal accept rate. The gamma parameter ensures that the changes
-in `sigma` get smaller and smaller until it essentially fixed and therefore
-maintaining detail balance. The raw adaption factor is computed as 
-
-    adaption_factor = (current_acceptance_rate / optimalAcceptRate) ^ adaptRate
-
-where `optimalAcceptRate` and `adaptRate` are parameters in the config file.
-However, to ensure stability of the algorithm during the first stages when the
-acceptance rates are changing rapidly, this is bounded to ensure `sigma` does not
-change too rapidly. The bounded apation factor is given by
-      
-    bounded_adaption_factor = min(max(adaption_factor, minAdaptFactor), maxAdaptFactor)
-
-where the `minAdaptFactor` and `maxAdaptFactor` are parameters in the config
-file. Finally, the `gamma` parameter that controls the rate at which adaption
-fades is given by
-
-    gamma = adaptionLength / (adaptionLength + current_chain_length)      
-
-where `adaptionLength` is a parameter in the config file and `current_chain_length`
-is the current chain length. Roughly speaking, this causes the
-`adaption_factor` to scale such that when the chain is length `adaptionLength`, the adaption factor
-is the square root of the original adaption factor.
-
-The algorithm described above is exactly replicated for changing each chains
-temperature, with analogous parameters in the config file. The only difference
-is that we consider optimal swap rates between chains rather than accept rates.
-A swap rate too low indicates a chain's temperature is too high relative to the
-one below it, whilst a swap rate too high indicates the opposite. 
+###Bug Reports
+If you find a bug, please open an [issue](http://github.com/NICTA/stateline/issues).
 
 
-##Additional Documentation
+###Developer Documentation
 
-Additional Documentation can be found in the
-[wiki](http://github.com/NICTA/stateline/wiki), and there is automatic doxygen documentation generated by running
+There is automatic doxygen documentation generated by running
 
 ```bash
 $ make doc
 ```
 
-in a build directory. Please ensure Doxygen is installed. Finally, there are demos for python and C++ in the src/bin folder.
+in a build directory. Please ensure Doxygen is installed. 
 
