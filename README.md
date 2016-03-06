@@ -30,6 +30,8 @@ Stateline is composed of a server that samples from a given parameter space, and
 
 ###Why Stateline
 
+insert text here about when one might use stateline rather than say stan.
+
 ###MCMC Sampling
 
 MCMC is a widely used algorithm for sampling from a probability distribution given only its unnormalised posterior density. Consequently, MCMC provides a general solution to a wide class of Bayesian inference problems prevalent in scientific research. Stateline provides an MCMC solution for problems with difficult posteriors that may be highly non-Gaussian and for difficult likelihoods where the observation models are highly non-linear, expensive ‘black box’ functions such as numerical simulations. Stateline will distribute the computation of these likelihoods over a cluster, and uses parallel tempering to handle the case that the structure of the posterior distribution itself may be multi-modal. 
@@ -197,6 +199,51 @@ Stateline is configured through a json file. An example file is given below:
 `loggingRateSec`: The number of seconds between logging the state of the MCMC. Faster logging looks good in standard out, slower logging will save you disk space if you're redirecting to a file.
 
 ###C++ Example
+
+
+The following code gives an close to minimal example of building a stateline
+worker with a custom likelihood in C++.
+
+```c++
+#include <thread>
+#include <chrono>
+
+#include "stateline/app/workerwrapper.hpp"
+#include "stateline/app/signal.hpp"
+
+int main()
+{
+  // This worker will evaluate any jobs with these indices
+  // by specifying different indices for different workers they can specialise.
+  std::pair jobIdRange = {0,10};
+
+  // The address of the stateline server
+  std::string address = "localhost:5000";
+
+  // A stateline worker taking a likelihood function 'gaussianNLL'
+  stateline::WorkerWrapper w(gaussianNLL, jobIdRange, address);
+
+  // The worker itself runs in a different thread
+  w.start();
+
+  // By default the worker wrapper catches signals
+  while(!stateline::global::interruptedBySignal)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  w.stop();
+  return 0;
+}
+```
+
+This code simply defines the job id range that the worker will evaluate,
+the address of the server, then creates a `WorkerWrapper` object. This object
+encapsulates all the communications systems with the server, including shaping,
+heartbeating and detecting network errors. 
+
+Once `start` is called
+
 
 To see Stateline in action, open two terminals and run the following commands in a build directory:
 
