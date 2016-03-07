@@ -4,8 +4,8 @@
 
 
 - [Introduction](#introduction)
+    - [MCMC Sampling](#primer-mcmc-sampling)
     - [Why Stateline](#why-stateline)
-    - [MCMC Sampling](#mcmc-sampling)
 - [System Requirements](#system-requirements)
 - [Installation](#building)
 - [Getting Started](#getting-started)
@@ -23,22 +23,18 @@
 
 ##Introduction
 
-Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements [parallel tempering](http://en.wikipedia.org/wiki/Parallel_tempering) and factorising likelihoods, in order to exploit parallelisation and distribution computing resources.
+Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements random walk Metropolis-Hastings with parallel tempering to improve chain mixing, provides an adaptive proposal distribution to speed up convergence, and allows the user to factorise their likelihoods (eg. over sensors or data). For a brief introduction to these concepts, see the [MCMC Sampling primer](#primer-mcmc-sampling) below. 
 
-Stateline is composed of a server that samples from a given parameter space, and a set of workers that are directed by the server to evaluate a user's likelihood function. These workers can run on the same machine or communicate over the network as part of a distributed cluster. Stateline has workers implemented in C++ and Python, for which the user need only define their likelihood function. Building a worker in another language is simple as long as it has bindings for ZeroMQ.
+Stateline then provides the framework for deploying the distributed MCMC computation on a cluster, while allowing the users to focus on computing the posterior density with their own models, languages and environments. If you are already familiar with parallel tempering and adaptive proposals, you may wish to skip straight to Stateline's [features](#why-stateline).
 
 
-###Why Stateline
+### Primer: MCMC Sampling
 
-insert text here about when one might use stateline rather than say stan.
+MCMC is a widely used algorithm for sampling from a probability distribution given only its unnormalised posterior density. Consequently, MCMC provides a general solution to a wide class of Bayesian inference problems prevalent in scientific research. 
 
-###MCMC Sampling
+##### Random Walk Metropolis Hastings 
 
-MCMC is a widely used algorithm for sampling from a probability distribution given only its unnormalised posterior density. Consequently, MCMC provides a general solution to a wide class of Bayesian inference problems prevalent in scientific research. Stateline provides an MCMC solution for problems with difficult posteriors that may be highly non-Gaussian and for difficult likelihoods where the observation models are highly non-linear, expensive ‘black box’ functions such as numerical simulations. Stateline will distribute the computation of these likelihoods over a cluster, and uses parallel tempering to handle the case that the structure of the posterior distribution itself may be multi-modal. 
-
-#### Metropolis Hastings
-
-An effective algorithm to sample in high dimensions is a random-walk Markov chain, which uses the current state of a chain of samples to propose a new state. The proposal is usually a simple distribution g, such as a Gaussian centered on the current state. This allows the algorithm to exploit the structure of the posterior - if we propose a state similar to the last draw, then it is likely to be accepted. With a well designed proposal scheme, an efficient acceptance rate can be achieved even in high dimensions. This comes at the cost of sample correlation, because the draws are no longer independent. To actually achieve independent draws from the posterior requires taking multiple Markov steps. The simplest form of random-walk MCMC is the Metropolis Hastings algorithm, which accepts a step from x to x’ with probability A:
+An effective strategy to sample in high dimensions is a random-walk Markov chain, which uses the current state of a chain of samples to propose a new state. The proposal is usually a simple distribution g, such as a Gaussian centered on the current state. This allows the algorithm to exploit the structure of the posterior - if we propose a state similar to the last draw, then it is likely to be accepted. With a well designed proposal scheme, an efficient acceptance rate can be achieved even in high dimensions. This comes at the cost of sample correlation, because the draws are no longer independent. To actually achieve independent draws from the posterior requires taking multiple Markov steps. The simplest form of random-walk MCMC is the Metropolis Hastings algorithm, which accepts a step from x to x’ with probability A:
 
 <p align="center">
     <img src="docs/images/mh_accept.png" height="40">
@@ -47,13 +43,13 @@ An effective algorithm to sample in high dimensions is a random-walk Markov chai
 Here, P is the (unnormalised) target density and g is the density of the proposal function for a transition from x to x’. Through detailed balance, the resulting draws have the same equilibrium distribution as the target distribution.
 
 
-#### Proposal Distributions
+##### Proposal Distributions
 
-The design objective of a proposal distribution is to maximise the number of proposals required per independent sample from the posterior. A conservative proposal that takes small steps may have a high acceptance rate, but will produce a highly autocorrelated chain. Conversely, a broad proposal that attempts large steps will suffer from a low acceptance rate. Studies in the literature have shown that a convergence 'sweet spot' exists, for example an accept rate of 0.234 is optimal if the likelihood is a separable function of each component of a high dimensional parameter space θ [Roberts97].  
+The design objective of a proposal distribution is to maximise the number of proposals required per independent sample from the posterior. A conservative proposal that takes small steps may have a high acceptance rate, but will produce a highly autocorrelated chain. Conversely, a broad proposal that attempts large steps will suffer from a low acceptance rate. Studies in the literature have shown that a convergence 'sweet spot' exists, for example an accept rate of 0.234 is optimal if the likelihood is a separable function of each component of a high dimensional parameter space θ [Roberts97](#references).  
 
-Because the optimal proposal distribution depends strongly on the target posterior, it is important for an MCMC tool to provide an automatic adaption mechanism. Care must be taken because naive adaptation of the proposal during sampling may invalidate the ergodicity of the MCMC chain, causing the resulting samples to be drawn from a different distribution. The simplest sufficient condition to guarantee correctness is the diminishing adaptation principle [Roberts05]. Stateline learns a proposal scale factor that that, together with the empirical covariance of the samples, forms a diminishing adaptation proposal function [Andrieu2008]. 
+Because the optimal proposal distribution depends strongly on the target posterior, it is important for an MCMC tool to provide an automatic adaption mechanism. Care must be taken because naive adaptation of the proposal during sampling may invalidate the ergodicity of the MCMC chain, causing the resulting samples to be drawn from a different distribution. The simplest sufficient condition to guarantee correctness is the diminishing adaptation principle [Roberts06](#references). Stateline learns a proposal scale factor that that, together with the empirical covariance of the samples, forms a diminishing adaptation proposal function [Andrieu2008](#references). 
 
-#### Parallel Tempering
+##### Parallel Tempering
 
 Even with a well tuned proposal distribution, MCMC chains tend to become trapped in local modes of the target distribution. A distribution that highlights this problem is the double-well potential below. A proposal that can jump between the modes in one step is too coarse to effectively explore the individual modes, while the probability of accepting an intermediate state between them is almost zero. Thus a standard MCMC approach would explore a single mode and have no knowledge of the other:
 
@@ -78,9 +74,70 @@ Now the high temperature chains exchange information by proposing exchanges of s
 Here Ti is the temperature of the i’th temperature chain, 𝛷 is the target density and θi is the state of chain i.
 
 
-#### Convergence Heuristics
+##### Convergence Heuristics
 
-Chain convergence can be inferred by independently running multiple MCMC chains (stacks) and comparing their statistical measures. If the chains are exploring a different set of modes, this can be detected. Otherwise we must assume they are adequately mixing, although there is a possibility that all the chains have failed to discover a mode (parallel tempering reduces the probability of this happening). Stateline employs the approach of [Brooks98]. 
+Chain convergence can be inferred by independently running multiple MCMC chains (stacks) and comparing their statistical measures. If the chains are exploring a different set of modes, this can be detected. Otherwise we must assume they are adequately mixing, although there is a possibility that all the chains have failed to discover a mode (parallel tempering reduces the probability of this happening). Stateline employs the approach of [Brooks98](#references). 
+
+
+###Why Stateline
+
+Stateline is designed specifically for difficult inference problems in computational science. We assume that a target distribution may be highly non-Gaussian, that the data we are conditioning on is highly non-linearly related to the model parameters, and that the observation models might be expensive ‘black box’ functions such as the solutions to numerical simulations. Numerous innovative technical capabilities have been incorporated into the Stateline codebase, specifically to improve usability and functionality in scientific applications:
+
+##### Cluster Computing Architecture
+
+Stateline provides an architecture to deploy the MCMC model evaluations onto a cluster environment. The key architecture is shown below:
+
+<p align="center">
+    <img src="docs/images/stateline.png" width="800">
+    <p>
+    Figure: The server/worker architecture used by Stateline. The server drives multiple MCMC chains using the parallel tempering algorithm. The components of the likelihood evaluations are submitted into a job queue, where a scheduler farms them out to worker nodes on a cluster for computation. The server asynchronously collates the likelihoods and advances each chain when ready.
+</p>
+
+Distributing computation onto a cluster is critical for problems that have expensive forward models, or require many samples for convergence. Support is provided for cluster deployments, particularly on Amazon Web Services and Docker. See [Cluster Deployment](#cluster-deployment) for further details.  
+
+
+##### Heterogeneous Likelihood Computations
+
+The Stateline user is responsible for writing code to evaluate the posterior density of the target distribution at a given input. We refer to this code as the likelihood function. We take steps to make this process as flexible as possible:
+
+* Likelihoods are black-box function calls - users can plug in arbitrarily complex scientific simulations implemented in their chosen languages. They can even call libraries or command line tools. The workers simply communicate the results to stateline using [ZeroMQ](http://www.zeromq.org), a widely available, light-weight communication library (see [Other Languages](#other-languages)).
+
+* Likelihoods can be factorised into components using the [job-type specification](#tips-and-tricks). For example, if two sensors independently measure a process, then each sensor forward model can be computed in parallel on a different worker process.
+
+
+##### Feature-rich Sampling Engine
+
+Stateline employs a number of techniques to improve mixing and allow chains to explore multi-modal posteriors:
+
+* Multiple independent stacks are computed in parallel for convergence monitoring (the number is selected by the user)
+
+* Parallel tempering is implemented with an asynchronous algorithm to propagate swaps between pairs of chains without stalling the others. 
+
+* The chains are grouped into tiers with shared parameters, so the nth hottest chains in each stack will share a common temperature and proposal length.
+
+* Adaptive proposals are implemented (on a per-tier basis) based on Algorithm-4 from [Andrieu08](#references). We use a Gaussian proposal with covariance equal to a scale factor times the empirical variance of the samples.
+
+* The proposal scale factor is adapted using a novel regression model to learn the relationship between the accept rate and proposal width. This model is incrementally updated with each proposal, and exhibits diminishing adaptation as its training dataset grows. 
+
+* The chain temperatures of each tier are also adapted using an on-line regression approach to target a desired swap rate.
+
+
+##### Ease of Use
+
+The Stateline server is relatively simple to operate:
+
+* Users only need to understand the high level concepts of how parallel tempering works. A lightweight [Stateline Configuration File](configuration) in JSON format is used to configure a set of algorithm parameters. 
+
+* Stateline provides a natural way to spin up a server, and an arbitrary number of workers on the Amazon Web Services Elastic Compute Cloud (EC2). An example using the Clusterous tool is provided (See [Cluster Deployment](#cluster-deployment)).
+
+Detailed logging is available (even when the system is deployed on a cluster):
+* console output displays a table showing the chain energies, stacks, accept and swap rates
+* a HTTP service is provided for monitoring from a web browser
+* a multiple sequence diagnostic is used to detect convergence - the
+  independent stacks are analysed with a neccessary (but not sufficient) condition to ensure convergence [Brooks 1998](#references).
+
+Finally, Stateline's  [output](#mcmc-output) is provided in csv format, so it is simple to load and analyse. The output is written in intermediate steps in case of early termination.
+
 
 ##System Requirements
 
@@ -328,3 +385,16 @@ $ make doc
 
 in a build directory. Please ensure Doxygen is installed. 
 
+###References
+
+G. Altekar et al. (2004), Parallel Metropolis coupled Markov chain Monte Carlo for Bayesian phylogenetic inference, Bioinformatics, Vol 20 No. 3, pp 407-415.
+
+C. Andrieu and J. Thoms (2008), A tutorial on adaptive MCMC, Stat Comput Vol 18, pp 343-373
+
+S. Brooks and A. Gelman (1998), General Methods for Monitoring Convergence of Iterative Simulations, Journal of Computational and Graphical Statistics Vol 7, No. 4, pp 434-455 
+
+A. Gelman, W. Gilks, and G. Roberts, Weak convergence and optimal scaling of random walk Metropolis algorithms, Ann. Appl. Probab., Volume 7, Number 1 (1997), 110-120.
+
+G. Roberts and J. Rosenthal, Examples of Adaptive MCMC, Technical Report No. 0610, University of Toronto, 2006
+
+J. Rosenthal, Optimal Proposal Distributions and Adaptive MCMC, In: MCMC Handbook S.Brooks et al, 2010
