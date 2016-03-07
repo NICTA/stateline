@@ -90,7 +90,7 @@ To build stateline, you will need the following:
 
 * GCC 4.8.2/Clang 6.0+
 * CMake 3.0+
-* zlib 
+* bzlib 
 
 Stateline will automatically download and build the other prerequisite libraries in requires. However, if you would like to use
 operating system or other copies, you will also need:
