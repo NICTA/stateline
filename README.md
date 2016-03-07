@@ -279,15 +279,76 @@ $ ./demo-worker
 
 ###Python Example
 
-There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. This demo requires the [zmq] module (install via `pip  install zmq`). Again, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
+The following code gives an close to minimal example of building a stateline
+worker with a custom likelihood in Python.
 
-Run the Stateline server in Terminal 1:
+```python
+import numpy as np
+import zmq
+import random
+
+jobRange = '0:10'
+
+# Launch stateline-client (a c++ binary that handles comms)
+# we talk to that binary over zmq with a ipc socket 
+# (which is random so we can have multiple workers)
+random_string = "".join(random.choice(string.lowercase) for x in range(10))
+addr = "ipc:///tmp/stateline_client_{}.socket".format(random_string)
+client_proc = subprocess.Popen(['./stateline-client', '-w', addr])
+
+# Connect zmq socket
+ctx = zmq.Context()
+socket = ctx.socket(zmq.DEALER)
+socket.connect(addr)
+
+#send 'hello to server'
+#Ignore the first 2 message parts (envelope and message subject code)
+socket.send_multipart([b"", b'0', jobRange.encode('ascii')])
+
+while True:
+    #get a new job
+    r = socket.recv_multipart()
+    job_id = int(r[3])
+    #vector comes ascii-encoded -- turn into list of floats
+    x = np.array([float(k) for k in r[4].split(b':')])
+
+    #evaluate the likelihood
+    nll = gaussianNLL(job_id, x)
+
+    #send back the results
+    #ignore the first 2 message parts (envelope and message subject code)
+    rmsg = [b"", b'4', job_id, str(nll).encode('ascii')]
+    socket.send_multipart(rmsg)
+
+``` 
+
+This code is a little more complex than the C++, because it is
+communicating via zeromq with a binary controlling messaging between itself and
+the server.  This binary encapsulates much of the functionality of the
+`WorkerWrapper` in the C++ example, including dealing with message flow and
+connection problems.
+
+First we run the stateline-client app in a subprocess, then create a zeromq socket and context to communicate with it.
+We send a `hello` message detailing the range of jobs the worker is willing to do, and then enter a loop to get new work, evaluate it, and send back the results.
+The message encodings can safely be ignored, but for more information see the [Workers in Other Languages](#workers-in-other-languages) section.
+
+In the above code, the user likelihood is `gaussianNLL`:
+
+```python
+def gaussianNLL(job_id, x):
+  return 0.5*np.dot(x,x)
+```
+In this simple example there is no change of behaviour based on job_id. In general though this id is used to select which term of your likelihood function is being evaluated.
+Any user-supplied function can be used as a likelihood, provided it returns a negative log likelihood.
+
+For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. 
+This worker is copied into the build folder by default. To try it out, run the Stateline server in a terminal:
 
 ```bash
 $ ./stateline --config=demo-config.json
 ```
 
-Run a Stateline worker in Terminal 2:
+Then, in another terminal, run one or more workers:
 
 ```bash
 $ python ./demo-worker.py
