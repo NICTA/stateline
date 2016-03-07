@@ -147,7 +147,7 @@ To build stateline, you will need the following:
 
 * GCC 4.8.2/Clang 6.0+
 * CMake 3.0+
-* zlib 
+* bzlib 
 
 Stateline will automatically download and build the other prerequisite libraries in requires. However, if you would like to use
 operating system or other copies, you will also need:
@@ -299,18 +299,36 @@ the address of the server, then creates a `WorkerWrapper` object. This object
 encapsulates all the communications systems with the server, including shaping,
 heartbeating and detecting network errors. 
 
-Once `start` is called
+Once `start` is called, the WorkerWrapper creates a new thread that evaluates
+the likelihood function.
 
+In the above code, the user likelihood is `gaussianNLL`:
 
-To see Stateline in action, open two terminals and run the following commands in a build directory:
+```c++
+double gaussianNLL(uint jobIndex, const std::vector<double>& x)
+{
+  double squaredNorm = 0.0;
+  for (auto i : x)
+  {
+    squaredNorm += i*i; 
+  }
+  return 0.5*squaredNorm;
+}
+```
 
-Run the Stateline server in Terminal 1:
+In this simple example there is no change of behaviour based on jobIndex. In general though this index is used to select which term of your likelihood function is being evaluated.
+Any user-supplied function can be used as a likelihood, provided 
+
+1. It preserves the function signatures `double myfunc(uint jobIndex, const std::vector<double>& x)`,
+2. It returns a negative log likelihood.
+
+For a slightly more complete demo, take a look at `demo-worker.cpp` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. The `demo-worker` is built automatically, so feel free to try it out from the build folder. To do so, run the Stateline server in a terminal:
 
 ```bash
 $ ./stateline --config=demo-config.json
 ```
 
-Run a Stateline worker in Terminal 2:
+Then in a new terminal, run one or more workers:
 
 ```bash
 $ ./demo-worker
@@ -318,15 +336,76 @@ $ ./demo-worker
 
 ###Python Example
 
-There is also a demo in Python, which shows how workers written in other languages can interact with the Stateline server. This demo requires the [zmq] module (install via `pip  install zmq`). Again, open two terminals and run the following commands in a build directory (either `build/debug` or `build/release`):
+The following code gives an close to minimal example of building a stateline
+worker with a custom likelihood in Python.
 
-Run the Stateline server in Terminal 1:
+```python
+import numpy as np
+import zmq
+import random
+
+jobRange = '0:10'
+
+# Launch stateline-client (a c++ binary that handles comms)
+# we talk to that binary over zmq with a ipc socket 
+# (which is random so we can have multiple instances of this script)
+random_string = "".join(random.choice(string.lowercase) for x in range(10))
+addr = "ipc:///tmp/stateline_client_{}.socket".format(random_string)
+client_proc = subprocess.Popen(['./stateline-client', '-w', addr])
+
+# Connect zmq socket
+ctx = zmq.Context()
+socket = ctx.socket(zmq.DEALER)
+socket.connect(addr)
+
+#send 'hello to server'
+#(The first 2 message parts are envelope and message subject code.)
+socket.send_multipart([b"", b'0', jobRange.encode('ascii')])
+
+while True:
+    #get a new job
+    r = socket.recv_multipart()
+    job_id = int(r[3])
+    #vector comes ascii-encoded -- turn into list of floats
+    x = np.array([float(k) for k in r[4].split(b':')])
+
+    #evaluate the likelihood
+    nll = gaussianNLL(job_id, x)
+
+    #send back the results
+    #(The first 2 message parts are envelope and message subject code.)
+    rmsg = [b"", b'4', job_id, str(nll).encode('ascii')]
+    socket.send_multipart(rmsg)
+
+``` 
+
+This code is a little more complex than the C++, because it is
+communicating via zeromq with a binary controlling messaging between itself and
+the server.  This binary encapsulates much of the functionality of the
+`WorkerWrapper` in the C++ example, including dealing with message flow and
+connection problems.
+
+First we run the stateline-client app in a subprocess, then create a zeromq socket and context to communicate with it.
+We send a `hello` message detailing the range of jobs the worker is willing to do, and then enter a loop to get new work, evaluate it, and send back the results.
+The message encodings can safely be ignored, but for more information see the [Workers in Other Languages](#workers-in-other-languages) section.
+
+In the above code, the user likelihood is `gaussianNLL`:
+
+```python
+def gaussianNLL(job_id, x):
+  return 0.5*np.dot(x,x)
+```
+In this simple example there is no change of behaviour based on job_id. In general though this id is used to select which term of your likelihood function is being evaluated.
+Any user-supplied function can be used as a likelihood, provided it returns a negative log likelihood.
+
+For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. 
+This worker is copied into the build folder by default. To try it out, run the Stateline server in a terminal:
 
 ```bash
 $ ./stateline --config=demo-config.json
 ```
 
-Run a Stateline worker in Terminal 2:
+Then, in another terminal, run one or more workers:
 
 ```bash
 $ python ./demo-worker.py
