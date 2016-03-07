@@ -242,18 +242,36 @@ the address of the server, then creates a `WorkerWrapper` object. This object
 encapsulates all the communications systems with the server, including shaping,
 heartbeating and detecting network errors. 
 
-Once `start` is called
+Once `start` is called, the WorkerWrapper creates a new thread that evaluates
+the likelihood function.
 
+In the above code, the user likelihood is `gaussianNLL`:
 
-To see Stateline in action, open two terminals and run the following commands in a build directory:
+```c++
+double gaussianNLL(uint jobIndex, const std::vector<double>& x)
+{
+  double squaredNorm = 0.0;
+  for (auto i : x)
+  {
+    squaredNorm += i*i; 
+  }
+  return 0.5*squaredNorm;
+}
+```
 
-Run the Stateline server in Terminal 1:
+In this simple example there is no change of behaviour based on jobIndex. In general though this index is used to select which term of your likelihood function is being evaluated.
+Any user-supplied function can be used as a likelihood, provided 
+
+1. It preserves the function signatures `double myfunc(uint jobIndex, const std::vector<double>& x)`,
+2. It returns a negative log likelihood.
+
+For a slightly more complete demo, take a look at `demo-worker.cpp` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. The `demo-worker` is built automatically, so feel free to try it out from the build folder. To do so, run the Stateline server in a terminal:
 
 ```bash
 $ ./stateline --config=demo-config.json
 ```
 
-Run a Stateline worker in Terminal 2:
+Then in a new terminal, run one or more workers:
 
 ```bash
 $ ./demo-worker
