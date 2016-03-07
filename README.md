@@ -291,7 +291,7 @@ jobRange = '0:10'
 
 # Launch stateline-client (a c++ binary that handles comms)
 # we talk to that binary over zmq with a ipc socket 
-# (which is random so we can have multiple workers)
+# (which is random so we can have multiple instances of this script)
 random_string = "".join(random.choice(string.lowercase) for x in range(10))
 addr = "ipc:///tmp/stateline_client_{}.socket".format(random_string)
 client_proc = subprocess.Popen(['./stateline-client', '-w', addr])
@@ -302,7 +302,7 @@ socket = ctx.socket(zmq.DEALER)
 socket.connect(addr)
 
 #send 'hello to server'
-#Ignore the first 2 message parts (envelope and message subject code)
+#(The first 2 message parts are envelope and message subject code.)
 socket.send_multipart([b"", b'0', jobRange.encode('ascii')])
 
 while True:
@@ -316,7 +316,7 @@ while True:
     nll = gaussianNLL(job_id, x)
 
     #send back the results
-    #ignore the first 2 message parts (envelope and message subject code)
+    #(The first 2 message parts are envelope and message subject code.)
     rmsg = [b"", b'4', job_id, str(nll).encode('ascii')]
     socket.send_multipart(rmsg)
 
