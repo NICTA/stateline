@@ -21,7 +21,7 @@
 namespace stateline
 {
 
-void runMinion(const JobToLikelihoodFnFn& lhFnFn, const std::pair<uint, uint>& jobTypesRange,
+void runMinion(const LikelihoodFn& lhFn, const std::pair<uint, uint>& jobTypesRange,
                zmq::context_t& context, const std::string& workerSocketAddr, bool& running)
 {
   comms::Minion minion(context, jobTypesRange, workerSocketAddr);
@@ -30,7 +30,8 @@ void runMinion(const JobToLikelihoodFnFn& lhFnFn, const std::pair<uint, uint>& j
     const auto job = minion.nextJob();
     const auto& jobType = job.first;
     const auto& sample = job.second;
-    minion.submitResult( lhFnFn(jobType)(jobType,sample) );
+    double nll = lhFn(jobType,sample);
+    minion.submitResult(nll);
   }
 }
 
@@ -48,24 +49,12 @@ std::string generateRandomIPCAddr()
 
 WorkerWrapper::WorkerWrapper(const LikelihoodFn& f, const std::pair<uint, uint>& jobTypesRange,
     const std::string& address)
-  : lhFnFn_( [&f](uint) -> const LikelihoodFn& { return f; } )
+  : lhFn_(f)
   , jobTypesRange_(jobTypesRange)
   , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
 {
 }
 
-WorkerWrapper::WorkerWrapper(const LikelihoodFnList& m, uint startJobTypeOffset, const std::string& address)
-  : lhFnFn_([m, startJobTypeOffset](uint job) -> const LikelihoodFn& { return m[job - startJobTypeOffset]; } )
-  , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
-{
-}
-
-WorkerWrapper::WorkerWrapper(const JobToLikelihoodFnFn& f, const std::pair<uint, uint>& jobTypesRange,
-                             const std::string& address)
-  : lhFnFn_(f), jobTypesRange_(jobTypesRange)
-  , settings_(comms::WorkerSettings::Default(address, generateRandomIPCAddr()))
-{
-}
 
 void WorkerWrapper::start()
 {
@@ -75,7 +64,7 @@ void WorkerWrapper::start()
   clientThread_ = startInThread<comms::Worker>(std::ref(running_), std::ref(*context_),
                                                std::cref(settings_));
 
-  minionThread_ = std::async(std::launch::async, runMinion, std::cref(lhFnFn_),
+  minionThread_ = std::async(std::launch::async, runMinion, std::cref(lhFn_),
                              std::cref(jobTypesRange_), std::ref(*context_),
                              std::cref(settings_.workerAddress), std::ref(running_));
 }

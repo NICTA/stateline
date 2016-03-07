@@ -417,16 +417,18 @@ For details of implementing workers for other languages, see [Workers in Other L
 
 
 ##Interpreting Logging
+
+
+
 ##MCMC Output
 
-After running one of the above examples,  you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
+After running one of the above examples, you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
 
 ```bash
 $ python vis.py demo-output/0.csv
 ```
 
 will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [corner-plot](https://github.com/dfm/corner.py) module (formerly triangle-plot).
-
 
 Stateline outputs raw states in CSV format without removing any for burn-in or
 decorrelation. The format of the csv is as follows
@@ -437,12 +439,18 @@ where `energy` is the log-likelihood of the sample, `sigma` is the proposal
 width at that time, `beta` is the temperature of the chain, `accepted` is a
 boolean with 1 being an accept and 0 being reject, and `swap_type` is an
 integer with 0 indicating no attempt was made to swap, 1 indicating a swap
-occured, and 2 indicated a swap was attempted but was rejected.
+occured, and 2 indicated a swap was attempted but was rejected. 
 
 
 ##Cluster Deployment
+
+
 ##Tips and Tricks
+
+
 ##Workers in Other Languages
+
+
 ##Contributing to Development
 
 Contributions and comments are welcome. Please read our [style guide](https://github.com/NICTA/stateline/wiki/Coding-Style-Guidelines) before submitting a pull request.
