@@ -443,6 +443,14 @@ occured, and 2 indicated a swap was attempted but was rejected.
 
 
 ##Cluster Deployment
+
+Stateline is designed to take advantage of many computers performing likelihood evaluations in parallel. The idea is to run a server on a single machine and many workers communicating with the server over TCP. Workers can be ephemeral -- if a worker dissapears mid-job that job will be reassinged to another worker by the server (after a few seconds). At the moment the server does not support recovering from early termination, so place it on a reliable machine if possible. The server also needs at least 2 cores to work effectively, so provision it with decent hardware. 
+
+The default port stateline uses is 5555, but this can be changed with the `-p` argument to the stateline server.
+
+There is a Dockerfile ready to go which has both the server and the worker
+built. Feel free to use this as a base image when deploying your code.
+
 ##Tips and Tricks
 ##Workers in Other Languages
 
