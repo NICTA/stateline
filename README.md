@@ -132,7 +132,8 @@ The Stateline server is relatively simple to operate:
 
 Detailed logging is available (even when the system is deployed on a cluster):
 * console output displays a table showing the chain energies, stacks, accept and swap rates
-* a HTTP service is provided for monitoring from a web browser
+
+<!-- * a HTTP service is provided for monitoring from a web browser -->
 * a multiple sequence diagnostic is used to detect convergence - the
   independent stacks are analysed with a neccessary (but not sufficient) condition to ensure convergence [Brooks 1998](#references).
 
@@ -418,17 +419,62 @@ For details of implementing workers for other languages, see [Workers in Other L
 
 ##Interpreting Logging
 
+While stateline is running, a table of diagnostic values are printed to the console. For cluster deployments, this output is to stdout, and can be piped over ssh using ncat (the Clusterous demo provides an example of how to do this). The table will look something like the demo's output below:
+
+```
+  ID    Length    MinEngy   CurrEngy      Sigma     AcptRt  GlbAcptRt       Beta     SwapRt  GlbSwapRt
+------------------------------------------------------------------------------------------------------
+   0     16421    0.01069    1.23566    0.20957    0.24200    0.23184    1.00000    0.37000    0.39684 
+   1     16421    0.05695    0.63260    0.33714    0.22400    0.23281    0.40256    0.35500    0.35727 
+   2     16421    0.12965    4.16091    0.56486    0.22100    0.22684    0.15077    0.40200    0.38892 
+   3     16421    0.38213   29.24271    0.93183    0.24700    0.23232    0.05591    0.39800    0.39988 
+   4     16421    0.74242  196.69971   54.59815    0.31200    0.33536    0.01990    0.00000    0.00000 
+
+   5     16421    0.04381    1.00751    0.20959    0.24900    0.22831    1.00000    0.37600    0.37005 
+   6     16421    0.08721    9.50795    0.33696    0.22500    0.22745    0.40305    0.41200    0.41327 
+   7     16421    0.21648   32.44225    0.56561    0.24900    0.23318    0.15085    0.38300    0.38588 
+   8     16421    0.24441   24.64229    0.93048    0.23700    0.22928    0.05600    0.36200    0.37492 
+   9     16421    0.35840   35.12504   54.59815    0.29500    0.33701    0.01993    0.00000    0.00000 
+
+Convergence test: 1.00045 (possibly converged)
+```
+
+##### ID
+In this example, we have 2 stacks of 5 temperatures making a total of 10 chains (0-9). The chain ids are grouped by stack (0-4 and 5-9). Chains 0 and 5 are the low temperature chains, and within a stack, temperature increases with ID. 
+
+##### Length
+The number of samples taken so far in each chain. Note that this is counting all samples, not independent samples. The target in the configuration file is reached when the cumulative length of all base temperature chains reaches the target. If you want burn-in or decimation it is worth targeting a larger number of samples.
+
+##### MinEngy, CurrEngy
+The negative log likelihoods (NLL) of the best, and current state. Use these values to determine if a stack is sampling ballpark energy levels to its equivalent in other stacks. We would also expect high temperature chains to accept higher NLL states. Do not be alarmed if a current state is a lot worse than its historical minimum in high dimensions - it is often the case that even the maximum a-posteriori state, while having a high density, has a low volume compared to the whole distribution and thus a low probability of being drawn.
+
+##### Sigma 
+
+Sigma is the proposal scale factor. It multiplies the normalised empirical covariance of the samples to make a proposal variance, so we would expect it to be in the order of 0 to 10^1. 
+
+Sigma is adapted per temperature tier, per proposal to target the desired accept rate. For example, chains 1 and 6 have a common sigma model. Their sigmas are not perfectly identical because the sigma is only re-computed on the swapping interval.
+
+##### AcptRt, GlbAcptRt
+
+The actual accept rates achieved so far. AcptRt is within a short window (2000 samples) and gives an indication of how the chain is performing in its current region of sample space. GlbAcptRt is the rate since the beginning of the simulation and indicates overall performance.
+
+Use this as a diagnostic to ensure that a chain is achieving an effective rate (in this case 0.234 was the target). It will generally either achieve very close to the target rate, or fail with some symptoms. There is a detailed discussion of this in [Tips and Tricks](#tips-and-tricks).
+
+##### Beta
+
+Beta is the inverse temperature. Specifically, the chain with a particular Beta `sees' the probability distribution raised to the power of Beta, making the distribution increasingly uniform as it approaches 0. Like Sigma, the Beta values are generated per-tier, but only updated on a swap allowing them to be slightly different at any given time to their equivalent chains in other stacks. Beta is adapted as a strictly decreasing ladder, with the base chains at a constant 1.0, targeting a desired swap rate (0.4 in this case). 
+
+##### SwapRt,  GlbSwapRt
+
+SwapRt_i indicates the short term swap rate between chain i and chain i+1.  Obviously, the highest temperature tier chains have no hotter chains to swap with, so their swap rate will always read 0. Use these together with beta to diagnose swapping performance. 
+
+##### Convergence indicator
+
+The convergece test of [Brooks98](#references) is applied between stacks when possible. This test indicates when convergence is possible/likely. It is a reliable way to determine that MCMC has *not* converged, but cannot guarantee that the MCMC has converged because it is always possible that all the stacks have become stuck in the same local mode of the posterior. 
+
 
 
 ##MCMC Output
-
-After running one of the above examples, you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
-
-```bash
-$ python vis.py demo-output/0.csv
-```
-
-will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [corner-plot](https://github.com/dfm/corner.py) module (formerly triangle-plot).
 
 Stateline outputs raw states in CSV format without removing any for burn-in or
 decorrelation. The format of the csv is as follows
@@ -441,6 +487,24 @@ boolean with 1 being an accept and 0 being reject, and `swap_type` is an
 integer with 0 indicating no attempt was made to swap, 1 indicating a swap
 occured, and 2 indicated a swap was attempted but was rejected. 
 
+After running one of the default examples, you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
+
+```bash
+$ python vis.py demo-output/0.csv
+```
+
+will launch a Python script that visualises the samples of the first chain. You'll need NumPy and the excellent [corner-plot](https://github.com/dfm/corner.py) module (formerly triangle-plot). The histogram will look something like:
+
+<p align="center">
+    <img src="docs/images/mcmc.png" width="400">
+    <p>
+    Figure: Visualisation of the histograms of samples from the Stateline
+    demo, showing the joint distribution and marginals of the first two
+    dimensions.
+</p>
+
+Viewing the raw histograms of the parameters is informative for a low dimensional problem like this demo.
+
 
 ##Cluster Deployment
 
@@ -451,7 +515,126 @@ The default port stateline uses is 5555, but this can be changed with the `-p` a
 There is a Dockerfile ready to go which has both the server and the worker
 built. Feel free to use this as a base image when deploying your code.
 
+
 ##Tips and Tricks
+
+This section addresses some common questions about configuring and using
+Stateline for a scientific problem:
+
+##### How do I burn-in?
+
+Stateline does not manage sample burn-in and begins recording samples from the initial state onwards. Burn-in is basically a method of bringing the MCMC chains to a plausible
+initial state. With infinite samples, it shouldn't matter what state the MCMC
+chains are initialised in. However, with a finite number of samples, we can
+improve our chances of achieving convergence by starting in a likely state. 
+
+We suggest two strategies for burn-in: 
+
+* a draw from the posterior is likely to be a good initial state, so one option is to run MCMC on the distribution for a sufficiently long time and discard some initial samples. Stateline will record all the samples, so the number to discard can be determined afterwards by looking at the time evolution of the marginals, for example.
+
+* Stateline can optionally have the initial state specified in the config file. This initial state can be found effectively by applying a numerical optimisation library to the worker likelihood code, repurposing it as an optimisation criterion. This will start the chains in a mode of the distribution, and has the added benefit that the initial state can be introspected prior to any MCMC sampling.
+
+
+##### Job-Types
+
+Stateline can be configured to use job types. For each likelihood evaluation, 
+Stateline farms out one evaluation for each job type, providing the worker
+with the parameters and job type index.
+
+The actual meaning of job-type is left up to the user who has written the
+worker code. We recommend two types of job-type factorisation:
+
+* Factorising over data - in many cases the likelihood of sub-data is
+  independent given the model parameters. In this case we can automatically
+  use the job-type integer as a partition index into the full dataset and
+  workers can compute the parts in parallel.
+* Factorising over sensors - often different data modalities are used, and
+  different forward models apply relating the observations to the latent
+  parameters. If these sensors are independent given the latent parameters,
+  then job-type can be used to specify which modality's likelihood to
+  compute.
+
+##### How do I achieve uncorrelated samples?
+
+In order to achieve an efficient accept rate, an MCMC chain is neccessarily
+auto-correlated. The best way to achieve uncorrelated samples is to compute
+the chain auto-correlation post-sampling. Then, samples can be discarded
+keeping only one per auto-correlation length. 
+
+
+##### What swap interval should I use?
+
+Any analysis of chain auto-correlation should be used to tune the swap rate of the
+parallel tempering. Ideally the swap rate should be equal to the
+autocorrelation length of the chain. This number is typically 10-50 but may
+vary strongly depending on the target distribution.
+
+
+##### What accept rates and swap rates should I target?
+
+Studies in the literature have shown that 0.234 is a safe target accept rate - this rate is optimal if the  likelihood is a separable function of each component of a high dimensional parameter space θ [Roberts97](#references).  The optimum is understood to be higher for low dimensional problems, and may be distorted by non seperable posterior structure. In practise, the effectiveness of MCMC is insensitive to the exact accept rate provided it is kept away from 0. and 1., the non-informative conditions where the chain stalls through no accepts and no proposal perturbations respectively.
+
+The optimal swap rate between chains is less , but the same
+general rules as above apply.
+
+
+
+##### Why arent my chains achieving the desired accept rate?
+
+When the adaption fails to achieve the desired accept rate after a moderate
+number of samples (say 10,000), it is important to look at the accept rate
+in conjunction with sigma and the current energy to understand why. 
+
+There are two typical failures. Firstly, if sigma is small and
+the accept rate is still very low it suggests there is a problem with the
+likelihood function or the scale of the inputs that needs to be addressed and
+debugged by the user. This can sometimes occur if inappropriately wide bounds are
+provided, because the shape of the initial proposal covariance is based off the range of
+the bounds. It can also occur if the posterior is extremely peaky and
+initialised on the peak. In these cases, it may be neccessary to actually
+apply a perturbation to the initial condition.
+
+On the other hand, if sigma is very large and the
+accept rate is still high, as seen in chains 4 and 9 of the example,
+this suggests that the high temperature distribution is becoming uniform, and
+can form a criterion for selecting the number of temperature tiers (see below).
+
+
+##### How many temperature tiers should I use?
+
+If a high temperature chain has a large sigma and a higher-than-targeted accept rate, as seen in chains 4 and 9 of the example logging, this suggests that the high temperature distribution is becoming uniform. The proposal is using the `bouncy bounds' to essentially draw indepenent random samples from the input space, and they are still geting accepted. This is not a problem, but does suggest there will be little further benefit in adding additional temperature tiers. 
+
+After the betas have adapted, you want the tiers to span all the way from the
+true distribution (Beta=1) to a uniform distribution (Beta -> 0). Thus, we
+want the hottest tier to exhibit the high and high accept rate condition, while the others form a progressive ladder with active swapping. 
+
+##### How many stacks should I use?
+
+At least two stacks are required to run convergence heuristics.
+
+Adding more stacks adds embarrasing parallelisation that can employ more
+workers at a time and speed up the acquisition of samples regardless of the minimum time needed to evaluate a likelihood function. 
+
+##### How many workers?
+
+Stateline can use at most number of stacks * number of temperatures * number
+of job-types workers. In practise, this gives the fastest output but won't
+fully utilise all the workers. It can be more energy/money/computer efficient
+to run more than one worker per core, up to the users discretion.
+
+
+##### How do I analyse the results?
+
+We have provided example code for plotting the density of pairs of dimensions
+and marginals. This is appropriate for simpler low dimensional distributions
+where the parameters are interpretable. 
+
+However, it will often be the case that the parameters are high dimensional and
+correspond to inputs to a complex model. We recommend re-using the same worker 
+code to run models on the sampled parameters. This enables marginalisation of
+derived properties of the model outputs with respect to the parameters.
+
+
 ##Workers in Other Languages
 
 Creating in a worker in a language other than C++ should be fairly simple as long as that library has access to ZeroMQ bindings. For the impatient, the approach is the same as the Python example given above. The way other language bindings work is to run a copy of `stateline-client` for every worker, then each worker communicates with its stateline-client via a local unix socket using ZeroMQ. This means all the complex logic for handling job requests, server heartbeating and asynchronous messages are invisible, leaving only a very simple loop. In pseudocode:
@@ -525,17 +708,6 @@ Please see the LICENSE file, and COPYING and COPYING.LESSER.
 
 ###Bug Reports
 If you find a bug, please open an [issue](http://github.com/NICTA/stateline/issues).
-
-
-###Developer Documentation
-
-There is automatic doxygen documentation generated by running
-
-```bash
-$ make doc
-```
-
-in a build directory. Please ensure Doxygen is installed. 
 
 ###References
 
