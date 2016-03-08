@@ -272,13 +272,13 @@ int main()
 {
   // This worker will evaluate any jobs with these indices
   // by specifying different indices for different workers they can specialise.
-  std::pair jobIdRange = {0,10};
+  std::pair jobIndexRange = {0,10};
 
   // The address of the stateline server
   std::string address = "localhost:5000";
 
   // A stateline worker taking a likelihood function 'gaussianNLL'
-  stateline::WorkerWrapper w(gaussianNLL, jobIdRange, address);
+  stateline::WorkerWrapper w(gaussianNLL, jobIndexRange, address);
 
   // The worker itself runs in a different thread
   w.start();
@@ -365,16 +365,16 @@ socket.send_multipart([b"", b'0', jobRange.encode('ascii')])
 while True:
     #get a new job
     r = socket.recv_multipart()
-    job_id = int(r[3])
+    job_idx = int(r[3])
     #vector comes ascii-encoded -- turn into list of floats
     x = np.array([float(k) for k in r[4].split(b':')])
 
     #evaluate the likelihood
-    nll = gaussianNLL(job_id, x)
+    nll = gaussianNLL(job_idx, x)
 
     #send back the results
     #(The first 2 message parts are envelope and message subject code.)
-    rmsg = [b"", b'4', job_id, str(nll).encode('ascii')]
+    rmsg = [b"", b'4', job_idx, str(nll).encode('ascii')]
     socket.send_multipart(rmsg)
 
 ``` 
@@ -392,10 +392,10 @@ The message encodings can safely be ignored, but for more information see the [W
 In the above code, the user likelihood is `gaussianNLL`:
 
 ```python
-def gaussianNLL(job_id, x):
+def gaussianNLL(job_idx, x):
   return 0.5*np.dot(x,x)
 ```
-In this simple example there is no change of behaviour based on job_id. In general though this id is used to select which term of your likelihood function is being evaluated.
+In this simple example there is no change of behaviour based on job_idx. In general though this id is used to select which term of your likelihood function is being evaluated.
 Any user-supplied function can be used as a likelihood, provided it returns a negative log likelihood.
 
 For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. 
@@ -472,20 +472,39 @@ binds the stateline-client to `/tmp/my_socket.sock`. The general form is `ipc://
 Create a ZeroMQ context and a `dealer` socket. Then connect it to the socket given to stateline-client. Now you are ready to send the `hello` message. This is a multi-part message of the following form (and noting that all parts must be c-type strings):
 
 ```
-["", "0", "<min_job_id>:<max_job_id>"]
+["", "0", "<min_job_idx>:<max_job_idx>"]
 ```
 
 The first part is the 'envelope' (see the ZeroMQ guide for details). The
 second part, "0", is the stateline message code for subject `HELLO`. The third
 part of the message is the range of jobs this worker will perform. Here
-`<min_job_id>` and `<max_job_id>` are positive integers starting from zero E.g.
-for performing the first 10 jobs, the string would be `0:9`.
+`<min_job_idx>` and `<max_job_idx>` are positive integers starting from zero E.g.
+for performing the first 10 types of job, the string would be `0:9`.
 
 Next, in the main loop, call multipart receive on your socket. You will get a message of the following form:
 
-["", "1" <job_id>",]
+```
+["", "3" <job_idx>, <job_uid>, <job_data>]
+```
 
-subject, job_type, job_id, job_data = r[1:]
+The first part is the envelope, which can be safely ignored. The second part, "3", is the stateline message code for subject `JOB`.
+The third part `job_idx` is the index of the job being requested, which is guaranteed to lie inside the range requested in the hello message. The `job_uid` is a string with a unique identifier for this job used by the server to keep track of jobs. Finally the `job_data` is an ascii-encoded vector of floats defining the point in parameter space to evaluate. It is colon-separated, e.g. `1.2:1.54:0.4`.
+
+Use the job index and the job data to evaluate the user's likelihood function, then send the result (which must be a floating-point number) back on the socket. This `RESULT` message has the following form:
+
+```
+["","4", <job_uid>, <job_result>]
+```
+
+Again, the first part is the envelope. The second part, "4", is the stateline message code for subject `RESULT`. The third part is the same `job_uid` given in the `JOB` message for this job. Finally, the `job_result` is a ascii-encoded likelihood result, eg "14.1".
+
+Finally, if you would like to cleanly disconnect the worker (not required-- the server will detect the loss eventually and re-assign in-progress jobs to another worker), you can send a `GOODBYE` message of this form:
+
+```
+["","5"]
+```
+
+Here "5" is the stateline code for the message subject `GOODBYE`.
 
 ##Contributing to Development
 
