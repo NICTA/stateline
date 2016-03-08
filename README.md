@@ -456,6 +456,8 @@ while working:
   receive a job from stateline-client
   calculate a likelihood
   send the likelihood to stateline-client
+
+send 'goodbye' message to stateline-client
 ```
 
 ###stateline-client
