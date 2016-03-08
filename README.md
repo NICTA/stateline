@@ -198,9 +198,11 @@ Substitute `release` with `debug` or `relwithdebinfo` if you would prefer these 
 You should only need to run this configure script once (even if you are developing stateline itself). From then on, just run make from your build directory:
 
 ```bash
-$ cd build
+$ cd build/release
 $ make
 ```
+
+(Substitute `release` with `debug` or `relwithdebinfo` if you did so in the configure command above.)
 
 If you would like to install stateline, run
 ```bash
