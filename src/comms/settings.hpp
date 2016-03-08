@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include "typedefs.hpp"
+#include "../typedefs.hpp"
 
 namespace stateline
 {

@@ -386,6 +386,48 @@ occured, and 2 indicated a swap was attempted but was rejected.
 ##Cluster Deployment
 ##Tips and Tricks
 ##Workers in Other Languages
+
+Creating in a worker in a language other than C++ should be fairly simple as long as that library has access to ZeroMQ bindings. For the impatient, the approach is the same as the Python example given above. The way other language bindings work is to run a copy of `stateline-client` for every worker, then each worker communicates with its stateline-client via a local unix socket using ZeroMQ. This means all the complex logic for handling job requests, server heartbeating and asynchronous messages are invisible, leaving only a very simple loop. In pseudocode:
+
+```
+start a stateline-client 
+send 'hello' message to stateline-client
+
+while working:
+  receive a job from stateline-client
+  calculate a likelihood
+  send the likelihood to stateline-client
+```
+
+###stateline-client
+The `stateline-client` binds (in the ZeroMQ sense) to the socket given in its argument. This socket cannot already exist. For example:
+
+```bash
+$ ./stateline-client -w ipc:///tmp/my_socket.sock
+```
+binds the stateline-client to `/tmp/my_socket.sock`. The general form is `ipc://<filesystem_path>`. Note that, as in the Python example, if you intend to run many copies of your worker script you will need some way to randomise the socket name each instance of stateline-client doesn't conflict. Remember that's 1 stateline-client *per worker*, even if they're on the same machine.
+
+###ZeroMQ
+
+
+Create a ZeroMQ context and a `dealer` socket. Then connect it to the socket given to stateline-client. Now you are ready to send the `hello` message. This is a multi-part message of the following form (and noting that all parts must be c-type strings):
+
+```
+["", "0", "<min_job_id>:<max_job_id>"]
+```
+
+The first part is the 'envelope' (see the ZeroMQ guide for details). The
+second part, "0", is the stateline message code for subject `HELLO`. The third
+part of the message is the range of jobs this worker will perform. Here
+`<min_job_id>` and `<max_job_id>` are positive integers starting from zero E.g.
+for performing the first 10 jobs, the string would be `0:9`.
+
+Next, in the main loop, call multipart receive on your socket. You will get a message of the following form:
+
+["", "1" <job_id>",]
+
+subject, job_type, job_id, job_data = r[1:]
+
 ##Contributing to Development
 
 Contributions and comments are welcome. Please read our [style guide](https://github.com/NICTA/stateline/wiki/Coding-Style-Guidelines) before submitting a pull request.
