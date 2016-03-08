@@ -610,10 +610,14 @@ want the hottest tier to exhibit the high and high accept rate condition, while 
 
 ##### How many stacks should I use?
 
-At least two stacks are required to run convergence heuristics.
+At least two stacks are required to run convergence heuristics. The heuristics
+become more reliable with more independent stacks.
 
-Adding more stacks adds embarrasing parallelisation that can employ more
-workers at a time and speed up the acquisition of samples regardless of the minimum time needed to evaluate a likelihood function. 
+Adding more stacks can employ more workers at a time and trivially increase the samples per second regardless of the minimum time needed to evaluate a likelihood function. 
+
+However, the stacks will need to burn-in and converge independently, so the minimum number of samples needed will increase proporitionately and the total run-time of the MCMC won't decrease as workers and stacks are added.
+
+So again, the correct choice depends on the users needs. In general, use many stacks if you want the most samples per second, and use 2 stacks if you want the best value as it will use the minimum number of samples to converge.
 
 ##### How many workers?
 
