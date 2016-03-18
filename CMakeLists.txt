@@ -114,10 +114,10 @@ TARGET_LINK_LIBRARIES(gtest logging)
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
-                    "${STATELINE_SOURCE_DIR}/external"
-                    "${STATELINE_SOURCE_DIR}/external/cppzmq"
-                    "${STATELINE_SOURCE_DIR}/external/json"
-                    "${STATELINE_SOURCE_DIR}/external/simple-web-server"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/cppzmq"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
                     SYSTEM "${Boost_INCLUDE_DIR}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}"
