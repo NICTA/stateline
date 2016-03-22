@@ -17,4 +17,4 @@ ADD_EXECUTABLE(${test_suite_name} EXCLUDE_FROM_ALL
   delegator.cpp diagnostics.cpp message.cpp router.cpp socket.cpp
   # chainarray.cpp db.cpp transport.cpp
   )
-TARGET_LINK_LIBRARIES(${test_suite_name} statelineserver gtest)
+TARGET_LINK_LIBRARIES(${test_suite_name} statelineserver statelineclient gtest)
