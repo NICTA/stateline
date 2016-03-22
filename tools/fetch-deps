@@ -36,14 +36,14 @@ echo "BUILD_DIR set to '${BUILD_DIR}'."
 mkdir -p ${PREREQ_DIR} ${BUILD_DIR}
 
 # Create folders for the dependencies
-mkdir -p ${PREREQ_DIR}/src ${PREREQ_DIR}/include ${PREREQ_DIR}/lib ${PREREQ_DIR}/bin 
+mkdir -p ${PREREQ_DIR}/src ${PREREQ_DIR}/include ${PREREQ_DIR}/lib ${PREREQ_DIR}/bin
 
 ######################################
 # Boost 1.59
 ######################################
 
 wget -P ${BUILD_DIR} -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
-[ -d ${BUILD_DIR}/boost_1_59_0 ] || tar -xvf ${BUILD_DIR}/boost_1_59_0.tar.gz -C ${BUILD_DIR}
+[ -d ${BUILD_DIR}/boost_1_59_0 ] || tar -xf ${BUILD_DIR}/boost_1_59_0.tar.gz -C ${BUILD_DIR}
 cd ${BUILD_DIR}/boost_1_59_0
 ./bootstrap.sh
 ./b2 -j $N_PROCESSORS --layout=versioned --without-python cxxflags=-fPIC cflags=-fPIC variant=debug,release threading=multi runtime-link=shared link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
@@ -54,7 +54,7 @@ cd -
 #######################################
 
 wget -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O ${BUILD_DIR}/eigen_3.2.0.tar.gz
-[ -d ${BUILD_DIR}/eigen-eigen-ffa86ffb5570 ] || tar -xvf ${BUILD_DIR}/eigen_3.2.0.tar.gz -C ${BUILD_DIR}
+[ -d ${BUILD_DIR}/eigen-eigen-ffa86ffb5570 ] || tar -xf ${BUILD_DIR}/eigen_3.2.0.tar.gz -C ${BUILD_DIR}
 mkdir ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
 cd ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
 cmake .. -DCMAKE_INSTALL_PREFIX=$PREREQ_DIR
@@ -74,7 +74,7 @@ cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
 #######################################
 
 wget -P ${BUILD_DIR} -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
-[ -d ${BUILD_DIR}/zeromq-4.0.3 ] || tar -xvf ${BUILD_DIR}/zeromq-4.0.3.tar.gz -C ${BUILD_DIR}
+[ -d ${BUILD_DIR}/zeromq-4.0.3 ] || tar -xf ${BUILD_DIR}/zeromq-4.0.3.tar.gz -C ${BUILD_DIR}
 cd ${BUILD_DIR}/zeromq-4.0.3
 ./configure --prefix=$PREREQ_DIR
 make -j $N_PROCESSORS
