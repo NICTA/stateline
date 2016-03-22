@@ -12,7 +12,15 @@ RUN apt-get update && apt-get install -y \
   nmap \
   libeigen3-dev \
   libzmq3-dev \
-  libboost-all-dev \
+  libboost-program_options-dev \
+  libboost-system-dev \
+  libboost-filesystem-dev \
+  libboost-regex-dev \
+  libboost-coroutine-dev \
+  libboost-coroutine1.58.0 \
+  libboost-thread-dev \
+  libboost-date_time-dev \
+  libboost-context-dev \
   libgtest-dev
 
 ENV PREREQ_DIR=/usr/local BUILD_DIR=/tmp/stateline LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
