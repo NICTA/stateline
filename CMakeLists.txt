@@ -106,8 +106,6 @@ FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 # Google Test
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
-ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
-TARGET_LINK_LIBRARIES(gtest logging)
 
 ##############################################################################
 # INCLUDE DIRECTORIES
@@ -128,25 +126,9 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
 # TESTING
 ##############################################################################
 # Setup the unit test target
-ADD_CUSTOM_TARGET(run-test-all COMMENT "Unit Tests")
 
-# Adds the given project as a dependency for the "run-tests" target
-MACRO(REGISTER_UNIT_TESTS projectName)
-  SET_TARGET_PROPERTIES(${projectName} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
-  ADD_CUSTOM_TARGET(run-${projectName}
-    COMMAND ${projectName} --gtest_output=xml:${STATELINE_BINARY_DIR}/gtest-${projectName}-results.xml
-    DEPENDS ${projectName}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running ${projectName}")
-  ADD_DEPENDENCIES(run-test-all run-${projectName})
-ENDMACRO()
-
-MACRO(ADD_TEST testName testSource)
-  ADD_EXECUTABLE(${testName} ${testSource})
-  TARGET_LINK_LIBRARIES(${testName} ${ARGN} gtest)
-  REGISTER_UNIT_TESTS(${testName})
-ENDMACRO()
+ADD_LIBRARY(gtest EXCLUDE_FROM_ALL ${GTEST_DIR}/src/gtest-all.cc)
+ADD_SUBDIRECTORY(src/test)
 
 ##############################################################################
 # DOCUMENTATION

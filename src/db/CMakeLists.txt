@@ -6,5 +6,3 @@
 # Date: 2014
 
 ADD_LIBRARY(db OBJECT db.cpp)
-
-#ADD_TEST(test-db tests/db.cpp db ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
