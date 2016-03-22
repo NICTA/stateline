@@ -19,11 +19,9 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 MESSAGE("*** Source directory detected as: ${STATELINE_SOURCE_DIR}" )
 MESSAGE("*** Build directory detected as: ${STATELINE_BINARY_DIR}" )
 MESSAGE("*** Prerequites directory detected as: ${PREREQ_DIR}" )
-SET(ROOT_SRC_DIR "${STATELINE_SOURCE_DIR}")
-SET(ROOT_BIN_DIR "${STATELINE_BINARY_DIR}")
 
 # This is the path to additional CMake modules for finding libs etc.
-SET(CMAKE_MODULE_PATH "${ROOT_SRC_DIR}/CMakeModules/" ${CMAKE_MODULE_PATH})
+SET(CMAKE_MODULE_PATH "${STATELINE_SOURCE_DIR}/CMakeModules/" ${CMAKE_MODULE_PATH})
 MESSAGE(STATUS "Module path ${CMAKE_MODULE_PATH}" )
 
 # Build type defaults
