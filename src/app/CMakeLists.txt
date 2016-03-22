@@ -1,13 +1,10 @@
-# Copyright (c) 2014, NICTA. 
+# Copyright (c) 2014, NICTA.
 # Lesser General Public License version 3 or later
 # See the COPYRIGHT file.
 
 # Authors: Lachlan McCalman
-# Date: 2014 
+# Date: 2014
 
-ADD_LIBRARY(logging logging.cpp)
-ADD_LIBRARY(workerwrapper workerwrapper.cpp)
-ADD_LIBRARY(serverwrapper serverwrapper.cpp)
-ADD_LIBRARY(api api.cpp)
-
-TARGET_LINK_LIBRARIES(serverwrapper api)
+ADD_LIBRARY(commonwrapper OBJECT logging.cpp signal.cpp)
+ADD_LIBRARY(workerwrapper OBJECT workerwrapper.cpp)
+ADD_LIBRARY(serverwrapper OBJECT serverwrapper.cpp api.cpp)

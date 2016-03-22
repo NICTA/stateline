@@ -41,7 +41,7 @@ double gaussianNLL(uint /*jobType*/, const std::vector<double>& x)
   double squaredNorm = 0.0;
   for (auto i : x)
   {
-    squaredNorm += i*i; 
+    squaredNorm += i*i;
   }
   return 0.5*squaredNorm;
 }
