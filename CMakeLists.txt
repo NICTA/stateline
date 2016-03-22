@@ -36,11 +36,8 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
 
 # Search variables for prereqs
-SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
-SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
-SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
-SET(BOOST_ROOT ${PREREQ_DIR})
-SET(BOOST_INCLUDEDIR ${PREREQ_DIR}/include/boost-1_59)
+# FIXME FIXME FIXME
+SET(GTEST_SRC_DIR /usr/src/gtest)
 
 # Installation
 install(DIRECTORY src/ DESTINATION "include/stateline"
@@ -77,16 +74,12 @@ IF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
 # Boost
-SET(Boost_NO_SYSTEM_PATHS ON)
-SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
-SET(Boost_USE_STATIC_LIBS ON)
-SET(Boost_USE_STATIC_RUNTIME ON)
 IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # CMake doesn't seem smart enough to detect boost libraries build with Clang
   SET(Boost_COMPILER "-clang-darwin42")
 ENDIF()
 
-FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
+FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS program_options
                                             system
                                             filesystem
                                             regex
@@ -102,6 +95,8 @@ FIND_PACKAGE(ZMQ REQUIRED)
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
 # Google Test
+# FIXME FIXME FIXME
+#FIND_PACKAGE(GTest REQUIRED)
 SET(GTEST_DIR ${GTEST_SRC_DIR})
 SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
 
@@ -115,7 +110,7 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
-                    SYSTEM "${Boost_INCLUDE_DIR}"
+                    SYSTEM "${Boost_INCLUDE_DIRS}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}"
                     SYSTEM "${GTEST_DIR}"
                     SYSTEM "${GTEST_INCLUDE_DIR}")
