@@ -12,14 +12,13 @@ RUN apt-get update && apt-get install -y \
   nmap \
   libeigen3-dev \
   libzmq3-dev \
-  libboost-program_options-dev \
+  libboost-program-options-dev \
   libboost-system-dev \
   libboost-filesystem-dev \
   libboost-regex-dev \
   libboost-coroutine-dev \
-  libboost-coroutine1.58.0 \
   libboost-thread-dev \
-  libboost-date_time-dev \
+  libboost-date-time-dev \
   libboost-context-dev \
   libgtest-dev
 
