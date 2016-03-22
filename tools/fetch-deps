@@ -42,18 +42,18 @@ mkdir -p ${PREREQ_DIR}/src ${PREREQ_DIR}/include ${PREREQ_DIR}/lib ${PREREQ_DIR}
 # Boost 1.59
 ######################################
 
-wget -P ${BUILD_DIR} -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
+wget --quiet -P ${BUILD_DIR} -c http://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
 [ -d ${BUILD_DIR}/boost_1_59_0 ] || tar -xf ${BUILD_DIR}/boost_1_59_0.tar.gz -C ${BUILD_DIR}
 cd ${BUILD_DIR}/boost_1_59_0
 ./bootstrap.sh
-./b2 -j $N_PROCESSORS --layout=versioned --without-python cxxflags=-fPIC cflags=-fPIC variant=debug,release threading=multi runtime-link=shared link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
+./b2 -d0 -j $N_PROCESSORS --layout=versioned --without-python cxxflags=-fPIC cflags=-fPIC variant=debug,release threading=multi runtime-link=shared link=static address-model=64 $B2_EXTRA_FLAGS install --prefix=$PREREQ_DIR
 cd -
 
 #######################################
 # Eigen 3.2.0
 #######################################
 
-wget -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O ${BUILD_DIR}/eigen_3.2.0.tar.gz
+wget --quiet -c http://bitbucket.org/eigen/eigen/get/3.2.0.tar.gz -O ${BUILD_DIR}/eigen_3.2.0.tar.gz
 [ -d ${BUILD_DIR}/eigen-eigen-ffa86ffb5570 ] || tar -xf ${BUILD_DIR}/eigen_3.2.0.tar.gz -C ${BUILD_DIR}
 mkdir ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
 cd ${BUILD_DIR}/eigen-eigen-ffa86ffb5570/build
@@ -65,7 +65,7 @@ cd -
 # google-test (gtest) 1.7.0
 #######################################
 
-wget -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
+wget --quiet -P ${BUILD_DIR} -c http://googletest.googlecode.com/files/gtest-1.7.0.zip
 [ -d ${BUILD_DIR}/gtest-1.7.0 ] || unzip -o ${BUILD_DIR}/gtest-1.7.0.zip -d ${BUILD_DIR}
 cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
 
@@ -73,7 +73,7 @@ cp -r ${BUILD_DIR}/gtest-1.7.0 $PREREQ_DIR/src
 # zeromq 4.0.3
 #######################################
 
-wget -P ${BUILD_DIR} -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
+wget --quiet -P ${BUILD_DIR} -c http://download.zeromq.org/zeromq-4.0.3.tar.gz
 [ -d ${BUILD_DIR}/zeromq-4.0.3 ] || tar -xf ${BUILD_DIR}/zeromq-4.0.3.tar.gz -C ${BUILD_DIR}
 cd ${BUILD_DIR}/zeromq-4.0.3
 ./configure --prefix=$PREREQ_DIR
