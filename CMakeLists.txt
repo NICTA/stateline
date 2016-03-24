@@ -10,7 +10,7 @@
 ##############################################################################
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
-PROJECT(STATELINE)
+PROJECT(STATELINE LANGUAGES CXX)
 
 # Use folders
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
