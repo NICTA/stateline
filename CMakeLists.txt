@@ -15,14 +15,8 @@ PROJECT(STATELINE LANGUAGES CXX)
 # Use folders
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Check source and build directories are okay
-MESSAGE("*** Source directory detected as: ${STATELINE_SOURCE_DIR}" )
-MESSAGE("*** Build directory detected as: ${STATELINE_BINARY_DIR}" )
-MESSAGE("*** Prerequites directory detected as: ${PREREQ_DIR}" )
-
 # This is the path to additional CMake modules for finding libs etc.
-SET(CMAKE_MODULE_PATH "${STATELINE_SOURCE_DIR}/CMakeModules/" ${CMAKE_MODULE_PATH})
-MESSAGE(STATUS "Module path ${CMAKE_MODULE_PATH}" )
+SET(CMAKE_MODULE_PATH "${STATELINE_SOURCE_DIR}/CMakeModules")
 
 # Build type defaults
 IF(NOT CMAKE_BUILD_TYPE)
