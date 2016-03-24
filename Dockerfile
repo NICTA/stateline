@@ -27,7 +27,6 @@ RUN mkdir /usr/local/build
 WORKDIR /usr/local/build
 RUN cmake /usr/local/src/stateline -DCMAKE_BUILD_TYPE=Release -DLOCAL_INSTALL=OFF \
   && make \
-  && make check \
   && make install \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
