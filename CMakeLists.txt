@@ -46,10 +46,10 @@ ENDIF(LOCAL_INSTALL)
 # COMPILATION
 ##############################################################################
 
-SET(sl_flags "-D_GLIBCXX_USE_NANOSLEEP -std=c++11")
+SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP -std=c++11 -fPIC")
 SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
-SET(sl_debug "-ggdb -g")
-SET(sl_release "-DNDEBUG -O2")
+SET(sl_debug     "-ggdb -g")
+SET(sl_release   "-DNDEBUG -O2")
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sl_flags}")
