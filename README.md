@@ -189,11 +189,11 @@ $ make
 
 If your build directory was `stateline/build`, then the first line above is simply `cmake ..`. You can set variables to control the build configuration here. If CMake has trouble finding a dependency, then you can help out by specifying it's location. For example, you can specify the location of the Google Test sources by changing the first line above to `cmake ../stateline-build -DGTEST_ROOT=/opt/actual/location/of/gtest-1.7.0`.
 
-You can specify the build type by giving the `-DCMAKE_BUILD_TYPE=<build-type>` option to `cmake`; here `<build-type>` is one of `Release` with `Debug` or `RelWithDebInfo`.
+You can specify the build type by giving the `-DCMAKE_BUILD_TYPE=<build-type>` option to `cmake`; here `<build-type>` is one of `Release` or `Debug` or `RelWithDebInfo`.
 
 You might also want to speed things up by running a parallel build with `make -j4` on the second line above.
 
-You can build and run the unit test suite by calling
+If all went well, you can now build and run the unit test suite by calling
 ```bash
 $ make check
 ```
@@ -255,7 +255,7 @@ Stateline is configured through a json file. An example file is given below:
 ###C++ Example
 
 
-The following code gives an close to minimal example of building a stateline
+The following code gives a minimal example of building a stateline
 worker in C++ with a custom likelihood function `gaussianNLL`:
 
 ```c++
