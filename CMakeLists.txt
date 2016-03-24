@@ -46,13 +46,19 @@ ENDIF(LOCAL_INSTALL)
 # COMPILATION
 ##############################################################################
 
+SET(sl_flags "-D_GLIBCXX_USE_NANOSLEEP -std=c++11")
+SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
+SET(sl_debug "-ggdb -g")
+SET(sl_release "-DNDEBUG -O2")
+
 IF(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP -fPIC -Wextra -pedantic")
-  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
-  SET(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sl_flags}")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${sl_debug} ${sl_warnings}")
+  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${sl_debug} ${sl_release}")
+  SET(CMAKE_CXX_FLAGS_RELEASE ${sl_release})
 ELSE(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP")
-  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sl_flags} ${sl_debug} -Wall")
+  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${sl_debug} ${sl_release} -Wall")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 ADD_DEFINITIONS(-DELPP_THREAD_SAFE)
