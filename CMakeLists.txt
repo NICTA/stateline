@@ -159,14 +159,14 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-ADD_LIBRARY(statelineserver SHARED #STATIC
+ADD_LIBRARY(statelineserver STATIC #SHARED
   $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
   $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
 TARGET_LINK_LIBRARIES(statelineserver ${Boost_LIBRARIES} ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(statelineclient SHARED #STATIC
+ADD_LIBRARY(statelineclient STATIC #SHARED
   $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:workerwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:clientcomms>)
 TARGET_LINK_LIBRARIES(statelineclient ${ZMQ_LIBRARY})
