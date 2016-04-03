@@ -23,16 +23,16 @@
 
 ##Introduction
 
-Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements random walk Metropolis-Hastings with parallel tempering to improve chain mixing, provides an adaptive proposal distribution to speed up convergence, and allows the user to factorise their likelihoods (eg. over sensors or data). For a brief introduction to these concepts, see the [MCMC Sampling primer](#primer-mcmc-sampling) below. 
+Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements random walk Metropolis-Hastings with parallel tempering to improve chain mixing, provides an adaptive proposal distribution to speed up convergence, and allows the user to factorise their likelihoods (eg. over sensors or data). For a brief introduction to these concepts, see the [MCMC Sampling primer](#primer-mcmc-sampling) below.
 
 Stateline then provides the framework for deploying the distributed MCMC computation on a cluster, while allowing the users to focus on computing the posterior density with their own models, languages and environments. If you are already familiar with parallel tempering and adaptive proposals, you may wish to skip straight to Stateline's [features](#why-stateline).
 
 
 ### Primer: MCMC Sampling
 
-MCMC is a widely used algorithm for sampling from a probability distribution given only its unnormalised posterior density. Consequently, MCMC provides a general solution to a wide class of Bayesian inference problems prevalent in scientific research. 
+MCMC is a widely used algorithm for sampling from a probability distribution given only its unnormalised posterior density. Consequently, MCMC provides a general solution to a wide class of Bayesian inference problems prevalent in scientific research.
 
-##### Random Walk Metropolis Hastings 
+##### Random Walk Metropolis Hastings
 
 An effective strategy to sample in high dimensions is a random-walk Markov chain, which uses the current state of a chain of samples to propose a new state. The proposal is usually a simple distribution g, such as a Gaussian centered on the current state. This allows the algorithm to exploit the structure of the posterior - if we propose a state similar to the last draw, then it is likely to be accepted. With a well designed proposal scheme, an efficient acceptance rate can be achieved even in high dimensions. This comes at the cost of sample correlation, because the draws are no longer independent. To actually achieve independent draws from the posterior requires taking multiple Markov steps. The simplest form of random-walk MCMC is the Metropolis Hastings algorithm, which accepts a step from x to x’ with probability A:
 
@@ -45,9 +45,9 @@ Here, P is the (unnormalised) target density and g is the density of the proposa
 
 ##### Proposal Distributions
 
-The design objective of a proposal distribution is to maximise the number of proposals required per independent sample from the posterior. A conservative proposal that takes small steps may have a high acceptance rate, but will produce a highly autocorrelated chain. Conversely, a broad proposal that attempts large steps will suffer from a low acceptance rate. Studies in the literature have shown that a convergence 'sweet spot' exists, for example an accept rate of 0.234 is optimal if the likelihood is a separable function of each component of a high dimensional parameter space θ [Roberts97](#references).  
+The design objective of a proposal distribution is to maximise the number of proposals required per independent sample from the posterior. A conservative proposal that takes small steps may have a high acceptance rate, but will produce a highly autocorrelated chain. Conversely, a broad proposal that attempts large steps will suffer from a low acceptance rate. Studies in the literature have shown that a convergence 'sweet spot' exists, for example an accept rate of 0.234 is optimal if the likelihood is a separable function of each component of a high dimensional parameter space θ [Roberts97](#references).
 
-Because the optimal proposal distribution depends strongly on the target posterior, it is important for an MCMC tool to provide an automatic adaption mechanism. Care must be taken because naive adaptation of the proposal during sampling may invalidate the ergodicity of the MCMC chain, causing the resulting samples to be drawn from a different distribution. The simplest sufficient condition to guarantee correctness is the diminishing adaptation principle [Roberts06](#references). Stateline learns a proposal scale factor that that, together with the empirical covariance of the samples, forms a diminishing adaptation proposal function [Andrieu2008](#references). 
+Because the optimal proposal distribution depends strongly on the target posterior, it is important for an MCMC tool to provide an automatic adaption mechanism. Care must be taken because naive adaptation of the proposal during sampling may invalidate the ergodicity of the MCMC chain, causing the resulting samples to be drawn from a different distribution. The simplest sufficient condition to guarantee correctness is the diminishing adaptation principle [Roberts06](#references). Stateline learns a proposal scale factor that that, together with the empirical covariance of the samples, forms a diminishing adaptation proposal function [Andrieu2008](#references).
 
 ##### Parallel Tempering
 
@@ -76,7 +76,7 @@ Here Ti is the temperature of the i’th temperature chain, 𝛷 is the target d
 
 ##### Convergence Heuristics
 
-Chain convergence can be inferred by independently running multiple MCMC chains (stacks) and comparing their statistical measures. If the chains are exploring a different set of modes, this can be detected. Otherwise we must assume they are adequately mixing, although there is a possibility that all the chains have failed to discover a mode (parallel tempering reduces the probability of this happening). Stateline employs the approach of [Brooks98](#references). 
+Chain convergence can be inferred by independently running multiple MCMC chains (stacks) and comparing their statistical measures. If the chains are exploring a different set of modes, this can be detected. Otherwise we must assume they are adequately mixing, although there is a possibility that all the chains have failed to discover a mode (parallel tempering reduces the probability of this happening). Stateline employs the approach of [Brooks98](#references).
 
 
 ###Why Stateline
@@ -93,7 +93,7 @@ Stateline provides an architecture to deploy the MCMC model evaluations onto a c
     Figure: The server/worker architecture used by Stateline. The server drives multiple MCMC chains using the parallel tempering algorithm. The components of the likelihood evaluations are submitted into a job queue, where a scheduler farms them out to worker nodes on a cluster for computation. The server asynchronously collates the likelihoods and advances each chain when ready.
 </p>
 
-Distributing computation onto a cluster is critical for problems that have expensive forward models, or require many samples for convergence. Support is provided for cluster deployments, particularly on Amazon Web Services and Docker. See [Cluster Deployment](#cluster-deployment) for further details.  
+Distributing computation onto a cluster is critical for problems that have expensive forward models, or require many samples for convergence. Support is provided for cluster deployments, particularly on Amazon Web Services and Docker. See [Cluster Deployment](#cluster-deployment) for further details.
 
 
 ##### Heterogeneous Likelihood Computations
@@ -111,13 +111,13 @@ Stateline employs a number of techniques to improve mixing and allow chains to e
 
 * Multiple independent stacks are computed in parallel for convergence monitoring (the number is selected by the user)
 
-* Parallel tempering is implemented with an asynchronous algorithm to propagate swaps between pairs of chains without stalling the others. 
+* Parallel tempering is implemented with an asynchronous algorithm to propagate swaps between pairs of chains without stalling the others.
 
 * The chains are grouped into tiers with shared parameters, so the nth hottest chains in each stack will share a common temperature and proposal length.
 
 * Adaptive proposals are implemented (on a per-tier basis) based on Algorithm-4 from [Andrieu08](#references). We use a Gaussian proposal with covariance equal to a scale factor times the empirical variance of the samples.
 
-* The proposal scale factor is adapted using a novel regression model to learn the relationship between the accept rate and proposal width. This model is incrementally updated with each proposal, and exhibits diminishing adaptation as its training dataset grows. 
+* The proposal scale factor is adapted using a novel regression model to learn the relationship between the accept rate and proposal width. This model is incrementally updated with each proposal, and exhibits diminishing adaptation as its training dataset grows.
 
 * The chain temperatures of each tier are also adapted using an on-line regression approach to target a desired swap rate.
 
@@ -126,7 +126,7 @@ Stateline employs a number of techniques to improve mixing and allow chains to e
 
 The Stateline server is relatively simple to operate:
 
-* Users only need to understand the high level concepts of how parallel tempering works. A lightweight [Stateline Configuration File](configuration) in JSON format is used to configure a set of algorithm parameters. 
+* Users only need to understand the high level concepts of how parallel tempering works. A lightweight [Stateline Configuration File](configuration) in JSON format is used to configure a set of algorithm parameters.
 
 * Stateline provides a natural way to spin up a server, and an arbitrary number of workers on the Amazon Web Services Elastic Compute Cloud (EC2). An example using the Clusterous tool is provided (See [Cluster Deployment](#cluster-deployment)).
 
@@ -148,12 +148,10 @@ To build stateline, you will need the following:
 
 * GCC 4.8.2/Clang 6.0+
 * CMake 3.0+
-* bzlib 
 
-Stateline will automatically download and build the other prerequisite libraries in requires. However, if you would like to use
-operating system or other copies, you will also need:
+You will need install the following libraries through your operating system's package manager:
 
-* Boost 1.59+
+* Boost 1.58+
 * Eigen 3.2.0+
 * google-test 1.7.0+
 * zeromq 4.0+
@@ -167,42 +165,38 @@ To run the python demos, you will also need:
 
 ##Installation
 
-First clone the repository and enter the directory:
+First clone the repository and create a directory in which to build it:
 
 ```bash
 $ git clone https://github.com/NICTA/stateline.git
-$ cd stateline 
+$ mkdir stateline-build
+$ cd stateline-build
 ```
 
-The simplest way to build Stateline is to use the `fetch-deps` script that will automatically download and build the dependencies required. By default, it will dowload them into a `prereqs` subdirectory of the stateline repository. It will also create a build subdirectory for the stateline binaries.
+Note that it is perfectly okay to make the build directory inside the `stateline` repository, like so:
 
 ```bash
-$ ./tools/fetch-deps
+$ mkdir stateline/build
+$ cd stateline/build
 ```
 
-If you would like to specify the build and prereq directories manually, you can:
+To build Stateline from your build directory, call `cmake` and then `make`:
 
 ```bash
-$ export BUILD_DIR=<my build dir>
-$ export PREREQ_DIR=<my prereq dir>
-$ ./tools/fetch-deps
-```
-
-Next, run the configure script which will point cmake to correct prereq and build directories:
-
-```bash
-$ ./tools/configure release
-```
-
-Substitute `release` with `debug` or `relwithdebinfo` if you would prefer these build types.
-You should only need to run this configure script once (even if you are developing stateline itself). From then on, just run make from your build directory:
-
-```bash
-$ cd build/release
+$ cmake ../stateline-build
 $ make
 ```
 
-(Substitute `release` with `debug` or `relwithdebinfo` if you did so in the configure command above.)
+If your build directory was `stateline/build`, then the first line above is simply `cmake ..`. You can set variables to control the build configuration here. If CMake has trouble finding a dependency, then you can help out by specifying it's location. For example, you can specify the location of the Google Test sources by changing the first line above to `cmake ../stateline-build -DGTEST_ROOT=/opt/actual/location/of/gtest-1.7.0`.
+
+You can specify the build type by giving the `-DCMAKE_BUILD_TYPE=<build-type>` option to `cmake`; here `<build-type>` is one of `Release` or `Debug` or `RelWithDebInfo`.
+
+You might also want to speed things up by running a parallel build with `make -j4` on the second line above.
+
+If all went well, you can now build and run the unit test suite by calling
+```bash
+$ make check
+```
 
 If you would like to install stateline, run
 ```bash
@@ -261,15 +255,29 @@ Stateline is configured through a json file. An example file is given below:
 ###C++ Example
 
 
-The following code gives an close to minimal example of building a stateline
-worker with a custom likelihood in C++.
+The following code gives a minimal example of building a stateline
+worker in C++ with a custom likelihood function `gaussianNLL`:
 
 ```c++
+// Compile command:
+// g++ -isystem ${STATELINE_INSTALL_DIR}/include -L${STATELINE_INSTALL_DIR}/lib
+//   -std=c++11 -o myworker myworker.cpp -lstatelineclient -lzmq -lpthread
+
 #include <thread>
 #include <chrono>
 
-#include "stateline/app/workerwrapper.hpp"
-#include "stateline/app/signal.hpp"
+#include <stateline/app/workerwrapper.hpp>
+#include <stateline/app/signal.hpp>
+
+double gaussianNLL(uint jobIndex, const std::vector<double>& x)
+{
+  double squaredNorm = 0.0;
+  for (auto i : x)
+  {
+    squaredNorm += i*i;
+  }
+  return 0.5*squaredNorm;
+}
 
 int main()
 {
@@ -278,7 +286,7 @@ int main()
   std::pair jobIndexRange = {0,10};
 
   // The address of the stateline server
-  std::string address = "localhost:5000";
+  std::string address = "localhost:5555";
 
   // A stateline worker taking a likelihood function 'gaussianNLL'
   stateline::WorkerWrapper w(gaussianNLL, jobIndexRange, address);
@@ -300,27 +308,13 @@ int main()
 This code simply defines the job id range that the worker will evaluate,
 the address of the server, then creates a `WorkerWrapper` object. This object
 encapsulates all the communications systems with the server, including shaping,
-heartbeating and detecting network errors. 
+heartbeating and detecting network errors.
 
-Once `start` is called, the WorkerWrapper creates a new thread that evaluates
+Once `start` is called, the `WorkerWrapper` creates a new thread that evaluates
 the likelihood function.
 
-In the above code, the user likelihood is `gaussianNLL`:
-
-```c++
-double gaussianNLL(uint jobIndex, const std::vector<double>& x)
-{
-  double squaredNorm = 0.0;
-  for (auto i : x)
-  {
-    squaredNorm += i*i; 
-  }
-  return 0.5*squaredNorm;
-}
-```
-
-In this simple example there is no change of behaviour based on jobIndex. In general though this index is used to select which term of your likelihood function is being evaluated.
-Any user-supplied function can be used as a likelihood, provided 
+In this simple example there is no change of behaviour based on `jobIndex`. In general though this index is used to select which term of your likelihood function is being evaluated.
+Any user-supplied function can be used as a likelihood, provided
 
 1. It preserves the function signatures `double myfunc(uint jobIndex, const std::vector<double>& x)`,
 2. It returns a negative log likelihood.
@@ -350,7 +344,7 @@ import random
 jobRange = '0:10'
 
 # Launch stateline-client (a c++ binary that handles comms)
-# we talk to that binary over zmq with a ipc socket 
+# we talk to that binary over zmq with a ipc socket
 # (which is random so we can have multiple instances of this script)
 random_string = "".join(random.choice(string.lowercase) for x in range(10))
 addr = "ipc:///tmp/stateline_client_{}.socket".format(random_string)
@@ -380,7 +374,7 @@ while True:
     rmsg = [b"", b'4', job_idx, str(nll).encode('ascii')]
     socket.send_multipart(rmsg)
 
-``` 
+```
 
 This code is a little more complex than the C++, because it is
 communicating via zeromq with a binary controlling messaging between itself and
@@ -401,7 +395,7 @@ def gaussianNLL(job_idx, x):
 In this simple example there is no change of behaviour based on job_idx. In general though this id is used to select which term of your likelihood function is being evaluated.
 Any user-supplied function can be used as a likelihood, provided it returns a negative log likelihood.
 
-For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. 
+For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server.
 This worker is copied into the build folder by default. To try it out, run the Stateline server in a terminal:
 
 ```bash
@@ -426,23 +420,23 @@ While stateline is running, a table of diagnostic values are printed to the cons
 ```
   ID    Length    MinEngy   CurrEngy      Sigma     AcptRt  GlbAcptRt       Beta     SwapRt  GlbSwapRt
 ------------------------------------------------------------------------------------------------------
-   0     16421    0.01069    1.23566    0.20957    0.24200    0.23184    1.00000    0.37000    0.39684 
-   1     16421    0.05695    0.63260    0.33714    0.22400    0.23281    0.40256    0.35500    0.35727 
-   2     16421    0.12965    4.16091    0.56486    0.22100    0.22684    0.15077    0.40200    0.38892 
-   3     16421    0.38213   29.24271    0.93183    0.24700    0.23232    0.05591    0.39800    0.39988 
-   4     16421    0.74242  196.69971   54.59815    0.31200    0.33536    0.01990    0.00000    0.00000 
+   0     16421    0.01069    1.23566    0.20957    0.24200    0.23184    1.00000    0.37000    0.39684
+   1     16421    0.05695    0.63260    0.33714    0.22400    0.23281    0.40256    0.35500    0.35727
+   2     16421    0.12965    4.16091    0.56486    0.22100    0.22684    0.15077    0.40200    0.38892
+   3     16421    0.38213   29.24271    0.93183    0.24700    0.23232    0.05591    0.39800    0.39988
+   4     16421    0.74242  196.69971   54.59815    0.31200    0.33536    0.01990    0.00000    0.00000
 
-   5     16421    0.04381    1.00751    0.20959    0.24900    0.22831    1.00000    0.37600    0.37005 
-   6     16421    0.08721    9.50795    0.33696    0.22500    0.22745    0.40305    0.41200    0.41327 
-   7     16421    0.21648   32.44225    0.56561    0.24900    0.23318    0.15085    0.38300    0.38588 
-   8     16421    0.24441   24.64229    0.93048    0.23700    0.22928    0.05600    0.36200    0.37492 
-   9     16421    0.35840   35.12504   54.59815    0.29500    0.33701    0.01993    0.00000    0.00000 
+   5     16421    0.04381    1.00751    0.20959    0.24900    0.22831    1.00000    0.37600    0.37005
+   6     16421    0.08721    9.50795    0.33696    0.22500    0.22745    0.40305    0.41200    0.41327
+   7     16421    0.21648   32.44225    0.56561    0.24900    0.23318    0.15085    0.38300    0.38588
+   8     16421    0.24441   24.64229    0.93048    0.23700    0.22928    0.05600    0.36200    0.37492
+   9     16421    0.35840   35.12504   54.59815    0.29500    0.33701    0.01993    0.00000    0.00000
 
 Convergence test: 1.00045 (possibly converged)
 ```
 
 ##### ID
-In this example, we have 2 stacks of 5 temperatures making a total of 10 chains (0-9). The chain ids are grouped by stack (0-4 and 5-9). Chains 0 and 5 are the low temperature chains, and within a stack, temperature increases with ID. 
+In this example, we have 2 stacks of 5 temperatures making a total of 10 chains (0-9). The chain ids are grouped by stack (0-4 and 5-9). Chains 0 and 5 are the low temperature chains, and within a stack, temperature increases with ID.
 
 ##### Length
 The number of samples taken so far in each chain. Note that this is counting all samples, not independent samples. The target in the configuration file is reached when the cumulative length of all base temperature chains reaches the target. If you want burn-in or decimation it is worth targeting a larger number of samples.
@@ -450,9 +444,9 @@ The number of samples taken so far in each chain. Note that this is counting all
 ##### MinEngy, CurrEngy
 The negative log likelihoods (NLL) of the best, and current state. Use these values to determine if a stack is sampling ballpark energy levels to its equivalent in other stacks. We would also expect high temperature chains to accept higher NLL states. Do not be alarmed if a current state is a lot worse than its historical minimum in high dimensions - it is often the case that even the maximum a-posteriori state, while having a high density, has a low volume compared to the whole distribution and thus a low probability of being drawn.
 
-##### Sigma 
+##### Sigma
 
-Sigma is the proposal scale factor. It multiplies the normalised empirical covariance of the samples to make a proposal variance, so we would expect it to be in the order of 0 to 10^1. 
+Sigma is the proposal scale factor. It multiplies the normalised empirical covariance of the samples to make a proposal variance, so we would expect it to be in the order of 0 to 10^1.
 
 Sigma is adapted per temperature tier, per proposal to target the desired accept rate. For example, chains 1 and 6 have a common sigma model. Their sigmas are not perfectly identical because the sigma is only re-computed on the swapping interval.
 
@@ -464,15 +458,15 @@ Use this as a diagnostic to ensure that a chain is achieving an effective rate (
 
 ##### Beta
 
-Beta is the inverse temperature. Specifically, the chain with a particular Beta `sees' the probability distribution raised to the power of Beta, making the distribution increasingly uniform as it approaches 0. Like Sigma, the Beta values are generated per-tier, but only updated on a swap allowing them to be slightly different at any given time to their equivalent chains in other stacks. Beta is adapted as a strictly decreasing ladder, with the base chains at a constant 1.0, targeting a desired swap rate (0.4 in this case). 
+Beta is the inverse temperature. Specifically, the chain with a particular Beta `sees' the probability distribution raised to the power of Beta, making the distribution increasingly uniform as it approaches 0. Like Sigma, the Beta values are generated per-tier, but only updated on a swap allowing them to be slightly different at any given time to their equivalent chains in other stacks. Beta is adapted as a strictly decreasing ladder, with the base chains at a constant 1.0, targeting a desired swap rate (0.4 in this case).
 
 ##### SwapRt,  GlbSwapRt
 
-SwapRt_i indicates the short term swap rate between chain i and chain i+1.  Obviously, the highest temperature tier chains have no hotter chains to swap with, so their swap rate will always read 0. Use these together with beta to diagnose swapping performance. 
+SwapRt_i indicates the short term swap rate between chain i and chain i+1.  Obviously, the highest temperature tier chains have no hotter chains to swap with, so their swap rate will always read 0. Use these together with beta to diagnose swapping performance.
 
 ##### Convergence indicator
 
-The convergece test of [Brooks98](#references) is applied between stacks when possible. This test indicates when convergence is possible/likely. It is a reliable way to determine that MCMC has *not* converged, but cannot guarantee that the MCMC has converged because it is always possible that all the stacks have become stuck in the same local mode of the posterior. 
+The convergece test of [Brooks98](#references) is applied between stacks when possible. This test indicates when convergence is possible/likely. It is a reliable way to determine that MCMC has *not* converged, but cannot guarantee that the MCMC has converged because it is always possible that all the stacks have become stuck in the same local mode of the posterior.
 
 
 
@@ -487,7 +481,7 @@ where `energy` is the log-likelihood of the sample, `sigma` is the proposal
 width at that time, `beta` is the temperature of the chain, `accepted` is a
 boolean with 1 being an accept and 0 being reject, and `swap_type` is an
 integer with 0 indicating no attempt was made to swap, 1 indicating a swap
-occured, and 2 indicated a swap was attempted but was rejected. 
+occured, and 2 indicated a swap was attempted but was rejected.
 
 After running one of the default examples, you should see a folder called `demo-output` in your build directory. This folder contains samples from the demo MCMC. Running
 
@@ -510,7 +504,7 @@ Viewing the raw histograms of the parameters is informative for a low dimensiona
 
 ##Cluster Deployment
 
-Stateline is designed to take advantage of many computers performing likelihood evaluations in parallel. The idea is to run a server on a single machine and many workers communicating with the server over TCP. Workers can be ephemeral -- if a worker dissapears mid-job that job will be reassinged to another worker by the server (after a few seconds). At the moment the server does not support recovering from early termination, so place it on a reliable machine if possible. The server also needs at least 2 cores to work effectively, so provision it with decent hardware. 
+Stateline is designed to take advantage of many computers performing likelihood evaluations in parallel. The idea is to run a server on a single machine and many workers communicating with the server over TCP. Workers can be ephemeral -- if a worker dissapears mid-job that job will be reassinged to another worker by the server (after a few seconds). At the moment the server does not support recovering from early termination, so place it on a reliable machine if possible. The server also needs at least 2 cores to work effectively, so provision it with decent hardware.
 
 The default port stateline uses is 5555, but this can be changed with the `-p` argument to the stateline server.
 
@@ -528,9 +522,9 @@ Stateline for a scientific problem:
 Stateline does not manage sample burn-in and begins recording samples from the initial state onwards. Burn-in is basically a method of bringing the MCMC chains to a plausible
 initial state. With infinite samples, it shouldn't matter what state the MCMC
 chains are initialised in. However, with a finite number of samples, we can
-improve our chances of achieving convergence by starting in a likely state. 
+improve our chances of achieving convergence by starting in a likely state.
 
-We suggest two strategies for burn-in: 
+We suggest two strategies for burn-in:
 
 * a draw from the posterior is likely to be a good initial state, so one option is to run MCMC on the distribution for a sufficiently long time and discard some initial samples. Stateline will record all the samples, so the number to discard can be determined afterwards by looking at the time evolution of the marginals, for example.
 
@@ -539,7 +533,7 @@ We suggest two strategies for burn-in:
 
 ##### Job-Types
 
-Stateline can be configured to use job types. For each likelihood evaluation, 
+Stateline can be configured to use job types. For each likelihood evaluation,
 Stateline farms out one evaluation for each job type, providing the worker
 with the parameters and job type index.
 
@@ -561,7 +555,7 @@ worker code. We recommend two types of job-type factorisation:
 In order to achieve an efficient accept rate, an MCMC chain is neccessarily
 auto-correlated. The best way to achieve uncorrelated samples is to compute
 the chain auto-correlation post-sampling. Then, samples can be discarded
-keeping only one per auto-correlation length. 
+keeping only one per auto-correlation length.
 
 
 ##### What swap interval should I use?
@@ -585,7 +579,7 @@ general rules as above apply.
 
 When the adaption fails to achieve the desired accept rate after a moderate
 number of samples (say 10,000), it is important to look at the accept rate
-in conjunction with sigma and the current energy to understand why. 
+in conjunction with sigma and the current energy to understand why.
 
 There are two typical failures. Firstly, if sigma is small and
 the accept rate is still very low it suggests there is a problem with the
@@ -604,18 +598,18 @@ can form a criterion for selecting the number of temperature tiers (see below).
 
 ##### How many temperature tiers should I use?
 
-If a high temperature chain has a large sigma and a higher-than-targeted accept rate, as seen in chains 4 and 9 of the example logging, this suggests that the high temperature distribution is becoming uniform. The proposal is using the `bouncy bounds' to essentially draw indepenent random samples from the input space, and they are still geting accepted. This is not a problem, but does suggest there will be little further benefit in adding additional temperature tiers. 
+If a high temperature chain has a large sigma and a higher-than-targeted accept rate, as seen in chains 4 and 9 of the example logging, this suggests that the high temperature distribution is becoming uniform. The proposal is using the `bouncy bounds' to essentially draw indepenent random samples from the input space, and they are still geting accepted. This is not a problem, but does suggest there will be little further benefit in adding additional temperature tiers.
 
 After the betas have adapted, you want the tiers to span all the way from the
 true distribution (Beta=1) to a uniform distribution (Beta -> 0). Thus, we
-want the hottest tier to exhibit the high and high accept rate condition, while the others form a progressive ladder with active swapping. 
+want the hottest tier to exhibit the high and high accept rate condition, while the others form a progressive ladder with active swapping.
 
 ##### How many stacks should I use?
 
 At least two stacks are required to run convergence heuristics. The heuristics
 become more reliable with more independent stacks.
 
-Adding more stacks can employ more workers at a time and trivially increase the samples per second regardless of the minimum time needed to evaluate a likelihood function. 
+Adding more stacks can employ more workers at a time and trivially increase the samples per second regardless of the minimum time needed to evaluate a likelihood function.
 
 However, the stacks will need to burn-in and converge independently, so the minimum number of samples needed will increase proporitionately and the total run-time of the MCMC won't decrease as workers and stacks are added.
 
@@ -633,10 +627,10 @@ to run more than one worker per core, up to the users discretion.
 
 We have provided example code for plotting the density of pairs of dimensions
 and marginals. This is appropriate for simpler low dimensional distributions
-where the parameters are interpretable. 
+where the parameters are interpretable.
 
 However, it will often be the case that the parameters are high dimensional and
-correspond to inputs to a complex model. We recommend re-using the same worker 
+correspond to inputs to a complex model. We recommend re-using the same worker
 code to run models on the sampled parameters. This enables marginalisation of
 derived properties of the model outputs with respect to the parameters.
 
@@ -646,7 +640,7 @@ derived properties of the model outputs with respect to the parameters.
 Creating in a worker in a language other than C++ should be fairly simple as long as that library has access to ZeroMQ bindings. For the impatient, the approach is the same as the Python example given above. The way other language bindings work is to run a copy of `stateline-client` for every worker, then each worker communicates with its stateline-client via a local unix socket using ZeroMQ. This means all the complex logic for handling job requests, server heartbeating and asynchronous messages are invisible, leaving only a very simple loop. In pseudocode:
 
 ```
-start a stateline-client 
+start a stateline-client
 send 'hello' message to stateline-client
 
 while working:
@@ -721,7 +715,7 @@ G. Altekar et al. (2004), Parallel Metropolis coupled Markov chain Monte Carlo f
 
 C. Andrieu and J. Thoms (2008), A tutorial on adaptive MCMC, Stat Comput Vol 18, pp 343-373
 
-S. Brooks and A. Gelman (1998), General Methods for Monitoring Convergence of Iterative Simulations, Journal of Computational and Graphical Statistics Vol 7, No. 4, pp 434-455 
+S. Brooks and A. Gelman (1998), General Methods for Monitoring Convergence of Iterative Simulations, Journal of Computational and Graphical Statistics Vol 7, No. 4, pp 434-455
 
 A. Gelman, W. Gilks, and G. Roberts, Weak convergence and optimal scaling of random walk Metropolis algorithms, Ann. Appl. Probab., Volume 7, Number 1 (1997), 110-120.
 

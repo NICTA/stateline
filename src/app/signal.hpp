@@ -11,46 +11,18 @@
 #pragma once
 
 #include <atomic>
-#include <csignal>
-#include <easylogging/easylogging++.h>
-#include <chrono>
-#include <thread>
-#include <future>
 
 namespace stateline
 {
   namespace global
   {
-    std::atomic<bool> interruptedBySignal;
+    extern std::atomic_bool interruptedBySignal;
   }
 
   namespace init
   {
-    void handleSignal(int sig)
-    {
-      VLOG(1) << "Caught Signal of type " << sig;
-      stateline::global::interruptedBySignal = true;
-    }
-
-    void threadHandle()
-    {
-      std::signal(SIGINT, handleSignal);
-      std::signal(SIGTERM, handleSignal);
-      while(!global::interruptedBySignal)
-      {
-        std::this_thread::sleep_for(std::chrono::seconds(60));
-      }
-    }
-
-    void initialiseSignalHandler()
-    {
-      // Install a signal handler
-      // std::signal(SIGINT, handleSignal);
-      // std::signal(SIGTERM, handleSignal);
-      std::signal(SIGINT, SIG_IGN);
-      std::signal(SIGTERM, SIG_IGN);
-      std::thread(threadHandle).detach();
-    }
-
+    void handleSignal(int sig);
+    void threadHandle();
+    void initialiseSignalHandler();
   }
 }

@@ -1,30 +1,22 @@
-# Copyright (c) 2014, NICTA. 
+# Copyright (c) 2014, NICTA.
 # Lesser General Public License version 3 or later
 # See the COPYRIGHT file.
 
 # Authors: Lachlan McCalman
-# Date: 2014 
+# Date: 2014
 
 ##############################################################################
 # CMAKE SETUP
 ##############################################################################
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
-PROJECT(STATELINE)
+PROJECT(STATELINE LANGUAGES CXX)
 
 # Use folders
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Check source and build directories are okay
-MESSAGE("*** Source directory detected as: ${STATELINE_SOURCE_DIR}" )
-MESSAGE("*** Build directory detected as: ${STATELINE_BINARY_DIR}" )
-MESSAGE("*** Prerequites directory detected as: ${PREREQ_DIR}" )
-SET(ROOT_SRC_DIR "${STATELINE_SOURCE_DIR}")
-SET(ROOT_BIN_DIR "${STATELINE_BINARY_DIR}")
-
 # This is the path to additional CMake modules for finding libs etc.
-SET(CMAKE_MODULE_PATH "${ROOT_SRC_DIR}/CMakeModules/" ${CMAKE_MODULE_PATH})
-MESSAGE(STATUS "Module path ${CMAKE_MODULE_PATH}" )
+SET(CMAKE_MODULE_PATH "${STATELINE_SOURCE_DIR}/CMakeModules")
 
 # Build type defaults
 IF(NOT CMAKE_BUILD_TYPE)
@@ -36,13 +28,6 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 
 # Variables which must be set for compilation
 SET(CMAKE_REQUIRED_FLAGS "${CMAKE_CXX_FLAGS}")
-
-# Search variables for prereqs
-SET(GTEST_SRC_DIR ${PREREQ_DIR}/src/gtest-1.7.0)
-SET(ZMQ_ROOT_DIR ${PREREQ_DIR})
-SET(EIGEN3_ROOT_DIR ${PREREQ_DIR})
-SET(BOOST_ROOT ${PREREQ_DIR})
-SET(BOOST_INCLUDEDIR ${PREREQ_DIR}/include/boost-1_59)
 
 # Installation
 install(DIRECTORY src/ DESTINATION "include/stateline"
@@ -57,13 +42,19 @@ ENDIF(LOCAL_INSTALL)
 # COMPILATION
 ##############################################################################
 
+SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP -std=c++11 -fPIC")
+SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
+SET(sl_debug     "-ggdb -g")
+SET(sl_release   "-DNDEBUG -O2")
+
 IF(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP -fPIC -Wextra -pedantic")
-  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -Wno-unused-local-typedefs -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
-  SET(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sl_flags}")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${sl_debug} ${sl_warnings}")
+  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${sl_debug} ${sl_release}")
+  SET(CMAKE_CXX_FLAGS_RELEASE ${sl_release})
 ELSE(CMAKE_COMPILER_IS_GNUCXX)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -ggdb -g  -D_GLIBCXX_USE_NANOSLEEP")
-  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-std=c++11 -Wall -ggdb -g -D_GLIBCXX_USE_NANOSLEEP -DNDEBUG -O2")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${sl_flags} ${sl_debug} -Wall")
+  SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${sl_debug} ${sl_release} -Wall")
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 ADD_DEFINITIONS(-DELPP_THREAD_SAFE)
@@ -79,16 +70,12 @@ IF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
 # Boost
-SET(Boost_NO_SYSTEM_PATHS ON)
-SET(Boost_ADDITIONAL_VERSIONS "1_59_0")
-SET(Boost_USE_STATIC_LIBS ON)
-SET(Boost_USE_STATIC_RUNTIME ON)
 IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # CMake doesn't seem smart enough to detect boost libraries build with Clang
   SET(Boost_COMPILER "-clang-darwin42")
 ENDIF()
 
-FIND_PACKAGE(Boost 1.59 REQUIRED COMPONENTS program_options
+FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS program_options
                                             system
                                             filesystem
                                             regex
@@ -103,50 +90,20 @@ FIND_PACKAGE(ZMQ REQUIRED)
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
-# Google Test
-SET(GTEST_DIR ${GTEST_SRC_DIR})
-SET(GTEST_INCLUDE_DIR ${GTEST_SRC_DIR}/include)
-ADD_LIBRARY(gtest ${GTEST_DIR}/src/gtest-all.cc ${STATELINE_SOURCE_DIR}/src/test/main.cpp)
-TARGET_LINK_LIBRARIES(gtest logging)
-
 ##############################################################################
 # INCLUDE DIRECTORIES
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
-                    "${STATELINE_SOURCE_DIR}/external"
-                    "${STATELINE_SOURCE_DIR}/external/cppzmq"
-                    "${STATELINE_SOURCE_DIR}/external/json"
-                    "${STATELINE_SOURCE_DIR}/external/simple-web-server"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/cppzmq"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
+                    SYSTEM "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
-                    SYSTEM "${Boost_INCLUDE_DIR}"
-                    SYSTEM "${EIGEN3_INCLUDE_DIR}"
-                    SYSTEM "${GTEST_DIR}"
-                    SYSTEM "${GTEST_INCLUDE_DIR}")
+                    SYSTEM "${Boost_INCLUDE_DIRS}"
+                    SYSTEM "${EIGEN3_INCLUDE_DIR}")
 
-##############################################################################
-# TESTING
-##############################################################################
-# Setup the unit test target
-ADD_CUSTOM_TARGET(run-test-all COMMENT "Unit Tests")
-
-# Adds the given project as a dependency for the "run-tests" target
-MACRO(REGISTER_UNIT_TESTS projectName)
-  SET_TARGET_PROPERTIES(${projectName} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
-  ADD_CUSTOM_TARGET(run-${projectName}
-    COMMAND ${projectName} --gtest_output=xml:${STATELINE_BINARY_DIR}/gtest-${projectName}-results.xml
-    DEPENDS ${projectName}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running ${projectName}")
-  ADD_DEPENDENCIES(run-test-all run-${projectName})
-ENDMACRO()
-
-MACRO(ADD_TEST testName testSource)
-  ADD_EXECUTABLE(${testName} ${testSource})
-  TARGET_LINK_LIBRARIES(${testName} ${ARGN} gtest)
-  REGISTER_UNIT_TESTS(${testName})
-ENDMACRO()
+ADD_SUBDIRECTORY(src/test)
 
 ##############################################################################
 # DOCUMENTATION
@@ -184,20 +141,17 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-ADD_LIBRARY(statelineserver SHARED src/app/serverwrapper.cpp src/app/logging.cpp)
-TARGET_LINK_LIBRARIES(statelineserver commoncomms
-                                      servercomms
-                                      serverwrapper
-                                      mcmc
-                                      ${Boost_LIBRARIES}
-                                      ${ZMQ_LIBRARY})
+ADD_LIBRARY(statelineserver STATIC #SHARED
+  $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
+  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
+  $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
+TARGET_LINK_LIBRARIES(statelineserver ${Boost_LIBRARIES} ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(statelineclient SHARED src/app/workerwrapper.cpp src/app/logging.cpp)
-TARGET_LINK_LIBRARIES(statelineclient commoncomms
-                                      clientcomms
-                                      workerwrapper
-                                      ${ZMQ_LIBRARY})
+ADD_LIBRARY(statelineclient STATIC #SHARED
+  $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:workerwrapper>
+  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:clientcomms>)
+TARGET_LINK_LIBRARIES(statelineclient ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
 
 ##############################################################################
