@@ -183,11 +183,11 @@ $ cd stateline/build
 To build Stateline from your build directory, call `cmake` and then `make`:
 
 ```bash
-$ cmake ../stateline-build
+$ cmake ../stateline
 $ make
 ```
 
-If your build directory was `stateline/build`, then the first line above is simply `cmake ..`. You can set variables to control the build configuration here. If CMake has trouble finding a dependency, then you can help out by specifying it's location. For example, you can specify the location of the Google Test sources by changing the first line above to `cmake ../stateline-build -DGTEST_ROOT=/opt/actual/location/of/gtest-1.7.0`.
+If your build directory was `stateline/build`, then the first line above is simply `cmake ..`. You can set variables to control the build configuration here. If CMake has trouble finding a dependency, then you can help out by specifying it's location. For example, you can specify the location of the Google Test sources by changing the first line above to `cmake ../stateline -DGTEST_ROOT=/opt/actual/location/of/gtest-1.7.0`.
 
 You can specify the build type by giving the `-DCMAKE_BUILD_TYPE=<build-type>` option to `cmake`; here `<build-type>` is one of `Release` or `Debug` or `RelWithDebInfo`.
 
