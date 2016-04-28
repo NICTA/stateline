@@ -146,7 +146,7 @@ Stateline has been sucsessfully compiled on Linux and OSX machines. We don't cur
 
 To build stateline, you will need the following:
 
-* GCC 4.8.2/Clang 6.0+
+* GCC 4.8.2/Clang 3.6.0+
 * CMake 3.0+
 
 You will need install the following libraries through your operating system's package manager:
