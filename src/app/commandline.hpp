@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ezOptionParser/ezOptionParser.hpp"
+#include "ezoptionparser/ezOptionParser.hpp"
 #include <iostream>
 
 namespace stateline

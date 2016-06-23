@@ -10,7 +10,7 @@
 //!
 
 #include <json.hpp>
-#include "ezOptionParser/ezOptionParser.hpp"
+#include "ezoptionparser/ezOptionParser.hpp"
 
 #include "../app/serverwrapper.hpp"
 #include "../app/logging.hpp"

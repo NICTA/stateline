@@ -18,7 +18,7 @@
 
 #include <chrono>
 #include <thread>
-#include "ezOptionParser/ezOptionParser.hpp"
+#include "ezoptionparser/ezOptionParser.hpp"
 
 #include "../app/logging.hpp"
 #include "../app/commandline.hpp"

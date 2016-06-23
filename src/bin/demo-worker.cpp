@@ -14,7 +14,7 @@
 
 #include <string>
 #include <thread>
-#include "ezOptionParser/ezOptionParser.hpp"
+#include "ezoptionparser/ezOptionParser.hpp"
 
 #include "../app/commandline.hpp"
 #include "../app/signal.hpp"
