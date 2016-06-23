@@ -1,12 +1,12 @@
 #include "api.hpp"
 
-#include <server_http.hpp>
+//#include <server_http.hpp>
 #include <future>
 #include <fstream>
-#include <boost/filesystem.hpp>
+//#include <boost/filesystem.hpp>
 
-using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
-namespace fs = boost::filesystem;
+//using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
+//namespace fs = boost::filesystem;
 
 namespace stateline
 {
@@ -39,13 +39,15 @@ namespace stateline
     return str + "}";
   }
 
+  /*
   void runApiServerThread(HttpServer& server)
   {
     server.start();
-  }
+  }*/
 
   void runApiServer(uint port, ApiResources& res, bool& running)
   {
+    /* TODO: use graphite
     HttpServer server(port, 4);
 
     server.resource["^/test$"]["GET"] = [](HttpServer::Response &resp, std::shared_ptr<HttpServer::Request> request)
@@ -137,6 +139,6 @@ namespace stateline
     }
 
     server.stop();
-    future.wait();
+    future.wait();*/
   }
 }

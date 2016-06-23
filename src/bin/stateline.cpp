@@ -9,8 +9,8 @@
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <boost/program_options.hpp>
 #include <json.hpp>
+#include "ezOptionParser/ezOptionParser.hpp"
 
 #include "../app/serverwrapper.hpp"
 #include "../app/logging.hpp"
@@ -21,25 +21,23 @@
 // Alias namespaces for conciseness
 namespace sl = stateline;
 namespace ph = std::placeholders;
-namespace po = boost::program_options;
 namespace ch = std::chrono;
 using json = nlohmann::json;
 
-po::options_description commandLineOptions()
+ez::ezOptionParser commandLineOptions()
 {
-  auto opts = po::options_description("Stateline Options");
-  opts.add_options()
-  ("help,h", "Print help message")
-  ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
-  ("port,p",po::value<uint>()->default_value(5555), "Port on which to accept worker connections") 
-  ("config,c",po::value<std::string>()->default_value("config.json"), "Path to configuration file")
-  ;
-  return opts;
+  ez::ezOptionParser opt;
+  opt.overview = "Demo options";
+  opt.add("", 0, 0, 0, "Print help message", "-h", "--help");
+  opt.add("0", 0, 1, 0, "Logging level", "-l", "--log-level");
+  opt.add("5555", 0, 1, 0, "Port on which to accept worker connections", "-p", "--port");
+  opt.add("config.json", 0, 1, 0, "Path to configuration file", "-c", "--config");
+  return opt;
 }
 
-json initConfig(const po::variables_map& vm)
+json initConfig(const std::string& configPath)
 {
-  std::ifstream configFile(vm["config"].as<std::string>());
+  std::ifstream configFile(configPath);
   if (!configFile)
   {
     // TODO: use default settings?
@@ -51,15 +49,29 @@ json initConfig(const po::variables_map& vm)
   return config;
 }
 
-int main(int ac, char *av[])
+int main(int argc, const char *argv[])
 {
-  po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
-  sl::initLogging(vm["loglevel"].as<int>(), true, "");
+  // Parse the command line
+  auto opt = commandLineOptions();
+  if (!sl::parseCommandLine(opt, argc, argv))
+    return 0;
+
+  // Initialise logging
+  int logLevel;
+  opt.get("-l")->getInt(logLevel);
+  sl::initLogging(logLevel);
+
+  // Capture Ctrl+C
   sl::init::initialiseSignalHandler();
-  json config = initConfig(vm);
-  uint port = vm["port"].as<uint>();
+
+  std::string configPath;
+  opt.get("-c")->getString(configPath);
+  json config = initConfig(configPath);
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
-  
+
+  int port;
+  opt.get("-p")->getInt(port);
+
   sl::ServerWrapper s(port, settings);
   s.start();
 

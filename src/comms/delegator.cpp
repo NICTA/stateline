@@ -8,13 +8,13 @@
 
 #include "comms/delegator.hpp"
 
-#include <string>
-#include <boost/algorithm/string.hpp>
-#include <easylogging/easylogging++.h>
-#include <numeric>
-
 #include "comms/datatypes.hpp"
 #include "comms/thread.hpp"
+#include "common/string.hpp"
+
+#include <string>
+#include <easylogging/easylogging++.h>
+#include <numeric>
 
 namespace stateline
 {
@@ -128,7 +128,7 @@ namespace stateline
       else
       {
         std::vector<std::string> jobTypes;
-        boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+        splitStr(jobTypes, msg.data[0], ':');
         assert(jobTypes.size() == 2);
         jobTypeRange.first = std::stoi(jobTypes[0]);
         jobTypeRange.second = std::stoi(jobTypes[1]);
@@ -136,7 +136,7 @@ namespace stateline
 
       Worker w {msg.address, jobTypeRange};
       for (uint i = jobTypeRange.first; i < jobTypeRange.second; i++)
-        w.times.insert(std::make_pair(i, boost::circular_buffer<uint>(10)));
+        w.times.emplace(i, CircularBuffer<uint>{10});
 
       std::string id = w.address.front();
       workers_.insert(std::make_pair(id, w));
@@ -146,9 +146,9 @@ namespace stateline
 
     void Delegator::receiveRequest(const Message& msg)
     {
-      std::string id = boost::algorithm::join(msg.address, ":");
+      std::string id = joinStr(msg.address, ":");
       std::set<std::string> jobTypes;
-      boost::split(jobTypes, msg.data[0], boost::is_any_of(":"));
+      splitStr(jobTypes, msg.data[0], ':');
 
       std::set<uint> jobTypesInt;
       std::transform(jobTypes.begin(), jobTypes.end(),
@@ -186,7 +186,7 @@ namespace stateline
       auto elapsedTime = now - std::max(j.startTime, worker.lastResultTime);
 
       uint usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
-      worker.times[j.type].push_back(usecs);
+      worker.times.at(j.type).push_back(usecs);
       worker.lastResultTime = now;
       Request& r = requests_[j.requesterID];
       r.results[j.requesterIndex] = msg.data[1];

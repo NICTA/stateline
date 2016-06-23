@@ -8,10 +8,10 @@
 
 #include "comms/requester.hpp"
 #include "comms/delegator.hpp"
+#include "common/string.hpp"
 
 #include <iterator>
 #include <string>
-#include <boost/algorithm/string.hpp>
 
 namespace stateline
 {
@@ -30,14 +30,14 @@ namespace stateline
       std::transform(jobTypes.begin(), jobTypes.end(),
                      std::back_inserter(jobTypesStr),
                      [](uint x) { return std::to_string(x); });
-      std::string jtstring = boost::algorithm::join(jobTypesStr, ":");
+      std::string jtstring = joinStr(jobTypesStr, ":");
 
       std::vector<std::string> dataVectorStr;
       for (uint i = 0; i < data.size(); i++) {
         dataVectorStr.push_back(std::to_string(data(i)));
       }
 
-      socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, boost::algorithm::join(dataVectorStr, ":") }});
+      socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, joinStr(dataVectorStr, ":") }});
     }
 
     std::pair<uint, std::vector<double>> Requester::retrieve()

@@ -1,34 +1,23 @@
 #pragma once
 
-#include <boost/program_options.hpp>
+#include "ezOptionParser/ezOptionParser.hpp"
 #include <iostream>
-
-namespace po = boost::program_options;
-// Parse the command line 
 
 namespace stateline
 {
-
-  po::variables_map parseCommandLine(int ac, char* av[], 
-      const po::options_description& opts)
+  bool parseCommandLine(ez::ezOptionParser& opt, int argc, const char* argv[])
   {
-    po::variables_map vm;
-    try
+    opt.parse(argc, argv);
+
+    if (opt.isSet("-h"))
     {
-      po::store(po::parse_command_line(ac, av, opts), vm);
-      po::notify(vm);
-    } catch (const std::exception& ex)
-    {
-      std::cout << "Error: Unrecognised commandline argument" << opts << "\n";
-      exit(EXIT_FAILURE);
+      std::string usage;
+      opt.getUsage(usage);
+      std::cout << usage;
+      return false;
     }
 
-    if (vm.count("help")) 
-    {
-      std::cout << opts << "\n";
-      exit(EXIT_SUCCESS);
-    }
-    return vm;
+    return true;
   }
 
 }
