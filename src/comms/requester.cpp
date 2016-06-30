@@ -1,4 +1,3 @@
-//!
 //! \file comms/requester.cpp
 //! \author Lachlan McCalman
 //! \date 2014
@@ -7,52 +6,45 @@
 //!
 
 #include "comms/requester.hpp"
-#include "comms/delegator.hpp"
-#include "common/string.hpp"
 
-#include <iterator>
+#include "comms/protobuf.hpp"
+
 #include <string>
 
-namespace stateline
+namespace stateline { namespace comms {
+
+Requester::Requester(zmq::context_t& ctx, const std::string& addr)
+  : socket_{ctx, zmq::socket_type::dealer, "toDelegator"}
 {
-  namespace comms
-  {
-    Requester::Requester(zmq::context_t& context)
-        : socket_(context, ZMQ_DEALER ,"toDelegator")
-    {
-      socket_.setIdentifier();
-      socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
-    }
+  socket_.setIdentity();
+  socket_.connect(addr);
+}
 
-    void Requester::submit(uint id, const std::vector<uint>& jobTypes, const Eigen::VectorXd& data)
-    {
-      std::vector<std::string> jobTypesStr;
-      std::transform(jobTypes.begin(), jobTypes.end(),
-                     std::back_inserter(jobTypesStr),
-                     [](uint x) { return std::to_string(x); });
-      std::string jtstring = joinStr(jobTypesStr, ":");
+void Requester::submit(BatchID id, const std::vector<JobType>& jobTypes,
+    const std::vector<double>& data)
+{
+  messages::BatchJob batchJob;
+  batchJob.set_id(id);
 
-      std::vector<std::string> dataVectorStr;
-      for (uint i = 0; i < data.size(); i++) {
-        dataVectorStr.push_back(std::to_string(data(i)));
-      }
+  for (const auto& jobType : jobTypes)
+    batchJob.add_job_type(jobType);
 
-      socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, joinStr(dataVectorStr, ":") }});
-    }
+  for (auto x : data)
+    batchJob.add_data(x);
 
-    std::pair<uint, std::vector<double>> Requester::retrieve()
-    {
-      Message r = socket_.receive();
-      uint id = std::stoul(r.address[0]);
+  socket_.send({"", BATCH_JOB, protobufToString(batchJob)});
+}
 
-      std::vector<double> results;
-      for (const auto& x : r.data)
-      {
-        results.push_back(std::stod(x));
-      }
+std::pair<uint, std::vector<double>> Requester::retrieve()
+{
+  const auto msg = socket_.recv();
+  const auto batchResult = stringToProtobuf<messages::BatchResult>(msg.data);
 
-      return std::make_pair(id, results);
-    }
+  std::vector<double> data;
+  for (int i = 0; i < batchResult.data_size(); i++)
+    data.push_back(batchResult.data(i));
 
-  } // namespace comms
-} // namespace stateline
+  return {batchResult.id(), std::move(data)};
+}
+
+} }

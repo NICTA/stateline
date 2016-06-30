@@ -53,7 +53,7 @@ namespace stateline
 
     private:
       Socket socket_;
-      SocketRouter router_;
+      Router<Socket> router_;
 
       uint msPollRate_;
 

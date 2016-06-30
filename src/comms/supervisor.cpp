@@ -1,24 +1,47 @@
+//! Contains the implementation of the supervisor.
 //!
-//! Contains the implementation of the worker.
-//!
-//! \file comms/worker.cpp
+//! \file comms/supervisor.cpp
 //! \author Lachlan McCalman
-//! \date 2014
+//! \author Darren Shen
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include "comms/worker.hpp"
+#include "comms/endpoint.hpp"
+#include "comms/supervisor.hpp"
 #include "comms/thread.hpp"
 
-#include <cstdlib>
 #include <easylogging/easylogging++.h>
 
-namespace stateline
-{
+namespace stateline { namespace comms {
 
-namespace comms
+namespace {
+
+struct WorkerEndpoint : Endpoint<WorkerEndpoint, Socket>
 {
+  Socket& delegator;
+
+  WorkerEndpoint(RawSocket& worker, Socket& delegator)
+    : Endpoint<WorkerEndpoint, Socket>{worker}
+    , delegator{delegator}
+  {
+  }
+
+  void onHello(const Message& m)
+  {
+    messages::Hello hello;
+    hello.set_worker_id(
+
+    delegator.send(
+  }
+
+  void onResult(const Message& m)
+  {
+  }
+};
+
+}
 
 Worker::Worker(zmq::context_t& ctx, const WorkerSettings& settings, bool& running)
   : minion_{ctx, "toMinion", NO_LINGER}

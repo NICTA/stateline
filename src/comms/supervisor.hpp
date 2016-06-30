@@ -1,11 +1,9 @@
+//! Contains the interface to the supervisor.
 //!
-//! The worker object connects with a delegator, then forwards job requests
-//! to a set of minions that actually perform the work. These minions then
-//! return the worker results, which are forwarded back to the delegator.
-//!
-//! \file comms/worker.hpp
+//! \file comms/supervisor.hpp
 //! \author Lachlan McCalman
-//! \date 2014
+//! \author Darren Shen
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
@@ -23,29 +21,26 @@
 #include "router.hpp"
 #include "socket.hpp"
 
-namespace stateline
-{
+namespace stateline { namespace comms {
 
-namespace comms
-{
-
-//! Worker object that takes jobs, forwards them to a minion
-//! then receives results from the minion and send them back
-//! to the delegator.
+//! A supervisor provides an interface between the delegator and worker.
+//! It manages a set of workers running on the same host and forwards work
+//! from the delegator to those workers.
 //!
-class Worker
+class Supervisor
 {
 public:
   //! Construct a new worker that can handle multiple types of jobs.
   //!
   //! \param settings The configuration object.
   //!
-  Worker(zmq::context_t& ctx, const WorkerSettings& settings, bool& running);
+  Supervisor(zmq::context_t& ctx, const WorkerSettings& settings);
 
-  // Workers can't be copied.
-  Worker(const Worker &) = delete;
+  Supervisor(const Supervisor&) = delete;
+  Supervisor& operator=(const Supervisor&) = delete;
 
-  void start();
+  //! Start the supervisor.
+  void start(bool& running);
 
 private:
   RawSocket minion_;
@@ -54,8 +49,6 @@ private:
 
   uint msPollRate_;
   HeartbeatSettings hbSettings_;
-
-  bool& running_;
 
   std::queue<Message> queue_;
   bool minionWaiting_;

@@ -1,84 +1,101 @@
+//! Tests for socket.
 //!
 //! \file comms/tests/socket.cpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
-//! \date 2015
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <gtest/gtest.h>
+#include "catch/catch.hpp"
 
 #include "comms/socket.hpp"
 
 using namespace stateline::comms;
 
-TEST(Socket, canCreatePairSocketsSharingContext)
+TEST_CASE("Can create PAIR sockets", "[socket]")
 {
-  zmq::context_t context{1};
+  zmq::context_t ctx{1};
 
-  Socket alpha{context, ZMQ_PAIR, "alpha"};
-  EXPECT_EQ("alpha", alpha.name());
+  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
+  REQUIRE(alpha.name() == "alpha");
 
-  Socket beta{context, ZMQ_PAIR, "beta"};
-  EXPECT_EQ("beta", beta.name());
+  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
+  REQUIRE(beta.name() == "beta");
 }
 
-TEST(Socket, canBindAndConnectPairSockets)
+TEST_CASE("Can bind and connect PAIR-PAIR", "[socket]")
 {
-  zmq::context_t context{1};
+  zmq::context_t ctx{1};
 
-  Socket alpha{context, ZMQ_PAIR, "alpha"};
+  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
   alpha.bind("inproc://alpha");
 
-  Socket beta{context, ZMQ_PAIR, "beta"};
+  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
   beta.connect("inproc://alpha");
 }
 
-TEST(Socket, canSendMessagesOverPairSockets)
+TEST_CASE("Can send messages over PAIR-PAIR", "[socket]")
 {
-  zmq::context_t context{1};
+  zmq::context_t ctx{1};
 
-  Socket alpha{context, ZMQ_PAIR, "alpha"};
+  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
   alpha.bind("inproc://alpha");
 
-  Socket beta{context, ZMQ_PAIR, "beta"};
+  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
   beta.connect("inproc://alpha");
 
-  for (int i = 0; i < 10; i++) {
-    Message m{JOB, { std::to_string(i) }};
+  for (int i = 0; i < 3; i++) {
+    Message m{"beta", JOB, std::to_string(i)};
     alpha.send(m);
 
-    auto result = beta.receive();
-    EXPECT_EQ(JOB, result.subject);
-    ASSERT_EQ(1U, result.data.size());
-    EXPECT_EQ(std::to_string(i), result.data[0]);
+    auto result = beta.recv();
+    REQUIRE(result.address == "beta");
+    REQUIRE(result.subject == JOB);
+    REQUIRE(result.data == std::to_string(i));
   }
 }
 
-TEST(Socket, sendFailureThrowsExceptionByDefault)
+TEST_CASE("Can bind and connect ROUTER-DEALER", "[socket]")
 {
-  zmq::context_t context{1};
-  Socket alpha{context, ZMQ_REP, "alpha"};
-  Message m{JOB, { "failure!" }};
-  ASSERT_THROW(alpha.send(m), std::exception);
+  zmq::context_t ctx{1};
+
+  Socket router{ctx, zmq::socket_type::router, "router", NO_LINGER};
+  router.bind("tcp://*:5000");
+
+  Socket dealer{ctx, zmq::socket_type::dealer, "dealer", NO_LINGER};
+  dealer.connect("tcp://localhost:5000");
 }
 
-TEST(Socket, sendFailureCallsCustomFallback)
+TEST_CASE("Can send messages over ROUTER-DEALER", "[socket]")
 {
-  zmq::context_t context{1};
-  Socket alpha{context, ZMQ_REP, "alpha"};
+  zmq::context_t ctx{1};
 
-  bool calledFallback = false;
-  alpha.setFallback([&](const Message &m)
-  {
-    calledFallback = true;
-    EXPECT_EQ(JOB, m.subject);
-    ASSERT_EQ(1U, m.data.size());
-    EXPECT_EQ("failure!", m.data[0]);
-  });
+  Socket router{ctx, zmq::socket_type::router, "router", NO_LINGER};
+  router.bind("tcp://*:5174");
 
-  Message m{JOB, { "failure!" }};
-  alpha.send(m);
-  ASSERT_TRUE(calledFallback);
+  Socket dealer{ctx, zmq::socket_type::dealer, "dealer", NO_LINGER};
+  dealer.setIdentity("dealer");
+  dealer.connect("tcp://localhost:5174");
+
+  for (int i = 0; i < 3; i++) {
+    // When ROUTER receives from DEALER, there should be the address of the DEALER.
+    Message m1{"", JOB, std::to_string(i)};
+    dealer.send(m1);
+
+    auto result1 = router.recv();
+    REQUIRE(result1.address == "dealer");
+    REQUIRE(result1.subject == JOB);
+    REQUIRE(result1.data == std::to_string(i));
+
+    // When DEALER receives from ROUTER, there should be no address.
+    Message m2{"dealer", JOB, std::to_string(i)};
+    router.send(m2);
+
+    auto result2 = dealer.recv();
+    REQUIRE(result2.address == "");
+    REQUIRE(result2.subject == JOB);
+    REQUIRE(result2.data == std::to_string(i));
+  }
 }

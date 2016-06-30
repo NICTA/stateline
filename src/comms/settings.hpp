@@ -83,7 +83,7 @@ namespace stateline
     struct WorkerSettings
     {
       //! The rate at which the receive sockets are polled.
-      int msPollRate;
+      uint msPollRate;
 
       //! The address of the delegator to connect to.
       std::string networkAddress;

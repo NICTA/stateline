@@ -9,7 +9,7 @@
 # CMAKE SETUP
 ##############################################################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
 PROJECT(STATELINE LANGUAGES CXX)
 
 # Use folders
@@ -41,6 +41,9 @@ ENDIF(LOCAL_INSTALL)
 ##############################################################################
 # COMPILATION
 ##############################################################################
+
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_STANDARD 14)
 
 SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP -std=c++11 -fPIC")
 SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
@@ -75,11 +78,16 @@ FIND_PACKAGE(ZMQ REQUIRED)
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
+# Protobuf
+FIND_PACKAGE(Protobuf REQUIRED)
+
 ##############################################################################
 # INCLUDE DIRECTORIES
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
+                    SYSTEM "${PROTOBUF_INCLUDE_DIR}"
+                    SYSTEM "${CMAKE_CURRENT_BINARY_DIR}"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/cppzmq"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
@@ -87,6 +95,7 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}")
 
+ADD_SUBDIRECTORY(proto)
 ADD_SUBDIRECTORY(src/test)
 
 ##############################################################################
@@ -129,11 +138,17 @@ ADD_LIBRARY(statelineserver STATIC #SHARED
   $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
   $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
+
 TARGET_LINK_LIBRARIES(statelineserver ${Boost_LIBRARIES} ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
+ADD_LIBRARY(stateline-server STATIC
+  $<TARGET_OBJECTS:commonwrapper>
+  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>)
+TARGET_LINK_LIBRARIES(stateline-server proto ${ZMQ_LIBRARY} ${PROTOBUF_LIBRARY})
+
 ADD_LIBRARY(statelineclient STATIC #SHARED
-  $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:workerwrapper>
+  $<TARGET_OBJECTS:commonwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:clientcomms>)
 TARGET_LINK_LIBRARIES(statelineclient ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)

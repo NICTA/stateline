@@ -1,4 +1,3 @@
-//!
 //! Contains comms data structures representing jobs and results.
 //!
 //! \file comms/datatypes.hpp
@@ -10,17 +9,12 @@
 
 #pragma once
 
-#include <string>
-#include <chrono>
-
 #include "typedefs.hpp"
 
-namespace stateline
-{
-  namespace comms
-  {
-    //! High resolution clock used for heartbeating
-    typedef std::chrono::high_resolution_clock hrc;
+namespace stateline { namespace comms {
 
-  } // namespace comms
-} // namespace stateline
+using JobID = unsigned int;
+using JobType = unsigned int;
+using BatchID = unsigned int;
+
+} }

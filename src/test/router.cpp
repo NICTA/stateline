@@ -1,110 +1,76 @@
 //!
-//! \file comms/tests/router.cpp
+//! \file comms/TEST_CASEs/router.cpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
-//! \date 2015
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <gtest/gtest.h>
+#include "catch/catch.hpp"
 
 #include "comms/router.hpp"
 
-using namespace stateline;
+#include <chrono>
+
 using namespace stateline::comms;
+using namespace std::chrono_literals;
 
-TEST(Router, canPollRouterWithNoSockets)
+TEST_CASE("Can poll a router with no sockets", "[router]")
 {
-  zmq::context_t context{1};
-  bool running = true;
+  zmq::context_t ctx{1};
 
-  auto routerFuture = std::async(std::launch::async,
-    [](bool& running)
-    {
-      SocketRouter router("testRouter", {});
-      router.poll(100, running);
-    }, std::ref(running));
-
-  running = false;
-  routerFuture.wait();
+  Router<> router{"test_router", std::tuple<>{}};
+  router.pollStep(100ms);
 }
 
-TEST(Router, routerPollCallsOnPollCallback)
+TEST_CASE("Poll calls onPoll callback", "[router]")
 {
-  zmq::context_t context{1};
-  bool running = true;
+  zmq::context_t ctx{1};
 
-  Socket alpha{context, ZMQ_PAIR, "alpha"};
-  alpha.bind("inproc://alpha");
+  bool called = false;
+  Router<> router("test_router", std::tuple<>{});
+  router.bindOnPoll([&called]() { called = true; });
+  router.pollStep(100ms);
 
-  Socket beta{context, ZMQ_PAIR, "beta"};
-  beta.connect("inproc://alpha");
-
-  auto routerFuture = std::async(std::launch::async,
-    [](bool& running, Socket& alpha, Socket& beta)
-    {
-      SocketRouter router("testRouter", { &alpha, &beta });
-      router.bindOnPoll([&]() { running = false; });
-      router.poll(100, running);
-    }, std::ref(running), std::ref(alpha), std::ref(beta));
-
-  routerFuture.wait();
-  EXPECT_FALSE(running);
+  REQUIRE(called == true);
 }
 
-TEST(Router, socketSendCallsBoundCallback)
+TEST_CASE("Router calls bound callbacks", "[router]")
 {
-  zmq::context_t context{1};
-  bool running = true;
+  zmq::context_t ctx{1};
 
-  Socket alpha{context, ZMQ_PAIR, "alpha"};
+  Socket alpha{ctx, zmq::socket_type::pair, "alpha"};
   alpha.bind("inproc://alpha");
 
-  Socket beta{context, ZMQ_PAIR, "beta"};
+  Socket beta{ctx, zmq::socket_type::pair, "beta"};
   beta.connect("inproc://alpha");
 
-  auto routerFuture = std::async(std::launch::async,
-    [](bool& running, Socket& alpha, Socket& beta)
-    {
-      bool alphaReceived = false;
-      bool betaReceived = false;
+  auto alphaReceived = false;
+  auto betaReceived = false;
 
-      SocketRouter router("testRouter", { &alpha, &beta });
+  Router<Socket, Socket> router{"test_router", std::tie(alpha, beta)};
+  router.bind<0, RESULT>([&alphaReceived](const Message& m)
+  {
+    REQUIRE(m.subject == RESULT);
+    REQUIRE(m.data == "result");
+    alphaReceived = true;
+  });
 
-      router.bind(0, REQUEST, [&](const Message& m)
-      {
-        alphaReceived = true;
-        EXPECT_EQ(REQUEST, m.subject);
-        ASSERT_EQ(1U, m.data.size());
-        EXPECT_EQ("request", m.data[0]);
-      });
+  router.bind<1, JOB>([&betaReceived](const Message& m)
+  {
+    REQUIRE(m.subject == JOB);
+    REQUIRE(m.data == "job");
+    betaReceived = true;
+  });
 
-      router.bind(1, JOB, [&](const Message& m)
-      {
-        betaReceived = true;
-        EXPECT_EQ(JOB, m.subject);
-        ASSERT_EQ(1U, m.data.size());
-        EXPECT_EQ("job", m.data[0]);
-      });
+  // Trigger the beta callback
+  alpha.send({"", JOB, "job"});
+  router.pollStep(100ms);
+  REQUIRE(betaReceived);
 
-      router.bindOnPoll([&]()
-      {
-        // Wait until both messages were received
-        if (alphaReceived && betaReceived)
-          running = false;
-      });
-
-      router.poll(100, running);
-
-      ASSERT_TRUE(alphaReceived);
-      ASSERT_TRUE(betaReceived);
-
-    }, std::ref(running), std::ref(alpha), std::ref(beta));
-
-  // Trigger the callbacks
-  beta.send({REQUEST, { "request" }});
-  alpha.send({JOB, { "job" }});
-
-  routerFuture.wait();
+  // Trigger the alpha callback
+  beta.send({"", RESULT, "result"});
+  router.pollStep(100ms);
+  REQUIRE(alphaReceived);
 }

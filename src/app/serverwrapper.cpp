@@ -9,7 +9,7 @@ namespace stateline
   {
     void updateWorkerApi(ApiResources& api, comms::Delegator& delegator)
     {
-      api.set("workers", json({{ "count", delegator.workerCount() }}));
+      //api.set("workers", json({{ "count", delegator.workerCount() }}));
     }
   }
 

@@ -5,6 +5,6 @@
 # Authors: Lachlan McCalman
 # Date: 2014
 
-ADD_LIBRARY(commoncomms OBJECT messages.cpp router.cpp socket.cpp)
-ADD_LIBRARY(servercomms OBJECT serverheartbeat.cpp delegator.cpp requester.cpp)
-ADD_LIBRARY(clientcomms OBJECT clientheartbeat.cpp worker.cpp minion.cpp)
+ADD_LIBRARY(commoncomms OBJECT message.cpp socket.cpp heartbeat.cpp)
+ADD_LIBRARY(servercomms OBJECT requester.cpp)
+ADD_LIBRARY(clientcomms OBJECT worker.cpp)
