@@ -10,9 +10,9 @@
 
 #pragma once
 #include <Eigen/Core>
-#include <boost/circular_buffer.hpp>
 #include <json.hpp>
 #include "../infer/datatypes.hpp"
+#include "../common/circularbuffer.hpp"
 
 namespace stateline
 {

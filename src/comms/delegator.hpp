@@ -11,18 +11,18 @@
 
 #pragma once
 
+#include "settings.hpp"
+#include "messages.hpp"
+#include "router.hpp"
+#include "serverheartbeat.hpp"
+#include "common/circularbuffer.hpp"
+
 #include <set>
 #include <string>
 #include <list>
 #include <atomic>
 
 #include <zmq.hpp>
-#include <boost/circular_buffer.hpp>
-
-#include "settings.hpp"
-#include "messages.hpp"
-#include "router.hpp"
-#include "serverheartbeat.hpp"
 
 namespace stateline
 {
@@ -86,7 +86,7 @@ namespace stateline
           std::vector<std::string> address;
           std::pair<uint, uint> jobTypesRange;
           std::map<std::string, Job> workInProgress;
-          std::map<uint, boost::circular_buffer<uint>> times;
+          std::map<uint, CircularBuffer<uint>> times;
           std::chrono::high_resolution_clock::time_point lastResultTime;
 
           Worker(std::vector<std::string> address,

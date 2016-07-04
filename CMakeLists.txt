@@ -69,21 +69,6 @@ IF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 
-# Boost
-IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  # CMake doesn't seem smart enough to detect boost libraries build with Clang
-  SET(Boost_COMPILER "-clang-darwin42")
-ENDIF()
-
-FIND_PACKAGE(Boost 1.58 REQUIRED COMPONENTS program_options
-                                            system
-                                            filesystem
-                                            regex
-                                            coroutine
-                                            thread
-                                            date_time
-                                            context)
-
 # ZeroMQ
 FIND_PACKAGE(ZMQ REQUIRED)
 
@@ -100,7 +85,6 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
-                    SYSTEM "${Boost_INCLUDE_DIRS}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}")
 
 ADD_SUBDIRECTORY(src/test)

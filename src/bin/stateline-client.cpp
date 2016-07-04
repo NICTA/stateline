@@ -18,7 +18,7 @@
 
 #include <chrono>
 #include <thread>
-#include <boost/program_options.hpp>
+#include "ezoptionparser/ezOptionParser.hpp"
 
 #include "../app/logging.hpp"
 #include "../app/commandline.hpp"
@@ -27,42 +27,40 @@
 #include "../comms/thread.hpp"
 
 namespace sl = stateline;
-namespace po = boost::program_options;
 namespace ph = std::placeholders;
 namespace ch = std::chrono;
 
-po::options_description commandLineOptions()
+ez::ezOptionParser commandLineOptions()
 {
-  auto opts = po::options_description("Stateline client worker options");
-  opts.add_options()
-    ("help,h", "Print help message")
-    ("loglevel,l", po::value<int>()->default_value(0), "Logging level")
-    ("networkAddr,n",po::value<std::string>()->default_value("localhost:5555"), "Address of delegator")
-    ("workerAddr,w",po::value<std::string>()->default_value("ipc:///tmp/sl_worker.sock"),
-      "Address of worker for minion to connect to")
-    ;
-  return opts;
+  ez::ezOptionParser opt;
+  opt.overview = "Stateline client worker options";
+  opt.add("", 0, 0, 0, "Print help message", "-h", "--help");
+  opt.add("0", 0, 1, 0, "Logging level", "-l", "--log-level");
+  opt.add("localhost:5555", 0, 1, 0, "Address of delegator", "-n", "--network-addr");
+  opt.add("ipc:///tmp/sl_worker.sock", 0, 1, 0, "Address of worker for minion to connect to", "-w", "--worker-addr");
+  return opt;
 }
 
-int main(int ac, char *av[])
+int main(int argc, const char *argv[])
 {
-  // --------------------------------------------------------------------------
-  // Initialise command line options and logging
-  // --------------------------------------------------------------------------
-  po::variables_map vm = sl::parseCommandLine(ac, av, commandLineOptions());
-  
-  // Initialise the logging settings
-  sl::initLogging(vm["loglevel"].as<int>(), true, "");
-  
-  // This allows the user to interrupt using Ctrl-C.
-  sl::init::initialiseSignalHandler();
+  // Parse the command line
+  auto opt = commandLineOptions();
+  opt.parse(argc, argv);
 
+  // Initialise logging
+  int logLevel;
+  opt.get("-l")->getInt(logLevel);
+  sl::initLogging(logLevel);
+
+  // Capture Ctrl+C
+  sl::init::initialiseSignalHandler();
 
   // --------------------------------------------------------------------------
   // Initialise the worker
   // --------------------------------------------------------------------------
-  std::string networkAddr = vm["networkAddr"].as<std::string>();
-  std::string workerAddr = vm["workerAddr"].as<std::string>();
+  std::string networkAddr, workerAddr;
+  opt.get("-n")->getString(networkAddr);
+  opt.get("-w")->getString(workerAddr);
   sl::comms::WorkerSettings settings = sl::comms::WorkerSettings::Default(networkAddr, workerAddr);
 
   // In Stateline, a worker can handle multiple job types. Since the server

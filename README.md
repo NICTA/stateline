@@ -322,7 +322,7 @@ Any user-supplied function can be used as a likelihood, provided
 For a slightly more complete demo, take a look at `demo-worker.cpp` in `src/bin`. It has an associated config file `demo-worker.json` to provide the server. The `demo-worker` is built automatically, so feel free to try it out from the build folder. To do so, run the Stateline server in a terminal:
 
 ```bash
-$ ./stateline --config=demo-config.json
+$ ./stateline --config demo-config.json
 ```
 
 Then in a new terminal, run one or more workers:
@@ -399,7 +399,7 @@ For a slightly more complete demo, take a look at `demo-worker.py` in `src/bin`.
 This worker is copied into the build folder by default. To try it out, run the Stateline server in a terminal:
 
 ```bash
-$ ./stateline --config=demo-config.json
+$ ./stateline --config demo-config.json
 ```
 
 Then, in another terminal, run one or more workers:
