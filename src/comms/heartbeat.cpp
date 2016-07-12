@@ -20,42 +20,63 @@ Heartbeat::Heartbeat()
 {
 }
 
-void Heartbeat::connect(const std::string& addr, std::chrono::seconds interval)
+void Heartbeat::connect(const std::string& addr, std::chrono::seconds timeout)
 {
-  auto ret = conns_.emplace(std::piecewise_construct,
+  // We send 2 heartbeats per timeout
+  const auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(timeout) / 2;
+
+  conns_.emplace(std::piecewise_construct,
       std::forward_as_tuple(addr),
       std::forward_as_tuple(interval));
-
-  sendHeartbeat(*ret.first);
 }
 
-void Heartbeat::disconnect(const std::string& addr)
+void Heartbeat::disconnect(const std::string& addr, DisconnectReason reason)
 {
-  VLOG(1) << addr << " disconnected";
+  switch (reason)
+  {
+    case DisconnectReason::USER_REQUESTED:
+      VLOG(1) << addr << " disconnected by request";
+      break;
+
+    case DisconnectReason::TIMEOUT:
+      VLOG(1) << addr << " disconnected by time out";
+      break;
+  }
+
+  disconnectCallback_(addr);
   conns_.erase(addr);
 }
 
-void Heartbeat::update(const std::string& addr)
+void Heartbeat::updateLastSendTime(const std::string& addr)
 {
   auto it = conns_.find(addr);
   if (it == conns_.end())
     return;
 
-  it->second.lastRecvTime = hrc::now();
+  it->second.lastSendTime = Clock::now();
 }
 
-std::chrono::milliseconds Heartbeat::idle()
+void Heartbeat::updateLastRecvTime(const std::string& addr)
 {
-  const auto now = hrc::now();
+  auto it = conns_.find(addr);
+  if (it == conns_.end())
+    return;
+
+  it->second.lastRecvTime = Clock::now();
+}
+
+void Heartbeat::idle()
+{
+  const auto now = Clock::now();
 
   // Send any outstanding heartbeats.
-  hrc::time_point closest_timeout = hrc::time_point::max();
+  nextTimeout_ = Clock::time_point::max();
   for (auto& kv : conns_)
   {
     if (kv.second.lastSendTime + kv.second.interval <= now)
       sendHeartbeat(kv);
 
-    closest_timeout = std::min(closest_timeout,
+    nextTimeout_ = std::min(nextTimeout_,
         kv.second.lastSendTime + kv.second.interval);
   }
 
@@ -74,10 +95,6 @@ std::chrono::milliseconds Heartbeat::idle()
       ++it;
     }
   }
-
-  // TODO: implement heartbeat negotation
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-      hrc::now() - closest_timeout);
 }
 
 void Heartbeat::sendHeartbeat(ConnMap::value_type& kv)
@@ -85,7 +102,7 @@ void Heartbeat::sendHeartbeat(ConnMap::value_type& kv)
   VLOG(4) << "Sending HEARTBEAT to " << kv.first;
 
   heartbeatCallback_(kv.first);
-  kv.second.lastSendTime = hrc::now();
+  kv.second.lastSendTime = Clock::now();
 }
 
 } }

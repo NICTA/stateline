@@ -17,16 +17,11 @@
 
 #include <zmq_addon.hpp>
 
-namespace stateline
-{
-
-namespace comms
-{
+namespace stateline { namespace comms {
 
 SocketBase::SocketBase(zmq::context_t& context, zmq::socket_type type, std::string name, int linger)
   : socket_{context, type}
   , name_{std::move(name)}
-  , onFailedSend_{[](const Message&) { throw std::runtime_error{"Failed to send message"}; }}
 {
   socket_.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 }
@@ -48,43 +43,41 @@ void SocketBase::bind(const std::string& address)
   }
 }
 
-Socket::Socket(zmq::context_t& ctx, zmq::socket_type type, std::string name, int linger)
-  : SocketBase(ctx, type, std::move(name), linger)
+bool SocketBase::send(const std::string& address, const std::string& data)
 {
-}
-
-void Socket::send(const Message& m)
-{
-  VLOG(5) << "Socket " << name() << " sending " << m;
-
   zmq::multipart_t msg;
-  if (!m.address.empty())
-    msg.addstr(m.address);
-  msg.addtyp(m.subject);
-  msg.addstr(m.data);
+  if (!address.empty())
+    msg.addstr(address);
+  msg.addstr(data);
 
   // Send the message
-  if (!msg.send(zmqSocket()))
-    onFailedSend(m);
+  if (msg.send(socket_))
+  {
+    hb_.updateLastSendTime(address);
+    return true;
+  }
+
+  // TODO: disconnect heartbeat immediately
+  return false;
 }
 
-Message Socket::recv()
+std::pair<std::string, std::string> SocketBase::recv()
 {
   // Receive a multipart message
-  zmq::multipart_t msg{zmqSocket()};
-  assert(msg.size() == 2 || msg.size() == 3);
+  zmq::multipart_t msg{socket_};
+  assert(msg.size() == 1 || msg.size() == 2);
 
-  // Get the address, subject and data in order
-  auto address = msg.size() == 2 ? "" : msg.popstr();
-  auto subject = msg.poptyp<Subject>();
+  // Get the address and data
+  auto address = msg.size() == 1 ? "" : msg.popstr();
   auto data = msg.popstr();
 
-  Message m{std::move(address), subject, std::move(data)};
-  VLOG(5) << "Socket " << name() << " received " << m;
-  return m;
+  hb_.updateLastRecvTime(address);
+
+  return {std::move(address), std::move(data)};
 }
 
-void Socket::setIdentity()
+
+void SocketBase::setIdentity()
 {
   // Inspired by zhelpers.hpp
   std::random_device rd;
@@ -97,11 +90,45 @@ void Socket::setIdentity()
   setIdentity(ss.str());
 }
 
-void Socket::setIdentity(const std::string& id)
+void SocketBase::setIdentity(const std::string& id)
 {
-  zmqSocket().setsockopt(ZMQ_IDENTITY, id.c_str(), id.length());
+  socket_.setsockopt(ZMQ_IDENTITY, id.c_str(), id.length());
 }
 
-} // namespace comms
+void SocketBase::startHeartbeats(const std::string& address, std::chrono::seconds timeout)
+{
+  hb_.connect(address, timeout);
+}
 
-} // namespace stateline
+Socket::Socket(zmq::context_t& ctx, zmq::socket_type type, std::string name, int linger)
+  : SocketBase(ctx, type, std::move(name), linger)
+{
+}
+
+bool Socket::send(const Message& m)
+{
+  VLOG(5) << "Socket " << name() << " sending " << m;
+
+  // Pack the subject and the data together
+  std::string buffer(sizeof(Subject) + m.data.size(), ' ');
+  memcpy(&buffer[0], reinterpret_cast<const char*>(&m.subject), sizeof(Subject));
+  memcpy(&buffer[0] + sizeof(Subject), m.data.data(), m.data.size());
+
+  return SocketBase::send(m.address, buffer);
+}
+
+Message Socket::recv()
+{
+  auto msg = SocketBase::recv();
+  assert(msg.second.size() >= sizeof(Subject));
+
+  // Unpack the subject and data
+  const auto subject = *reinterpret_cast<Subject*>(&msg.second[0]);
+  std::string data{msg.second.data() + sizeof(Subject), msg.second.data() + msg.second.size()};
+
+  Message m{msg.first, subject, std::move(data)};
+  VLOG(5) << "Socket " << name() << " received " << m;
+  return m;
+}
+
+} }

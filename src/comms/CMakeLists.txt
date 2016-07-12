@@ -7,4 +7,4 @@
 
 ADD_LIBRARY(commoncomms OBJECT message.cpp socket.cpp heartbeat.cpp)
 ADD_LIBRARY(servercomms OBJECT requester.cpp)
-ADD_LIBRARY(clientcomms OBJECT worker.cpp)
+ADD_LIBRARY(clientcomms OBJECT agent.cpp)

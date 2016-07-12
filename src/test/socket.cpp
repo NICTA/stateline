@@ -13,89 +13,168 @@
 #include "comms/socket.hpp"
 
 using namespace stateline::comms;
+using namespace std::chrono_literals;
 
-TEST_CASE("Can create PAIR sockets", "[socket]")
+TEST_CASE("can send messages over PAIR-PAIR SocketBases", "[socket_base]")
 {
   zmq::context_t ctx{1};
 
-  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
-  REQUIRE(alpha.name() == "alpha");
+  SECTION("constructor correctly initialises name")
+  {
+    SocketBase alpha{ctx, zmq::socket_type::pair, "alpha"};
+    REQUIRE(alpha.name() == "alpha");
 
-  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
-  REQUIRE(beta.name() == "beta");
-}
+    SocketBase beta{ctx, zmq::socket_type::pair, "beta"};
+    REQUIRE(beta.name() == "beta");
 
-TEST_CASE("Can bind and connect PAIR-PAIR", "[socket]")
-{
-  zmq::context_t ctx{1};
+    SECTION("can bind and connect")
+    {
+      alpha.bind("inproc://alpha");
+      beta.connect("inproc://alpha");
 
-  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
-  alpha.bind("inproc://alpha");
+      SECTION("can send and receive")
+      {
+        for (int i = 0; i < 3; i++)
+        {
+          alpha.send("beta", std::to_string(i));
 
-  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
-  beta.connect("inproc://alpha");
-}
-
-TEST_CASE("Can send messages over PAIR-PAIR", "[socket]")
-{
-  zmq::context_t ctx{1};
-
-  Socket alpha{ctx, zmq::socket_type::pair, "alpha", NO_LINGER};
-  alpha.bind("inproc://alpha");
-
-  Socket beta{ctx, zmq::socket_type::pair, "beta", NO_LINGER};
-  beta.connect("inproc://alpha");
-
-  for (int i = 0; i < 3; i++) {
-    Message m{"beta", JOB, std::to_string(i)};
-    alpha.send(m);
-
-    auto result = beta.recv();
-    REQUIRE(result.address == "beta");
-    REQUIRE(result.subject == JOB);
-    REQUIRE(result.data == std::to_string(i));
+          const auto result = beta.recv();
+          REQUIRE(result.first == "beta");
+          REQUIRE(result.second == std::to_string(i));
+        }
+      }
+    }
   }
 }
 
-TEST_CASE("Can bind and connect ROUTER-DEALER", "[socket]")
+TEST_CASE("can send messages over REQ-REP SocketBases", "[socket_base]")
 {
   zmq::context_t ctx{1};
 
-  Socket router{ctx, zmq::socket_type::router, "router", NO_LINGER};
-  router.bind("tcp://*:5000");
+  SocketBase req{ctx, zmq::socket_type::req, "req"};
+  SocketBase rep{ctx, zmq::socket_type::rep, "rep"};
 
-  Socket dealer{ctx, zmq::socket_type::dealer, "dealer", NO_LINGER};
-  dealer.connect("tcp://localhost:5000");
+  SECTION("can bind and connect")
+  {
+    rep.bind("inproc://test");
+    req.connect("inproc://test");
+
+    SECTION("can send and receive")
+    {
+      req.send("", "data");
+
+      const auto result = rep.recv();
+      REQUIRE(result.first == "");
+      REQUIRE(result.second == "data");
+    }
+  }
 }
 
-TEST_CASE("Can send messages over ROUTER-DEALER", "[socket]")
+
+TEST_CASE("can send messages over ROUTER-DEALER SocketBases", "[socket_base]")
 {
   zmq::context_t ctx{1};
 
-  Socket router{ctx, zmq::socket_type::router, "router", NO_LINGER};
+  SocketBase router{ctx, zmq::socket_type::router, "router"};
   router.bind("tcp://*:5174");
 
-  Socket dealer{ctx, zmq::socket_type::dealer, "dealer", NO_LINGER};
+  SocketBase dealer{ctx, zmq::socket_type::dealer, "dealer"};
   dealer.setIdentity("dealer");
   dealer.connect("tcp://localhost:5174");
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++)
+  {
     // When ROUTER receives from DEALER, there should be the address of the DEALER.
-    Message m1{"", JOB, std::to_string(i)};
-    dealer.send(m1);
+    dealer.send("", std::to_string(i));
 
-    auto result1 = router.recv();
+    const auto result1 = router.recv();
+    REQUIRE(result1.first == "dealer");
+    REQUIRE(result1.second == std::to_string(i));
+
+    // When DEALER receives from ROUTER, there should be no address.
+    router.send("dealer", std::to_string(i));
+
+    const auto result2 = dealer.recv();
+    REQUIRE(result2.first == "");
+    REQUIRE(result2.second == std::to_string(i));
+  }
+}
+
+TEST_CASE("SocketBase keeps track of heartbeats", "[socket_base]")
+{
+  zmq::context_t ctx{1};
+
+  SocketBase router{ctx, zmq::socket_type::router, "router"};
+  router.bind("tcp://*:5174");
+
+  SocketBase dealer{ctx, zmq::socket_type::dealer, "dealer"};
+  dealer.setIdentity("dealer");
+  dealer.connect("tcp://localhost:5174");
+
+  SECTION("ignores incoming message if connection is not registered")
+  {
+    dealer.send("", "hi");
+    router.recv();
+
+    REQUIRE(router.heartbeats().numConnections() == 0);
+  }
+
+  SECTION("updates heartbeat manager when registering a new connection")
+  {
+    router.startHeartbeats("dealer", 1s);
+
+    REQUIRE(router.heartbeats().numConnections() == 1);
+
+    SECTION("updates last send time when sending")
+    {
+      const auto lastSendTime = router.heartbeats().lastSendTime("dealer");
+
+      router.send("dealer", "hi");
+
+      REQUIRE(router.heartbeats().lastSendTime("dealer") > lastSendTime);
+    }
+
+    SECTION("updates last recv time when receiving")
+    {
+      const auto lastRecvTime = router.heartbeats().lastRecvTime("dealer");
+
+      dealer.send("", "hi");
+      router.recv();
+
+      REQUIRE(router.heartbeats().lastRecvTime("dealer") > lastRecvTime);
+    }
+  }
+}
+
+TEST_CASE("Can send messages over ROUTER-DEALER Sockets", "[socket]")
+{
+  zmq::context_t ctx{1};
+
+  Socket router{ctx, zmq::socket_type::router, "router"};
+  router.bind("tcp://*:5174");
+
+  Socket dealer{ctx, zmq::socket_type::dealer, "dealer"};
+  dealer.setIdentity("dealer");
+  dealer.connect("tcp://localhost:5174");
+
+  for (int i = 0; i < 3; i++)
+  {
+    // When ROUTER receives from DEALER, there should be the address of the DEALER.
+    Message msg1{"", JOB, std::to_string(i)};
+    dealer.send(msg1);
+
+    const auto result1 = router.recv();
     REQUIRE(result1.address == "dealer");
     REQUIRE(result1.subject == JOB);
     REQUIRE(result1.data == std::to_string(i));
 
     // When DEALER receives from ROUTER, there should be no address.
-    Message m2{"dealer", JOB, std::to_string(i)};
-    router.send(m2);
+    Message msg2{"dealer", RESULT, std::to_string(i)};
+    router.send(msg2);
 
-    auto result2 = dealer.recv();
+    const auto result2 = dealer.recv();
     REQUIRE(result2.address == "");
-    REQUIRE(result2.subject == JOB);
+    REQUIRE(result2.subject == RESULT);
     REQUIRE(result2.data == std::to_string(i));
   }
 }

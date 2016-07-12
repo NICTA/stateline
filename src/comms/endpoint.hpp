@@ -10,6 +10,7 @@
 #pragma once
 
 #include "comms/socket.hpp"
+#include <iostream>
 
 namespace stateline { namespace comms {
 
@@ -18,23 +19,20 @@ namespace stateline { namespace comms {
 //! To create a new endpoint, inherit from this class and implement any of the
 //! callback handlers.
 //!
-template <class Base, class SocketType>
+template <class Base>
 class Endpoint
 {
 public:
-  Endpoint(SocketType& socket)
+  explicit Endpoint(Socket& socket)
     : socket_{socket}
   {
   }
 
+  Socket& socket() { return socket_; }
+
   void accept()
   {
     handle(socket_.recv());
-  }
-
-  zmq::socket_t& zmqSocket()
-  {
-    return socket_.zmqSocket();
   }
 
   void handle(const Message& m)
@@ -49,8 +47,13 @@ public:
         self().onHello(m);
         break;
 
+      case WELCOME:
+        self().onWelcome(m);
+        break;
+
       default:
         // TODO: unrecognised subject
+        onDefault(m);
         break;
     }
 
@@ -61,6 +64,7 @@ public:
   void onDefault(const Message&) { }
   void onHeartbeat(const Message& m) { self().onDefault(m); }
   void onHello(const Message& m) { self().onDefault(m); }
+  void onWelcome(const Message& m) { self().onDefault(m); }
   void onBye(const Message& m) { self().onDefault(m); }
   void onJob(const Message& m) { self().onDefault(m); }
   void onResult(const Message& m) { self().onDefault(m); }
@@ -70,7 +74,7 @@ public:
 private:
   Base& self() { return *static_cast<Base*>(this); }
 
-  SocketType& socket_;
+  Socket& socket_;
 };
 
 } // namespace stateline

@@ -15,12 +15,14 @@ ADD_CUSTOM_TARGET(check
 
 ADD_EXECUTABLE(${test_suite_name} EXCLUDE_FROM_ALL
   main.cpp
+  binary.cpp
   socket.cpp
-  endpoint.cpp
-  poll.cpp
-  router.cpp
   heartbeat.cpp
-  requester.cpp
+  endpoint.cpp
+  router.cpp
+  agent.cpp
+  #poll.cpp
+  #requester.cpp
   #delegator.cpp diagnostics.cpp router.cpp socket.cpp
   # chainarray.cpp db.cpp
 )

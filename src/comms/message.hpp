@@ -24,11 +24,12 @@ enum Subject : std::uint8_t // TODO: make this an enum class
 {
   HEARTBEAT = 0,
   HELLO = 1,
-  BYE = 2,
-  JOB = 3,
-  RESULT = 4,
-  BATCH_JOB = 5,
-  BATCH_RESULT = 6,
+  WELCOME = 2,
+  BYE = 3,
+  JOB = 4,
+  RESULT = 5,
+  BATCH_JOB = 6,
+  BATCH_RESULT = 7,
   SIZE
 };
 

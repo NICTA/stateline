@@ -1,14 +1,22 @@
 #include "comms/message.hpp"
 
-namespace stateline
-{
+namespace stateline { namespace comms {
 
-namespace comms
+std::string subjectToString(Subject s)
 {
+  switch (s)
+  {
+    case HELLO:
+      return "HELLO";
+  }
+
+  return "UNKNOWN";
+}
 
 std::ostream& operator<<(std::ostream& os, const Message& m)
 {
-  os << "|" << m.address << "|<" << m.data.size() << " data frames>|";
+  os << "|" << m.address << "|" << subjectToString(m.subject) <<
+    "|<" << m.data.size() << " bytes>|";
   return os;
 }
 

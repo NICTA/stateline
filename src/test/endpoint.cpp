@@ -13,24 +13,21 @@
 
 using namespace stateline::comms;
 
-namespace
-{
+namespace {
 
-struct TestEndpoint : Endpoint<TestEndpoint, Socket>
+// TODO: put this into a separate file shared with other tests
+struct TestEndpoint : Endpoint<TestEndpoint>
 {
-  TestEndpoint(Socket& s) : Endpoint<TestEndpoint, Socket>(s) { };
+  TestEndpoint(Socket& socket) : Endpoint<TestEndpoint>{socket} { };
 
-  void onHeartbeat(const Message& m)
-  {
-    handledHeartbeat = true;
-  }
+  void onHeartbeat(const Message& m) { handledHeartbeat = true; }
 
   bool handledHeartbeat{false};
 };
 
 }
 
-TEST_CASE("Can create an endpoint with a socket", "[endpoint]")
+TEST_CASE("endpoints handle messages correctly", "[endpoint]")
 {
   zmq::context_t ctx{1};
 
@@ -40,30 +37,14 @@ TEST_CASE("Can create an endpoint with a socket", "[endpoint]")
   Socket beta{ctx, zmq::socket_type::pair, "beta"};
   beta.connect("inproc://alpha");
 
-  TestEndpoint endpoint{alpha};
+  TestEndpoint alphaEndpoint{alpha};
 
-  Message msg{"", HEARTBEAT, ""};
-  beta.send(msg);
+  SECTION("handles heartbeat message")
+  {
+    Message msg{"", HEARTBEAT, ""};
+    beta.send(msg);
 
-  endpoint.accept();
-  REQUIRE(endpoint.handledHeartbeat);
-}
-
-TEST_CASE("Endpoints have default implementations", "[endpoint]")
-{
-  zmq::context_t ctx{1};
-
-  Socket alpha{ctx, zmq::socket_type::pair, "alpha"};
-  alpha.bind("inproc://alpha");
-
-  Socket beta{ctx, zmq::socket_type::pair, "beta"};
-  beta.connect("inproc://alpha");
-
-  TestEndpoint endpoint{alpha};
-
-  Message msg{"", HELLO, ""};
-  beta.send(msg);
-
-  endpoint.accept();
-  REQUIRE(!endpoint.handledHeartbeat);
+    alphaEndpoint.accept();
+    REQUIRE(alphaEndpoint.handledHeartbeat);
+  }
 }

@@ -18,7 +18,6 @@
 #include <zmq.hpp>
 
 #include "settings.hpp"
-#include "messages.hpp"
 #include "datatypes.hpp"
 #include "router.hpp"
 #include "socket.hpp"
@@ -48,9 +47,9 @@ public:
   void start();
 
 private:
-  RawSocket minion_;
+  Socket minion_;
   Socket network_;
-  Router<RawSocket, Socket> router_;
+  Router<Socket, Socket> router_;
 
   uint msPollRate_;
   HeartbeatSettings hbSettings_;

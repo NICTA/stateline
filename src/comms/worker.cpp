@@ -14,17 +14,12 @@
 #include <cstdlib>
 #include <easylogging/easylogging++.h>
 
-namespace stateline
-{
-
-namespace comms
-{
+namespace stateline { namespace comms {
 
 Worker::Worker(zmq::context_t& ctx, const WorkerSettings& settings, bool& running)
-  : minion_{ctx, "toMinion", NO_LINGER}
+  : minion_{ctx, zmq::socket_type::dealer, "toMinion", NO_LINGER}
   , network_{ctx, zmq::socket_type::dealer, "toNetwork", NO_LINGER}
   , router_{"worker", std::tie(minion_, network_)}
-  , msPollRate_{settings.msPollRate}
   , hbSettings_{settings.heartbeat}
   , running_{running}
   , minionWaiting_{true}

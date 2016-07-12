@@ -17,12 +17,42 @@
 using namespace stateline::comms;
 using namespace std::chrono_literals;
 
-TEST_CASE("Heartbeat idle returns correct wait time", "[heartbeat]")
+TEST_CASE("heartbeat can connect and disconnect", "[heartbeat]")
 {
   Heartbeat hb;
-  hb.connect("foo", 1s);
+
+  SECTION("defaults to no connections")
+  {
+    REQUIRE(hb.numConnections() == 0);
+  }
+
+  SECTION("connect updates connections")
+  {
+    hb.connect("foo", 1s);
+    REQUIRE(hb.numConnections() == 1);
+
+    SECTION("connecting same address updates connections")
+    {
+      hb.connect("foo", 2s); // TODO
+      REQUIRE(hb.numConnections() == 1);
+    }
+
+    SECTION("disconnect updates connections")
+    {
+      hb.disconnect("foo");
+      REQUIRE(hb.numConnections() == 0);
+
+      SECTION("disconnecting same address does nothing")
+      {
+        hb.disconnect("foo");
+        REQUIRE(hb.numConnections() == 0);
+      }
+    }
+  }
+
+  /*
   std::this_thread::sleep_for(500ms);
   hb.connect("bar", 1s);
 
-  REQUIRE(hb.idle() < 500ms);
+  REQUIRE(hb.idle() < 500ms);*/
 }

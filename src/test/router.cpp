@@ -9,6 +9,7 @@
 
 #include "catch/catch.hpp"
 
+#include "comms/endpoint.hpp"
 #include "comms/router.hpp"
 
 #include <chrono>
@@ -16,27 +17,33 @@
 using namespace stateline::comms;
 using namespace std::chrono_literals;
 
-TEST_CASE("Can poll a router with no sockets", "[router]")
+namespace {
+
+struct TestEndpoint : Endpoint<TestEndpoint>
+{
+  TestEndpoint(Socket& socket)
+    : Endpoint<TestEndpoint>{socket} { };
+
+  void onHeartbeat(const Message& m) { handledHeartbeat = true; }
+
+  bool handledHeartbeat{false};
+};
+
+}
+
+TEST_CASE("can poll a router with no sockets", "[router]")
 {
   zmq::context_t ctx{1};
 
-  Router<> router{"test_router", std::tuple<>{}};
-  router.pollStep(100ms);
+  Router<> router{"test_router", std::tie()};
+
+  bool idleCalled = false;
+  router.poll([&idleCalled]() { idleCalled = true; });
+
+  REQUIRE(idleCalled == true);
 }
 
-TEST_CASE("Poll calls onPoll callback", "[router]")
-{
-  zmq::context_t ctx{1};
-
-  bool called = false;
-  Router<> router("test_router", std::tuple<>{});
-  router.bindOnPoll([&called]() { called = true; });
-  router.pollStep(100ms);
-
-  REQUIRE(called == true);
-}
-
-TEST_CASE("Router calls bound callbacks", "[router]")
+TEST_CASE("router poll calls the correct callbacks", "[router]")
 {
   zmq::context_t ctx{1};
 
@@ -46,31 +53,21 @@ TEST_CASE("Router calls bound callbacks", "[router]")
   Socket beta{ctx, zmq::socket_type::pair, "beta"};
   beta.connect("inproc://alpha");
 
-  auto alphaReceived = false;
-  auto betaReceived = false;
+  TestEndpoint alphaEndpoint{alpha};
+  TestEndpoint betaEndpoint{beta};
 
-  Router<Socket, Socket> router{"test_router", std::tie(alpha, beta)};
-  router.bind<0, RESULT>([&alphaReceived](const Message& m)
+  Router<TestEndpoint, TestEndpoint> router("test_router",
+      std::tie(alphaEndpoint, betaEndpoint));
+
+  SECTION("calls the correct callback when message is received")
   {
-    REQUIRE(m.subject == RESULT);
-    REQUIRE(m.data == "result");
-    alphaReceived = true;
-  });
+    bool idleCalled = false;
 
-  router.bind<1, JOB>([&betaReceived](const Message& m)
-  {
-    REQUIRE(m.subject == JOB);
-    REQUIRE(m.data == "job");
-    betaReceived = true;
-  });
+    Message msg{"", HEARTBEAT, ""};
+    alpha.send(msg);
+    router.poll([&idleCalled]() { idleCalled = true; });
 
-  // Trigger the beta callback
-  alpha.send({"", JOB, "job"});
-  router.pollStep(100ms);
-  REQUIRE(betaReceived);
-
-  // Trigger the alpha callback
-  beta.send({"", RESULT, "result"});
-  router.pollStep(100ms);
-  REQUIRE(alphaReceived);
+    REQUIRE(betaEndpoint.handledHeartbeat == true);
+    REQUIRE(idleCalled == true);
+  }
 }
