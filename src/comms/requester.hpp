@@ -34,17 +34,14 @@ public:
   //! are retrieved they may not arrive in the order they were submitted.
   //!
   //! \param id The id of the batch
-  //! \param jobTypes The vector of jobs to compute
   //! \param data The data shared between all the jobs
   //!
-  void submit(BatchID id, const std::vector<JobType>& jobTypes,
-      const std::vector<double>& data);
+  void submit(BatchID id, const std::vector<double>& data);
 
   //! Retrieves the results of a batch submitted previously.
-  //! This call blocks until the result of a batch is available. The order of the
-  //! results within the batch corresponds to the order of the submitted job types.
+  //! This call blocks until the result of a batch is available.
   //!
-  //! \returns A pair of the job id and the result.
+  //! \returns A pair of the job id and the results for each job type.
   //!
   std::pair<BatchID, std::vector<double>> retrieve();
 

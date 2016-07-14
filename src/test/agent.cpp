@@ -10,7 +10,6 @@
 #include "catch/catch.hpp"
 
 #include "comms/agent.hpp"
-#include "comms/binary.hpp"
 #include "comms/protocol.hpp"
 
 #include <chrono>

@@ -16,7 +16,7 @@
 namespace stateline { namespace comms {
 
 template <class T>
-void packValue(std::string& buf, T& val)
+void packValue(std::string& buf, const T& val)
 {
   buf.append(reinterpret_cast<const char*>(&val), sizeof(T));
 }
