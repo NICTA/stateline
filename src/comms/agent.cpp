@@ -11,8 +11,8 @@
 #include "comms/agent.hpp"
 
 #include "comms/endpoint.hpp"
-#include "comms/protobuf.hpp"
 #include "comms/router.hpp"
+#include "comms/protocol.hpp"
 
 #include <queue>
 
@@ -20,29 +20,19 @@
 
 namespace stateline { namespace comms {
 
-namespace {
-
-struct AgentState
+Agent::State::State(Socket& worker, Socket& network)
+  : worker{worker}
+  , network{network}
+  , workerWaiting{true}
 {
-  Socket& worker;
-  Socket& network;
-  std::queue<Message> queue;
-  bool workerWaiting;
+}
 
-  AgentState(Socket& worker, Socket& network)
-    : worker{worker}
-    , network{network}
-    , workerWaiting{false}
-  {
-  }
-};
-
-struct WorkerEndpoint : Endpoint<WorkerEndpoint>
+struct Agent::WorkerEndpoint : Endpoint<WorkerEndpoint>
 {
-  AgentState& agent;
+  Agent::State& agent;
   std::chrono::seconds timeout;
 
-  WorkerEndpoint(AgentState& agent, std::chrono::seconds timeout)
+  WorkerEndpoint(Agent::State& agent, std::chrono::seconds timeout)
     : Endpoint<WorkerEndpoint>{agent.worker}
     , agent{agent}
     , timeout{timeout}
@@ -51,9 +41,9 @@ struct WorkerEndpoint : Endpoint<WorkerEndpoint>
 
   void onHello(const Message& m)
   {
-    messages::Hello hello;
-    hello.set_hb_timeout_secs(timeout.count());
-    agent.network.send({"", HELLO, protobufToString(hello)});
+    protocol::Hello hello;
+    hello.hbTimeoutSecs = timeout.count();
+    agent.network.send({"", HELLO, serialise(hello)});
   }
 
   void onResult(const Message& m)
@@ -72,11 +62,11 @@ struct WorkerEndpoint : Endpoint<WorkerEndpoint>
   }
 };
 
-struct NetworkEndpoint : Endpoint<NetworkEndpoint>
+struct Agent::NetworkEndpoint : Endpoint<NetworkEndpoint>
 {
-  AgentState& agent;
+  Agent::State& agent;
 
-  NetworkEndpoint(AgentState& agent)
+  NetworkEndpoint(Agent::State& agent)
     : Endpoint<NetworkEndpoint>{agent.network}
     , agent{agent}
   {
@@ -84,16 +74,21 @@ struct NetworkEndpoint : Endpoint<NetworkEndpoint>
 
   void onWelcome(const Message& m)
   {
-    const auto welcome = stringToProtobuf<messages::Welcome>(m.data);
-    agent.network.startHeartbeats(m.address, std::chrono::seconds{welcome.hb_timeout_secs()});
+    const auto welcome = protocol::unserialise<protocol::Welcome>(m.data);
+    agent.network.startHeartbeats(m.address, std::chrono::seconds{welcome.hbTimeoutSecs});
   }
 
   void onJob(const Message& m)
   {
     if (agent.workerWaiting)
+    {
       agent.worker.send(m); // Forward job to worker
+      agent.workerWaiting = false;
+    }
     else
+    {
       agent.queue.push(m);
+    }
   }
 
   void onBye(const Message& m)
@@ -102,12 +97,11 @@ struct NetworkEndpoint : Endpoint<NetworkEndpoint>
   }
 };
 
-}
-
 Agent::Agent(zmq::context_t& ctx, const AgentSettings& settings)
   : settings_{settings}
   , worker_{ctx, zmq::socket_type::rep, "toWorker"}
   , network_{ctx, zmq::socket_type::dealer, "toNetwork"}
+  , state_{worker_, network_}
 {
   // Initialise the local sockets
   worker_.bind(settings.bindAddress);
@@ -124,9 +118,8 @@ void Agent::poll()
 
 void Agent::start(bool& running)
 {
-  AgentState agent{worker_, network_};
-  WorkerEndpoint worker{agent, settings_.heartbeatTimeout};
-  NetworkEndpoint network{agent};
+  WorkerEndpoint worker{state_, settings_.heartbeatTimeout};
+  NetworkEndpoint network{state_};
 
   Router<WorkerEndpoint, NetworkEndpoint> router{"agent", std::tie(worker, network)};
 

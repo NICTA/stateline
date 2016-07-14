@@ -13,29 +13,32 @@
 
 using namespace stateline::comms;
 
-TEST_CASE("can pack empty tuple", "[binary]")
+TEST_CASE("can pack and unpack one value", "[binary]")
 {
-  REQUIRE(packBuffer() == "");
+  std::int32_t a = 42;
+
+  std::string buf;
+  packValue(buf, a);
+
+  Unpacker p{buf};
+  const auto aa = p.unpackValue<std::int32_t>();
+
+  REQUIRE(aa == 42);
 }
 
-TEST_CASE("can unpack empty string", "[binary]")
+TEST_CASE("can pack and unpack two values", "[binary]")
 {
-  std::string str = "";
-  const auto result = unpackBuffer(str.begin(), str.end());
-  REQUIRE(std::tuple_size<decltype(result.first)>::value == 0);
-  REQUIRE(result.second == str.end());
-}
+  std::int32_t a = 42;
+  std::int8_t b = 1;
 
-TEST_CASE("can pack and unpack one item", "[binary]")
-{
-  const auto result = unpackBuffer<std::int32_t>(packBuffer(std::int32_t{42}));
-  REQUIRE(std::get<0>(result) == 42);
-}
+  std::string buf;
+  packValue(buf, a);
+  packValue(buf, b);
 
-TEST_CASE("can pack and unpack two items", "[binary]")
-{
-  const auto result = unpackBuffer<std::int32_t, std::int8_t>(packBuffer(std::int32_t{42}, std::int8_t{1}));
-  REQUIRE(std::get<0>(result) == 42);
-  REQUIRE(std::get<1>(result) == 1);
-}
+  Unpacker p{buf};
+  const auto aa = p.unpackValue<std::int32_t>();
+  const auto bb = p.unpackValue<std::int8_t>();
 
+  REQUIRE(aa == 42);
+  REQUIRE(bb == 1);
+}

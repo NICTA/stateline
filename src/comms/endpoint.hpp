@@ -51,6 +51,14 @@ public:
         self().onWelcome(m);
         break;
 
+      case JOB:
+        self().onJob(m);
+        break;
+
+      case RESULT:
+        self().onResult(m);
+        break;
+
       default:
         // TODO: unrecognised subject
         onDefault(m);

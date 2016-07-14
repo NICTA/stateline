@@ -10,7 +10,8 @@
 #include "catch/catch.hpp"
 
 #include "comms/agent.hpp"
-#include "comms/protobuf.hpp"
+#include "comms/binary.hpp"
+#include "comms/protocol.hpp"
 
 #include <chrono>
 
@@ -43,73 +44,134 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
       agentAddress = msg.address;
       REQUIRE(msg.subject == HELLO);
 
-      const auto hello = stringToProtobuf<messages::Hello>(msg.data);
-      REQUIRE(hello.hb_timeout_secs() == 10);
+      const auto hello = protocol::unserialise<protocol::Hello>(msg.data);
+      REQUIRE(hello.hbTimeoutSecs == 10);
     }
 
     SECTION("starts heartbeats after WELCOME from network")
     {
-      messages::Welcome welcome;
-      welcome.set_hb_timeout_secs(1);
+      protocol::Welcome welcome;
+      welcome.hbTimeoutSecs = 10;
 
-      REQUIRE(network.send({ agentAddress, WELCOME, protobufToString(welcome) }) == true);
+      REQUIRE(network.send({ agentAddress, WELCOME, serialise(welcome) }) == true);
       agent.poll();
 
-      // TODO: Should have received a heartbeat
-      {
-        //const auto msg = network.recv();
-        //REQUIRE(msg.subject == HEARTBEAT);
-      }
+      // TODO:
 
       SECTION("forwards JOB from network to worker")
       {
         {
-          messages::Job job;
-          job.set_id(1);
-          job.set_job_type(2);
-          job.add_data(1);
+          protocol::Job job;
+          job.id = 1;
+          job.type = 2;
+          job.data.push_back(1);
+          job.data.push_back(2);
+          job.data.push_back(3);
 
-          REQUIRE(network.send({ agentAddress, JOB, protobufToString(job) }) == true);
+          REQUIRE(network.send({ agentAddress, JOB, serialise(job) }) == true);
         }
 
         agent.poll();
 
-        // TODO: should have received a JOB
+        {
+          const auto msg = worker.recv();
+          REQUIRE(msg.subject == JOB);
+
+          const auto job = protocol::unserialise<protocol::Job>(msg.data);
+
+          REQUIRE(job.id == 1);
+          REQUIRE(job.type == 2);
+          REQUIRE(job.data.size() == 3);
+          REQUIRE(job.data[0] == 1);
+          REQUIRE(job.data[1] == 2);
+          REQUIRE(job.data[2] == 3);
+        }
 
         SECTION("forwards RESULT from worker to network")
         {
-          //REQUIRE(worker.send({ "", RESULT, "" }) == true);
+          protocol::Result result;
+          result.id = 1;
+          result.data = 4;
+
+          REQUIRE(worker.send({ "", RESULT, serialise(result) }) == true);
           agent.poll();
 
-          // TODO: should have received a RESULT
+          {
+            const auto msg = network.recv();
+            REQUIRE(msg.subject == RESULT);
+
+            const auto result = protocol::unserialise<protocol::Result>(msg.data);
+            REQUIRE(result.id == 1);
+            REQUIRE(result.data == 4);
+          }
         }
 
         SECTION("queues up JOB if worker is busy")
         {
           {
-            messages::Job job;
-            job.set_id(2);
-            job.set_job_type(2);
-            job.add_data(1);
+            protocol::Job job;
+            job.id = 2;
+            job.type = 2;
+            job.data.push_back(1);
 
-            REQUIRE(network.send({ agentAddress, JOB, protobufToString(job) }) == true);
+            REQUIRE(network.send({ agentAddress, JOB, serialise(job) }) == true);
           }
 
           agent.poll();
 
-          // TODO should have queued
-
           SECTION("forwards RESULT from worker to network and sends queued JOB")
           {
-            //REQUIRE(worker.send({ "", RESULT, "" }) == true);
+            {
+              protocol::Result result;
+              result.id = 1;
+              result.data = 4;
+
+              REQUIRE(worker.send({ "", RESULT, serialise(result) }) == true);
+            }
+
             agent.poll();
 
-            // TODO: should have received a RESULT
-            // TODO: should send the queued job
+            {
+              const auto msg = network.recv();
+              REQUIRE(msg.subject == RESULT);
+
+              const auto result = protocol::unserialise<protocol::Result>(msg.data);
+              REQUIRE(result.id == 1);
+              REQUIRE(result.data == 4);
+            }
+
+            {
+              const auto msg = worker.recv();
+              REQUIRE(msg.subject == JOB);
+
+              const auto job = protocol::unserialise<protocol::Job>(msg.data);
+
+              REQUIRE(job.id == 2);
+              REQUIRE(job.type == 2);
+              REQUIRE(job.data.size() == 1);
+              REQUIRE(job.data[0] == 1);
+            }
 
             SECTION("forwards RESULT from worker to network")
             {
-              // TODO: should have received a RESULT
+              {
+                protocol::Result result;
+                result.id = 2;
+                result.data = 5;
+
+                REQUIRE(worker.send({ "", RESULT, serialise(result) }) == true);
+              }
+
+              agent.poll();
+
+              {
+                const auto msg = network.recv();
+                REQUIRE(msg.subject == RESULT);
+
+                const auto result = protocol::unserialise<protocol::Result>(msg.data);
+                REQUIRE(result.id == 2);
+                REQUIRE(result.data == 5);
+              }
             }
           }
         }

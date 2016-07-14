@@ -10,12 +10,13 @@
 
 #pragma once
 
+#include "endpoint.hpp"
+#include "settings.hpp"
+
 #include <string>
+#include <queue>
 
 #include <zmq.hpp>
-
-#include "settings.hpp"
-#include "endpoint.hpp"
 
 namespace stateline { namespace comms {
 
@@ -42,10 +43,24 @@ public:
   void start(bool& running);
 
 private:
+  struct State
+  {
+    Socket& worker;
+    Socket& network;
+    std::queue<Message> queue;
+    bool workerWaiting;
+
+    State(Socket& worker, Socket& network);
+  };
+
+  struct WorkerEndpoint;
+  struct NetworkEndpoint;
+
   AgentSettings settings_;
 
   Socket worker_;
   Socket network_;
+  State state_;
 };
 
 } }
