@@ -17,38 +17,6 @@
 
 namespace stateline { namespace comms {
 
-//! Settings for controlling heartbeat threads.
-//!
-struct HeartbeatSettings
-{
-  //! The number of milliseconds between each heartbeat.
-  uint msRate;
-
-  //! The rate at which the heartbeat sockets are polled.
-  int msPollRate;
-
-  //! The heartbeat timeout in milliseconds.
-  uint msTimeout;
-
-  static HeartbeatSettings WorkerDefault()
-  {
-    HeartbeatSettings settings;
-    settings.msRate = 1000;
-    settings.msPollRate = 500;
-    settings.msTimeout = 3000;
-    return settings;
-  }
-
-  static HeartbeatSettings DelegatorDefault()
-  {
-    HeartbeatSettings settings;
-    settings.msRate = 1000;
-    settings.msPollRate = 500;
-    settings.msTimeout = 5000;
-    return settings;
-  }
-};
-
 //! Settings to control the behaviour of delegators.
 //!
 struct DelegatorSettings
@@ -73,28 +41,6 @@ struct DelegatorSettings
   {
     heartbeatTimeout = std::chrono::seconds{15};
     numJobTypes = 1;
-  }
-};
-
-//! Settings to control the behaviour of workers.
-//!
-struct WorkerSettings
-{
-  //! The address of the delegator to connect to.
-  std::string networkAddress;
-
-  //! The address of this worker which the minion connects to.
-  std::string workerAddress;
-
-  //! Settings for the heartbeat monitoring.
-  HeartbeatSettings heartbeat;
-
-  //! Default delegator settings
-  WorkerSettings(std::string networkAddress, std::string workerAddress)
-    : networkAddress{std::move(networkAddress)}
-    , workerAddress{std::move(workerAddress)}
-  {
-    heartbeat = HeartbeatSettings::WorkerDefault();
   }
 };
 
