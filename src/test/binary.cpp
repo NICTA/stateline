@@ -18,10 +18,12 @@ TEST_CASE("can pack and unpack one value", "[binary]")
   std::int32_t a = 42;
 
   std::string buf;
-  packValue(buf, a);
+  Packer packer{buf};
+  packer.value(a);
 
   Unpacker p{buf};
-  const auto aa = p.unpackValue<std::int32_t>();
+  std::int32_t aa;
+  p.value(aa);
 
   REQUIRE(aa == 42);
 }
@@ -32,12 +34,15 @@ TEST_CASE("can pack and unpack two values", "[binary]")
   std::int8_t b = 1;
 
   std::string buf;
-  packValue(buf, a);
-  packValue(buf, b);
+  Packer packer{buf};
+  packer.value(a);
+  packer.value(b);
 
   Unpacker p{buf};
-  const auto aa = p.unpackValue<std::int32_t>();
-  const auto bb = p.unpackValue<std::int8_t>();
+  std::int32_t aa;
+  std::int8_t bb;
+  p.value(aa);
+  p.value(bb);
 
   REQUIRE(aa == 42);
   REQUIRE(bb == 1);

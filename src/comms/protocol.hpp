@@ -18,23 +18,13 @@ struct Hello
   std::pair<std::uint32_t, std::uint32_t> jobTypesRange;
   std::uint32_t hbTimeoutSecs;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4 + 4 + 4);
-
-    packValue(buffer, jobTypesRange.first);
-    packValue(buffer, jobTypesRange.second);
-    packValue(buffer, hbTimeoutSecs);
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(jobTypesRange.first);
-    p.unpackValue(jobTypesRange.second);
-    p.unpackValue(hbTimeoutSecs);
+    p.reserve(4 + 4 + 4);
+    p.value(jobTypesRange.first);
+    p.value(jobTypesRange.second);
+    p.value(hbTimeoutSecs);
   }
 };
 
@@ -42,19 +32,11 @@ struct Welcome
 {
   std::uint32_t hbTimeoutSecs;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4);
-
-    packValue(buffer, hbTimeoutSecs);
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(hbTimeoutSecs);
+    p.reserve(4);
+    p.value(hbTimeoutSecs);
   }
 };
 
@@ -64,23 +46,13 @@ struct Job
   std::uint32_t type;
   std::vector<double> data;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4 + 4 + data.size() * sizeof(double));
-
-    packValue(buffer, id);
-    packValue(buffer, type);
-    packRange(buffer, data.data(), data.data() + data.size());
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(id);
-    p.unpackValue(type);
-    p.unpackRest(data);
+    p.reserve(4 + 4 + data.size() * sizeof(double));
+    p.value(id);
+    p.value(type);
+    p.rawRange(data);
   }
 };
 
@@ -89,21 +61,12 @@ struct Result
   std::uint32_t id;
   double data;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4 + sizeof(double));
-
-    packValue(buffer, id);
-    packValue(buffer, data);
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(id);
-    p.unpackValue(data);
+    p.reserve(4 + sizeof(double));
+    p.value(id);
+    p.value(data);
   }
 };
 
@@ -112,21 +75,12 @@ struct BatchJob
   std::uint32_t id;
   std::vector<double> data;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4 + data.size() * sizeof(double));
-
-    packValue(buffer, id);
-    packRange(buffer, data.data(), data.data() + data.size());
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(id);
-    p.unpackRest(data);
+    p.reserve(4 + data.size() * sizeof(double));
+    p.value(id);
+    p.rawRange(data);
   }
 };
 
@@ -135,35 +89,30 @@ struct BatchResult
   std::uint32_t id;
   std::vector<double> data;
 
-  std::string serialise() const
+  template <class Pack>
+  void pack(Pack& p)
   {
-    std::string buffer;
-    buffer.reserve(4 + data.size() * sizeof(double));
-
-    packValue(buffer, id);
-    packRange(buffer, data.data(), data.data() + data.size());
-    return buffer;
-  }
-
-  void unserialise(const std::string& str)
-  {
-    Unpacker p{str};
-    p.unpackValue(id);
-    p.unpackRest(data);
+    p.reserve(4 + data.size() * sizeof(double));
+    p.value(id);
+    p.rawRange(data);
   }
 };
 
 template <class T>
 std::string serialise(const T& t)
 {
-  return t.serialise();
+  std::string buf;
+  Packer packer{buf};
+  const_cast<T&>(t).pack(packer); // trust me
+  return buf;
 }
 
 template <class T>
 T unserialise(const std::string& str)
 {
   T t;
-  t.unserialise(str);
+  Unpacker unpacker{str};
+  t.pack(unpacker);
   return t;
 }
 
