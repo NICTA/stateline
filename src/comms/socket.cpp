@@ -1,6 +1,6 @@
 //! Implementation of ZMQ socket wrappers.
 //!
-//! \file comms/socket.cpp
+//! \file src/comms/socket.cpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
@@ -14,8 +14,6 @@
 #include <iomanip>
 #include <easylogging/easylogging++.h>
 #include <random>
-
-#include <zmq_addon.hpp>
 
 namespace stateline { namespace comms {
 
@@ -45,37 +43,48 @@ void SocketBase::bind(const std::string& address)
 
 bool SocketBase::send(const std::string& address, const std::string& data)
 {
-  zmq::multipart_t msg;
-  if (!address.empty())
-    msg.addstr(address);
-  msg.addstr(data);
-
   // Send the message
-  if (msg.send(socket_))
+  try
   {
+    if (!address.empty())
+      socket_.send(address.c_str(), address.size(), ZMQ_SNDMORE);
+    socket_.send(data.c_str(), data.size());
+
     hb_.updateLastSendTime(address);
     return true;
   }
-
-  // TODO: disconnect heartbeat immediately
-  return false;
+  catch(zmq::error_t)
+  {
+    // TODO: disconnect heartbeat immediately
+    return false;
+  }
 }
 
 std::pair<std::string, std::string> SocketBase::recv()
 {
-  // Receive a multipart message
-  zmq::multipart_t msg{socket_};
-  assert(msg.size() == 1 || msg.size() == 2);
+  zmq::message_t msg1, msg2;
+  std::string address, data;
 
-  // Get the address and data
-  auto address = msg.size() == 1 ? "" : msg.popstr();
-  auto data = msg.popstr();
+  // Get the address and data. We expect either one frame (data only) or two frames
+  // (address and data)
+  socket_.recv(&msg1);
+  if (msg1.more())
+  {
+    socket_.recv(&msg2);
+    assert(!msg2.more());
+
+    address = std::string{msg1.data<char>(), msg1.size()};
+    data = std::string{msg2.data<char>(), msg2.size()};
+  }
+  else
+  {
+    data = std::string{msg1.data<char>(), msg1.size()};
+  }
 
   hb_.updateLastRecvTime(address);
 
   return {std::move(address), std::move(data)};
 }
-
 
 void SocketBase::setIdentity()
 {
