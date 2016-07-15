@@ -14,6 +14,7 @@
 #include "comms/settings.hpp"
 
 #include <chrono>
+#include <functional>
 #include <unordered_map>
 
 namespace stateline { namespace comms {
