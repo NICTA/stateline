@@ -29,7 +29,7 @@ void Requester::submit(BatchID id, const std::vector<double>& data)
   socket_.send({"", BATCH_JOB, serialise(batchJob)});
 }
 
-std::pair<uint, std::vector<double>> Requester::retrieve()
+std::pair<BatchID, std::vector<double>> Requester::retrieve()
 {
   const auto msg = socket_.recv();
   const auto batchResult = protocol::unserialise<protocol::BatchResult>(msg.data);

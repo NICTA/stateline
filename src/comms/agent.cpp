@@ -41,9 +41,7 @@ struct Agent::WorkerEndpoint : Endpoint<WorkerEndpoint>
 
   void onHello(const Message& m)
   {
-    protocol::Hello hello;
-    hello.hbTimeoutSecs = timeout.count();
-    agent.network.send({"", HELLO, serialise(hello)});
+    agent.network.send(m); // Forward to delegator
   }
 
   void onResult(const Message& m)

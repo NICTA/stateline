@@ -34,7 +34,14 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
 
   SECTION("forwards HELLO from worker to network")
   {
-    REQUIRE(worker.send({ "", HELLO, "" }) == true); // TODO
+    {
+      protocol::Hello hello;
+      hello.jobTypesRange = std::make_pair(1, 3);
+      hello.hbTimeoutSecs = 10;
+
+      REQUIRE(worker.send({"", HELLO, serialise(hello)}) == true);
+    }
+
     agent.poll();
 
     std::string agentAddress;
@@ -44,6 +51,8 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
       REQUIRE(msg.subject == HELLO);
 
       const auto hello = protocol::unserialise<protocol::Hello>(msg.data);
+      REQUIRE(hello.jobTypesRange.first == 1);
+      REQUIRE(hello.jobTypesRange.second == 3);
       REQUIRE(hello.hbTimeoutSecs == 10);
     }
 
