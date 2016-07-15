@@ -78,15 +78,11 @@ FIND_PACKAGE(ZMQ REQUIRED)
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
-# Protobuf
-FIND_PACKAGE(Protobuf REQUIRED)
-
 ##############################################################################
 # INCLUDE DIRECTORIES
 ##############################################################################
 
 INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
-                    SYSTEM "${PROTOBUF_INCLUDE_DIR}"
                     SYSTEM "${CMAKE_CURRENT_BINARY_DIR}"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/cppzmq"
@@ -95,7 +91,6 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
                     SYSTEM "${EIGEN3_INCLUDE_DIR}")
 
-ADD_SUBDIRECTORY(proto)
 ADD_SUBDIRECTORY(src/test)
 
 ##############################################################################
@@ -145,7 +140,7 @@ SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 ADD_LIBRARY(stateline-server STATIC
   $<TARGET_OBJECTS:commonwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>)
-TARGET_LINK_LIBRARIES(stateline-server proto ${ZMQ_LIBRARY} ${PROTOBUF_LIBRARY})
+TARGET_LINK_LIBRARIES(stateline-server ${ZMQ_LIBRARY})
 
 ADD_LIBRARY(statelineclient STATIC #SHARED
   $<TARGET_OBJECTS:commonwrapper>
