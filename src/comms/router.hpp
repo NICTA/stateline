@@ -42,58 +42,54 @@ template <class... Endpoints>
 class Router
 {
 public:
+  static_assert(sizeof...(Endpoints) > 0, "Must have at least one endpoint");
+
   //! Create a new router.
   //!
   Router(std::string name, const std::tuple<Endpoints&...>& endpoints)
     : name_{std::move(name)}
     , endpoints_{endpoints}
+    , sockets_{meta::mapAll(endpoints, [](auto& e) { return static_cast<SocketBase*>(&e.socket()); })}
+    , pollList_{meta::mapAll(endpoints, [](auto &e) { return zmq::pollitem_t{(void *)e.socket().zmqSocket(), 0, ZMQ_POLLIN, 0}; })}
   {
-    pollList_.reserve(sizeof...(Endpoints));
-    sockets_.reserve(sizeof...(Endpoints));
+  }
 
-    meta::apply_all(endpoints, [&pollList = pollList_, &sockets = sockets_](auto& e)
+  int pollWaitTime()
+  {
+    const auto it = std::min_element(sockets_.begin(), sockets_.end(),
+        detail::compSocketTimeouts);
+
+    if ((*it)->heartbeats().hasTimeout())
     {
-      // Need to cast a socket_t into (void *)
-      pollList.push_back({(void *)e.socket().zmqSocket(), 0, ZMQ_POLLIN, 0});
-      sockets.push_back(static_cast<SocketBase*>(&e.socket()));
-    });
+      const auto wait = std::chrono::duration_cast<std::chrono::milliseconds>(
+          (*it)->heartbeats().nextTimeout() - Heartbeat::Clock::now());
+
+      return std::max(wait, std::chrono::milliseconds{0}).count(); // 0 for return immediately if we have to heartbeat
+    }
+    else
+    {
+      // Poll indefinitely
+      return -1;
+    }
   }
 
   template <class IdleCallback>
   void poll(const IdleCallback& callback)
   {
-    // Figure out how long we can wait for before any SocketBase times out
-    const auto it = std::min_element(sockets_.begin(), sockets_.end(),
-        detail::compSocketTimeouts);
-
-    if (it != sockets_.end())
-    {
-      if ((*it)->heartbeats().hasTimeout())
-      {
-        const auto wait = std::chrono::duration_cast<std::chrono::milliseconds>(
-            (*it)->heartbeats().nextTimeout() - Heartbeat::Clock::now());
-
-        zmq::poll(pollList_, std::max(wait, std::chrono::milliseconds{0}));
-      }
-      else
-      {
-        // Poll indefinitely
-        zmq::poll(pollList_);
-      }
-    }
+    zmq::poll(pollList_.data(), pollList_.size(), pollWaitTime());
 
     // Handle each poll event
-    for (std::size_t i = 0; i < pollList_.size(); i++)
+    meta::enumerateAll(endpoints_, [&pollList = pollList_](const auto i, auto& endpoint)
     {
-      bool newMsg = pollList_[i].revents & ZMQ_POLLIN;
+      bool newMsg = pollList[i].revents & ZMQ_POLLIN;
       if (newMsg)
       {
-        LOG(INFO) << "Router " << name_ << " received new message from endpoint "
-          << meta::apply<std::string>(endpoints_, i, [](auto& m) { return m.socket().name(); });
+        //TODO LOG(INFO) << "Router " << name_ << " received new message from endpoint "
+          //<< endpoint.socket().name();
 
-        meta::apply<void>(endpoints_, i, [](auto& e) { return e.accept(); });
+        endpoint.accept();
       }
-    }
+    });
 
     callback();
   }
@@ -101,8 +97,8 @@ public:
 private:
   std::string name_;
   std::tuple<Endpoints&...> endpoints_;
-  std::vector<SocketBase*> sockets_; // TODO: make this into array
-  std::vector<zmq::pollitem_t> pollList_;
+  std::array<SocketBase*, sizeof...(Endpoints)> sockets_;
+  std::array<zmq::pollitem_t, sizeof...(Endpoints)> pollList_;
 };
 
 } }

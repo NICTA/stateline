@@ -17,53 +17,52 @@ namespace stateline {
 
 namespace meta {
 
-template<int... Is> struct seq {};
-template<int N, int... Is> struct gen_seq : gen_seq<N-1, N-1, Is...> {};
-template<int... Is> struct gen_seq<0, Is...> : seq<Is...> {};
+namespace detail {
 
-// Inspired by http://stackoverflow.com/questions/21062864/optimal-way-to-access-stdtuple-element-in-runtime-by-index
-
-namespace detail
+template<class T, class... Tail>
+constexpr auto makeArray(T head, Tail... tail) -> std::array<T, 1 + sizeof...(Tail)>
 {
-  template <class Ret, int N, class T, class F>
-  Ret apply_one(T& p, F func) { return func(std::get<N>(p)); }
-
-  template <class Ret, class T, class F, int... Is>
-  Ret apply(T& p, int index, F func, seq<Is...>)
-  {
-      using FT = Ret(T&, F);
-      static constexpr FT* ftable[] = { &apply_one<Ret, Is, T, F>... };
-
-      assert(index < sizeof...(Is));
-      return ftable[index](p, func);
-  }
+  return { { head, tail... } };
 }
 
-template <class Ret, class T, class F>
-Ret apply(T& p, std::size_t index, F func)
+template <class T, class F, std::size_t...Is>
+void applyAllImpl(T&& t, F func, std::index_sequence<Is...>)
 {
-  return detail::apply<Ret>(p, index, func, gen_seq<std::tuple_size<T>::value>{});
-}
-
-// From http://stackoverflow.com/questions/16387354/template-tuple-calling-a-function-on-each-element
-namespace detail
-{
-
-template <class T, class F, int...Is>
-void apply_all_impl(T&& t, F func, seq<Is...>)
-{
-  std::initializer_list<int> l = { (func(std::get<Is>(t)), 0)... };
+  int l[] = { (func(std::get<Is>(t)), 0)... };
   (void)l;
 }
 
+template <class T, class F, std::size_t...Is>
+void enumerateAllImpl(T&& t, F func, std::index_sequence<Is...>)
+{
+  int l[] = { (func(Is, std::get<Is>(t)), 0)... };
+  (void)l;
+}
+
+template <class T, class F, std::size_t...Is>
+constexpr decltype(auto) mapAllImpl(T&& t, F func, std::index_sequence<Is...>)
+{
+  return makeArray(func(std::get<Is>(t))...);
+}
+
+} // namespace detail
+
+template <class... Ts, class F>
+void applyAll(const std::tuple<Ts...>& t, F func)
+{
+  detail::applyAllImpl(t, func, std::index_sequence_for<Ts...>{});
 }
 
 template <class... Ts, class F>
-void apply_all(const std::tuple<Ts...>& t, F func)
+void enumerateAll(std::tuple<Ts...>& t, F func)
 {
-  detail::apply_all_impl(t, func, gen_seq<sizeof...(Ts)>());
+  detail::enumerateAllImpl(t, func, std::index_sequence_for<Ts...>{});
 }
 
-} // namespace meta
+template <class... Ts, class F>
+constexpr decltype(auto) mapAll(const std::tuple<Ts...>& t, F func)
+{
+  return detail::mapAllImpl(t, func, std::index_sequence_for<Ts...>{});
+}
 
-} // namespace stateline
+} } // namespace stateline

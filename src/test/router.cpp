@@ -31,18 +31,6 @@ struct TestEndpoint : Endpoint<TestEndpoint>
 
 }
 
-TEST_CASE("can poll a router with no sockets", "[router]")
-{
-  zmq::context_t ctx{1};
-
-  Router<> router{"test_router", std::tie()};
-
-  bool idleCalled = false;
-  router.poll([&idleCalled]() { idleCalled = true; });
-
-  REQUIRE(idleCalled == true);
-}
-
 TEST_CASE("router poll calls the correct callbacks", "[router]")
 {
   zmq::context_t ctx{1};
