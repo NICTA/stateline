@@ -89,7 +89,6 @@ namespace stateline
       public:
         // look into ProposalFunction& proposal
         Sampler(comms::Requester& requester, 
-                std::vector<uint> jobTypes,
                 ChainArray& chainArray,
                 mcmc::GaussianProposal& proposal, 
                 RegressionAdapter& sigmaAdapter,
@@ -109,8 +108,6 @@ namespace stateline
         void unlock(uint id);
 
         comms::Requester& requester_;
-
-        std::vector<uint> jobTypes_;
 
         // The MCMC chain wrapper
         ChainArray& chains_;

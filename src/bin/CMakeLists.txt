@@ -12,10 +12,7 @@ FUNCTION(ADD_BINARY name library)
   SET_TARGET_PROPERTIES(${name} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
 
-  TARGET_LINK_LIBRARIES(${name}
-    ${library}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_PROGRAM_OPTIONS_LIBRARY})
+  TARGET_LINK_LIBRARIES(${name} ${library})
   INSTALL (TARGETS ${name} RUNTIME DESTINATION bin)
 ENDFUNCTION()
 
@@ -28,5 +25,6 @@ ENDFUNCTION()
 # no point building this until we have a need for it
 #ADD_BINARY(stateline-server statelineserver)
 
-ADD_BINARY(stateline-client statelineclient)
-ADD_BINARY(stateline statelineserver)
+#ADD_BINARY(stateline-client statelineclient)
+#ADD_BINARY(stateline statelineserver)
+ADD_BINARY(agent statelineclient)

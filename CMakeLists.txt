@@ -135,7 +135,7 @@ ADD_SUBPROJECT(src/bin)
 # Build final libraries for server and client
 ##############################################################################
 ADD_LIBRARY(statelineserver STATIC #SHARED
-  $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
+  $<TARGET_OBJECTS:commonwrapper> #$<TARGET_OBJECTS:serverwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
   $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
 
