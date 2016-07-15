@@ -1,218 +1,123 @@
+//! Tests for delegator.
 //!
-//! \file comms/tests/message.cpp
-//! \author Lachlan McCalman
+//! \file comms/tests/delegator.cpp
 //! \author Darren Shen
-//! \date 2015
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
-#include <gtest/gtest.h>
+#include "catch/catch.hpp"
 
 #include "comms/delegator.hpp"
+#include "comms/protocol.hpp"
 
-#include "comms/socket.hpp"
-#include "comms/thread.hpp"
+#include <chrono>
+#include <iostream>
 
 using namespace stateline::comms;
+using namespace std::chrono_literals;
 
-// Custom print for message to make it easier to debug
-namespace stateline
+TEST_CASE("delegator follows protocol", "[delegator]")
 {
-  namespace comms
+  zmq::context_t ctx{1};
+
+  DelegatorSettings settings{"ipc://test_delegator", "ipc://test_network"};
+  settings.heartbeatTimeout = 10s;
+  settings.numJobTypes = 3;
+
+  Socket network{ctx, zmq::socket_type::dealer, "network"};
+  network.bind(settings.networkAddress);
+
+  Delegator delegator{ctx, settings};
+
+  Socket requester{ctx, zmq::socket_type::dealer, "requester"};
+  requester.connect(settings.bindAddress);
+
+  SECTION("responds to HELLO from worker with WELCOME")
   {
-    void PrintTo(const Message& m, std::ostream* os)
     {
-      *os << "|";
-      for (const auto& addr : m.address)
+      protocol::Hello hello;
+      hello.jobTypesRange = std::make_pair(1, 3);
+      hello.hbTimeoutSecs = 20;
+
+      REQUIRE(network.send({"", HELLO, serialise(hello)}) == true);
+    }
+
+    delegator.poll();
+
+    {
+      const auto msg = network.recv();
+      REQUIRE(msg.subject == WELCOME);
+
+      const auto welcome = protocol::unserialise<protocol::Welcome>(msg.data);
+      REQUIRE(welcome.hbTimeoutSecs == 20);
+    }
+
+    SECTION("sends jobs to worker when BATCH JOB is received")
+    {
       {
-        *os << addr << "|";
+        protocol::BatchJob batchJob;
+        batchJob.id = 1;
+        batchJob.data.push_back(1);
+        batchJob.data.push_back(2);
+        batchJob.data.push_back(3);
+
+        REQUIRE(requester.send({"", BATCH_JOB, serialise(batchJob)}) == true);
       }
-      *os << m.subject << "|";
-      for (const auto& data : m.data)
+
+      delegator.poll();
+
       {
-        *os << data << "|";
+        std::vector<protocol::Job> jobs;
+        for (auto i = 0; i < settings.numJobTypes; i++)
+        {
+          const auto msg = network.recv();
+          REQUIRE(msg.subject == JOB);
+
+          jobs.push_back(protocol::unserialise<protocol::Job>(msg.data));
+        }
+
+        REQUIRE(jobs.size() == settings.numJobTypes);
+
+        std::sort(jobs.begin(), jobs.end(), [](auto&& a, auto&& b) { return a.id < b.id; });
+
+        for (auto i = 0; i < settings.numJobTypes; i++)
+        {
+          REQUIRE(jobs[i].id == i + 1);
+          REQUIRE(jobs[i].data.size() == 3);
+          REQUIRE(jobs[i].data[0] == 1);
+          REQUIRE(jobs[i].data[1] == 2);
+          REQUIRE(jobs[i].data[2] == 3);
+        }
+      }
+
+      SECTION("sends BATCH RESULT when all the results have been collected")
+      {
+        for (std::size_t i = 0; i < settings.numJobTypes; i++)
+        {
+          protocol::Result result;
+          result.id = i + 1;
+          result.data = i;
+
+          REQUIRE(network.send({"", RESULT, serialise(result)}) == true);
+
+          // Got to poll once per result since it's from the same socket
+          delegator.poll();
+        }
+
+        {
+          const auto msg = requester.recv();
+          REQUIRE(msg.subject == BATCH_RESULT);
+
+          const auto batchResult = protocol::unserialise<protocol::BatchResult>(msg.data);
+          REQUIRE(batchResult.id == 1);
+          REQUIRE(batchResult.data.size() == 3);
+          REQUIRE(batchResult.data[0] == 0.0);
+          REQUIRE(batchResult.data[1] == 1.0);
+          REQUIRE(batchResult.data[2] == 2.0);
+        }
       }
     }
   }
 }
-
-Message receiveIgnoreHBs(Socket& socket)
-{
-  while (true) {
-    Message m = socket.receive();
-    if (m.subject != HEARTBEAT)
-      return m;
-  }
-}
-
-class DelegatorTest : public testing::Test
-{
-public:
-  DelegatorTest()
-    : context_{1},
-      worker_{context_, ZMQ_DEALER, "mockWorker", 0},
-      requester_{context_, ZMQ_DEALER, "mockRequester", -1},
-      running_{false}
-  {
-    DelegatorSettings settings = DelegatorSettings::Default(5555);
-    settings.msPollRate = 100;
-    settings.heartbeat.msPollRate = 100;
-    settings.heartbeat.msTimeout = 500;
-    settings.nJobTypes = 10;
-
-    running_ = true;
-    delFuture_ = stateline::startInThread<::stateline::comms::Delegator>(running_, std::ref(context_), std::ref(settings));
-
-    worker_.setIdentifier("worker");
-    worker_.connect("tcp://localhost:5555");
-
-    requester_.setIdentifier();
-    requester_.connect(DELEGATOR_SOCKET_ADDR.c_str());
-  }
-
-  ~DelegatorTest()
-  {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    running_ = false;
-    delFuture_.wait();
-  }
-
-  zmq::context_t context_;
-  Socket worker_;
-  Socket requester_;
-  bool running_;
-  std::future<bool> delFuture_;
-};
-
-TEST_F(DelegatorTest, canSendHelloToDelegator)
-{
-  worker_.send({ HELLO, { "0:1" }});
-}
-
-/*
-TEST_F(DelegatorTest, canSendAndReceiveSingleJobTypeMultipleTimes)
-{
-  worker_.send({ HELLO, { "0:1" }});
-
-  // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "0", "Request 1" }});
-  auto job1 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "0", "0", "Request 1" }), job1);
-
-  // Send another job request
-  requester_.send({{ "36" }, REQUEST, { "0", "Request 2" }});
-  auto job2 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "0", "1", "Request 2" }), job2);
-}
-
-TEST_F(DelegatorTest, canSendAndReceiveMultipleJobTypes)
-{
-  worker_.send({ HELLO, { "0:2" }});
-
-  // Send a job request with two job types
-  requester_.send({{ "42" }, REQUEST, { "0:1", "Request" }});
-
-  // Receive both of the requests
-  auto job1 = receiveIgnoreHBs(worker_);
-  auto job2 = receiveIgnoreHBs(worker_);
-
-  ASSERT_EQ(3U, job1.data.size());
-  ASSERT_EQ(3U, job2.data.size());
-
-  if (job1.data[0] == "0")
-  {
-    EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job1);
-    EXPECT_EQ(Message(JOB, { "1", "1", "Request" }), job2);
-  }
-  else
-  {
-    EXPECT_EQ(Message(JOB, { "1", "0", "Request" }), job1);
-    EXPECT_EQ(Message(JOB, { "0", "1", "Request" }), job2);
-  }
-}
-
-TEST_F(DelegatorTest, canReceiveResultForRequest)
-{
-  // Connect the worker
-  worker_.send({ HELLO, { "0:1" }});
-
-  // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "0", "Request" }});
-  auto job = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job);
-
-  // Send the job result
-  worker_.send({RESULT, { "0", "Result" }});
-
-  // Get the job result from the requester
-  auto result = requester_.receive();
-  EXPECT_EQ(Message({ "42" }, RESULT, { "Result" }), result);
-}
-
-TEST_F(DelegatorTest, multipleHelloMessages)
-{
-  worker_.send({ HELLO, { "0:1" }});
-  worker_.send({ HELLO, { "1:2" }}); // Should be ignored
-  worker_.send({ HELLO, { "2:3" }}); // Should be ignored
-}
-
-TEST_F(DelegatorTest, requesterSendsBeforeWorkerSaysHello)
-{
-  // Send a job request first
-  requester_.send({{ "42" }, REQUEST, { "0", "Request 1" }});
-
-  // Worker connects
-  worker_.send({ HELLO, { "0:1" }});
-  auto job = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "0", "0", "Request 1" }), job);
-}
-
-TEST_F(DelegatorTest, resendsJobAfterWorkerFailure)
-{
-  // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "0", "Request" }});
-
-  // Receive the job. This worker does not send heartbeats and will timeout eventually.
-  worker_.send({ HELLO, { "0:1" }});
-  receiveIgnoreHBs(worker_);
-
-  // Wait for this worker to time out
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-  // This new worker should get the job that was received by the dead worker.
-  Socket newWorker{context_, ZMQ_DEALER, "mockNewWorker", 0};
-  newWorker.setIdentifier("newWorker");
-  newWorker.connect("tcp://localhost:5555");
-
-  // Connect the new worker
-  newWorker.send({ HELLO, { "0:1" }});
-
-  // Wait for a job, this should unblock as soon as the heartbeat times out
-  // and the previous worker considered dead.
-  auto job = receiveIgnoreHBs(newWorker);
-  EXPECT_EQ(Message(JOB, { "0", "0", "Request" }), job);
-
-  // Send the job result
-  newWorker.send({ RESULT, { "0", "Result" }});
-
-  // Get the job result from the requester
-  auto result = requester_.receive();
-  EXPECT_EQ(Message({ "42" }, RESULT, { "Result" }), result);
-}
-
-TEST_F(DelegatorTest, workerReceivesEverythingForEmptyJobTypes)
-{
-  worker_.send({ HELLO, { "" }});
-
-  // Send a job request
-  requester_.send({{ "42" }, REQUEST, { "3", "Request 1" }});
-  auto job1 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "3", "0", "Request 1" }), job1);
-
-  // Send another job request
-  requester_.send({{ "36" }, REQUEST, { "5", "Request 2" }});
-  auto job2 = receiveIgnoreHBs(worker_);
-  EXPECT_EQ(Message(JOB, { "5", "1", "Request 2" }), job2);
-
-}*/

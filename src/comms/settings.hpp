@@ -53,27 +53,26 @@ struct HeartbeatSettings
 //!
 struct DelegatorSettings
 {
-  //! The rate at which the receive sockets are polled.
-  int msPollRate;
+  //! The address of this delegator which the requester connects to.
+  std::string bindAddress;
 
-  //! The port number that the delegator listens on.
-  uint port;
+  //! The address of the agent to connect to.
+  std::string networkAddress;
 
-  //! Settings for the heartbeat monitoring.
-  HeartbeatSettings heartbeat;
+  //! How long without heartbeats is considered time out.
+  std::chrono::seconds heartbeatTimeout;
 
-  //! number of job types.
-  uint nJobTypes;
+  //! Number of job types per batch job.
+  std::size_t numJobTypes;
 
-  //! Default delegator settings
-  static DelegatorSettings Default(uint port)
+  //! Construct default agent settings.
+  //!
+  DelegatorSettings(std::string bindAddress, std::string networkAddress)
+    : bindAddress{std::move(bindAddress)}
+    , networkAddress{std::move(networkAddress)}
   {
-    DelegatorSettings settings;
-    settings.msPollRate = 10;
-    settings.port = port;
-    settings.heartbeat = HeartbeatSettings::DelegatorDefault();
-    settings.nJobTypes = 1;
-    return settings;
+    heartbeatTimeout = std::chrono::seconds{15};
+    numJobTypes = 1;
   }
 };
 
@@ -109,7 +108,7 @@ struct AgentSettings
   //! The address of the delegator to connect to.
   std::string networkAddress;
 
-  //! How long without heartbeats is considered times out.
+  //! How long without heartbeats is considered time out.
   std::chrono::seconds heartbeatTimeout;
 
   //! Construct default agent settings.

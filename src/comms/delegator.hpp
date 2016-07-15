@@ -11,21 +11,18 @@
 
 #pragma once
 
+#include "comms/datatypes.hpp"
+#include "comms/socket.hpp"
+#include "comms/utils.hpp"
 #include "settings.hpp"
-#include "heartbeat.hpp"
-#include "common/circularbuffer.hpp"
 
 #include <chrono>
-#include <set>
+#include <map>
 #include <string>
 #include <list>
 #include <atomic>
 
 namespace stateline { namespace comms {
-
-//! Address that the requesters connect their sockets to.
-// const std::string DELEGATOR_SOCKET_ADDR = "inproc://delegator";
-const std::string DELEGATOR_SOCKET_ADDR = "ipc:///tmp/sl_delegator.socket";
 
 //! Responsible for allocating jobs to workers.
 //!
@@ -42,70 +39,84 @@ public:
   Delegator(const Delegator&) = delete;
   Delegator& operator=(const Delegator&) = delete;
 
+  void poll();
+
   void start(bool& running);
 
 private:
-  using std::chrono::high_resolution_clock = hrc;
+  using Clock = std::chrono::high_resolution_clock;
 
-  struct Request
+  struct PendingBatch
   {
-    std::string address;
-    std::vector<double> data;
-    std::vector<double> results;
-    int nDone;
+    std::string address; // need to know who to send this back to
+    std::vector<double> data; // the batch job data
+    std::vector<double> results; // table of pending results
+    int numJobsDone; // number of completed jobs so far
 
-    Request(std::string address, std::vector<double> data, std::size_t numJobTypes)
-      : address{std::move(address)}
-      , data{std::move(data)}
-      , results(numJobTypes) // Pre-allocate the vector
-      , nDone{0}
-    {
-    }
+    PendingBatch(std::string address, std::vector<double> data, std::size_t numJobTypes);
   };
+
+  using PendingBatchContainer = std::map<BatchID, PendingBatch>;
 
   struct Job
   {
+    PendingBatchContainer::iterator batch;
     JobType type;
-    JobID id;
-    BatchID batchID;
-    hrc::time_point startTime;
+    Clock::time_point startTime;
 
-    Request(JobID id, JobType type,
+    Job(PendingBatchContainer::iterator batch, JobType type)
+      : batch(batch)
+      , type(type)
+    {
+    }
   };
 
   struct Worker
   {
     std::string address;
-    std::pair<uint, uint> jobTypesRange; //! 
+    std::pair<JobType, JobType> jobTypesRange;
+    std::map<JobID, Job> inProgress;
+    std::map<JobType, ExpMovingAverage<float>> times;
 
-    //! 
-    std::map<JobID, Job> workInProgress;
-    std::map<JobType, CircularBuffer<uint>> times;
-    hrc::time_point lastResultTime;
-
-    Worker(std::vector<std::string> address,
-           std::pair<uint, uint> jobTypesRange)
+    Worker(std::string address,
+           const std::pair<JobType, JobType>& jobTypesRange)
       : address{std::move(address)}
-      , jobTypesRange{std::move(jobTypesRange)}
-      , lastResultTime{hrc::now()}
+      , jobTypesRange{jobTypesRange}
     {
     }
   };
 
+  /*
   void idle();
 
   // TODO: does this need to be a member function?
-  Worker* bestWorker(uint jobType, uint maxJobs);
+  Worker* bestWorker(uint jobType, uint maxJobs);*/
 
-  // Sockets
-  Socket requester_;
-  Socket worker_;
+  struct State
+  {
+    Socket requester;
+    Socket network;
+    DelegatorSettings settings;
+    std::map<std::string, Worker> workers;
+    PendingBatchContainer pending;
+    std::list<Job> jobQueue;
 
-  std::map<std::string, Worker> workers_;
+    State(zmq::context_t& ctx, const DelegatorSettings& settings);
+
+    void addWorker(const std::string& address, const std::pair<JobType, JobType>& jobTypeRange);
+
+    void addBatch(const std::string& address, JobID id, std::vector<double> data);
+  };
+
+  struct RequesterEndpoint;
+  struct NetworkEndpoint;
+
+  State state_;
+  /*
   std::map<std::string, Request> requests_;
   std::list<Job> jobQueue_;
 
-  JobID nextJobId_;
+  JobID nextJobId_;*/
 };
 
 } }

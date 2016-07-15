@@ -1,6 +1,6 @@
-//!
 //! \file comms/delegator.cpp
 //! \author Lachlan McCalman
+//! \author Darren Shen
 //! \date 2014
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
@@ -10,8 +10,8 @@
 
 #include "comms/datatypes.hpp"
 #include "comms/endpoint.hpp"
-#include "comms/protobuf.hpp"
-#include "comms/thread.hpp"
+#include "comms/protocol.hpp"
+#include "comms/router.hpp"
 
 #include <string>
 
@@ -20,123 +20,162 @@
 
 namespace stateline { namespace comms {
 
-namespace {
-
-struct RequesterEndpoint : Endpoint<RequesterEndpoint, Socket>
+Delegator::PendingBatch::PendingBatch(std::string address, std::vector<double> data, std::size_t numJobTypes)
+  : address{std::move(address)}
+  , data{std::move(data)}
+  , results(numJobTypes) // Pre-allocate the vector
+  , numJobsDone{0}
 {
-  Socket& worker;
+}
 
-  RequesterEndpoint(Socket& requester, Socket& worker)
-    : Endpoint<RequesterEndpoint>(requester)
-    , worker(worker)
+Delegator::State::State(zmq::context_t& ctx, const DelegatorSettings& settings)
+  : requester{ctx, zmq::socket_type::router, "toRequester"}
+  , network{ctx, zmq::socket_type::router, "toNetwork"}
+  , settings{settings}
+{
+}
+
+void Delegator::State::addWorker(const std::string& address, const std::pair<JobType, JobType>& jobTypesRange)
+{
+  Worker w{address, jobTypesRange};
+
+  // TODO: why not create lazily?
+  for (auto i = jobTypesRange.first; i <= jobTypesRange.second; ++i)
+    w.times.emplace(std::piecewise_construct,
+        std::forward_as_tuple(i),
+        std::forward_as_tuple(0.1)); // TODO make this a setting
+
+  workers.emplace(address, w);
+
+  LOG(INFO)<< "Worker " << address << " connected, supporting jobtypes: "; // TODO
+}
+
+void Delegator::State::addBatch(const std::string& address, JobID id, std::vector<double> data)
+{
+  // Add the batch as a pending request.
+  auto ret = pending.emplace(std::piecewise_construct,
+      std::forward_as_tuple(id),
+      std::forward_as_tuple(address, std::move(data), settings.numJobTypes));
+
+  // Add each job in the batch to the queue.
+  for (JobType i = 0; i < settings.numJobTypes; i++)
+  {
+    jobQueue.emplace_back(ret.first, i + 1);
+  }
+
+  VLOG(2) << pending.size() << " requests pending";
+}
+
+struct Delegator::RequesterEndpoint : Endpoint<RequesterEndpoint>
+{
+  State& delegator;
+
+  RequesterEndpoint(State& delegator)
+    : Endpoint<RequesterEndpoint>{delegator.requester}
+    , delegator{delegator}
   {
   }
 
   void onBatchJob(const Message& m)
   {
-    const auto batchJob = stringToProtobuf<messages::BatchJob>(m.data);
+    auto batchJob = protocol::unserialise<protocol::BatchJob>(m.data);
+    VLOG(2) << "Received batch";
 
-    VLOG(2) << "Received batch with " << batch.job_types_size() << " jobs";
-
-    // Add the batch as a pending request.
-    requests_.emplace(std::piecewise_construct,
-        std::forward_as_tuple(id),
-        std::forward_as_tuple(m.address, batchJob.data(), jobTypes.size()));
-
-    // Add each job in the batch to the queue.
-    for (std::size_t i = 0; i < batchJob.job_type_size(); i++)
-    {
-      jobQueue_.emplace_back(nextJobId_++, batchJob.job_type(i));
-    }
-
-    VLOG(2) << requests_.size() << " requests pending";
+    delegator.addBatch(m.address, batchJob.id, std::move(batchJob.data));
   }
 };
 
-struct WorkerEndpoint : Endpoint<WorkerEndpoint, Socket>
+struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
 {
-  Socket& requester;
+  State& delegator;
+  JobID lastJobID;
 
-  WorkerEndpoint(Socket& worker, Socket& requester)
-    : Endpoint<WorkerEndpoint>{worker}
-    , requester{requester}
+  NetworkEndpoint(State& delegator)
+    : Endpoint<NetworkEndpoint>{delegator.network}
+    , delegator{delegator}
+    , lastJobID{0}
   {
   }
 
   void onHello(const Message& m)
   {
-    // add jobtypes
-    // TODO: job types
+    const auto hello = protocol::unserialise<protocol::Hello>(m.data);
+    delegator.addWorker(m.address, hello.jobTypesRange);
 
-    const auto hello = stringToProtobuf<messages::Hello>(m.data);
+    // Use the more lenient timeout as the agreed timeout
+    const auto timeout = std::max(std::chrono::seconds{hello.hbTimeoutSecs},
+        delegator.settings.heartbeatTimeout);
+    delegator.network.startHeartbeats(m.address, timeout);
 
-    Worker w{m.address, jobTypeRange};
-    for (auto i = jobTypeRange.first; i < jobTypeRange.second; ++i)
-      w.times.emplace(i, CircularBuffer<uint>{10});
+    // Send a WELCOME message to the worker
+    protocol::Welcome welcome;
+    welcome.hbTimeoutSecs = timeout.count();
 
-    workers_.emplace(m.address, w);
+    delegator.network.send({m.address, WELCOME, serialise(welcome)});
+  }
 
-    LOG(INFO)<< "Worker " << id << " connected, supporting jobtypes: "; // TODO
+  void idle()
+  {
+    for (auto it = delegator.jobQueue.begin(); it != delegator.jobQueue.end(); )
+    {
+      // TODO: find the best worker
+      Worker *worker = delegator.workers.size() == 0 ? nullptr : &delegator.workers.begin()->second;
+      if (!worker)
+      {
+        ++it;
+        continue;
+      }
 
-    hb.connect(m.address, std::chrono::seconds{10}); // TODO
+      protocol::Job job;
+      job.id = ++lastJobID;
+      job.data = it->batch->second.data;
+
+      delegator.network.send({worker->address, JOB, serialise(job)});
+
+      it->startTime = Clock::now();
+      worker->inProgress.emplace(job.id, std::move(*it));
+
+      // TODO: investigate lazy removal
+      it = delegator.jobQueue.erase(it);
+    }
   }
 
   void onResult(const Message& m)
   {
-    const auto it = workers_.find(m.address);
-    if (it == workers_.end())
+    // TODO: refactor into State
+    const auto it = delegator.workers.find(m.address);
+    if (it == delegator.workers.end())
       return;
 
-    const auto result = protobufToString<messages::Result>(m.data);
-    const Job& job = it->second.wip.at(result.id());
+    const auto result = protocol::unserialise<protocol::Result>(m.data);
+    Worker& worker = it->second;
+    Job& job = worker.inProgress.at(result.id);
+    PendingBatch& batch = job.batch->second;
 
-    // timing information
-    const auto now = hrc::now();
+    worker.times.at(job.type).add(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - job.startTime).count());
 
-    // estimate time the worker spent on this job
-    const auto elapsedTime = now - job.startTime;
+    batch.results[job.type - 1] = result.data; // job types are 1-indexed
+    batch.numJobsDone++;
 
-    const auto usecs = std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
-    it->times.at(j.type).push_back(usecs);
-    it->lastResultTime = now;
-
-    Request& req = requests_[j.batchID];
-    req.results[j.jobTypeIndex] = result.data();
-    req.numCompleted++;
-
-    if (req.numCompleted == req.results.size())
+    if (batch.numJobsDone == batch.results.size())
     {
-      messages::BatchResult batchResult;
-      batchResult.set_id(req.id);
+      protocol::BatchResult batchResult;
+      batchResult.id = job.batch->first;
+      batchResult.data = std::move(batch.results);
 
-      for (const auto& r : req.results)
-        batchResult.add_data(r);
-
-      requester_.send({req.address, BATCH_RESULT, protobufToString(batchResult)});
-      requests_.erase(job.batchID);
+      delegator.requester.send({batch.address, BATCH_RESULT, serialise(batchResult)});
+      delegator.pending.erase(job.batch);
     }
 
     // Remove job from work in progress store
-    worker.wip.erase(job.id);
+    worker.inProgress.erase(result.id);
   }
 
+  /*
   void onBye(const Message& m) { hb.disconnect(m.address); }
 
   void onAny(const Message& m) { hb.update(m.address); }
 };
-
-  // TODO: should this be a float?
-  uint timeForJob(const Delegator::Worker& w, uint jobType)
-  {
-    auto& times = w.times.at(jobType);
-    uint totalTime = std::accumulate(std::begin(times), std::end(times), 0);
-    uint avg;
-    if (times.size() > 0)
-      avg = totalTime / times.size();
-    else
-      avg = 5; // very short initial guess to encourage testing
-    return avg;
-  }
 
   // TODO: could we compute these lazily? i.e. each time a new job is assigned,
   // we update the expected finishing time?
@@ -148,39 +187,48 @@ struct WorkerEndpoint : Endpoint<WorkerEndpoint, Socket>
     //now add the expected time for the new job
     t += timeForJob(w, jobType);
     return t;
-  }
-
-}
+  }*/
+};
 
 Delegator::Delegator(zmq::context_t& ctx, const DelegatorSettings& settings)
-    : requester_{ctx, ZMQ_ROUTER, "toRequester"}
-    , network_{ctx, ZMQ_ROUTER, "toNetwork"}
-    , msPollRate_{settings.msPollRate}
-    , hbSettings_{settings.heartbeat}
-    , nextJobId_{1}
+    : state_{ctx, settings}
 {
   // Initialise the local sockets
-  requester_.bind(DELEGATOR_SOCKET_ADDR);
-  network_.connect(settings);
+  state_.requester.bind(settings.bindAddress);
+  state_.network.connect(settings.networkAddress);
 
-  network_.setFallback([&](const Message& m) { sendFailed(m); });
+  // TODO: network_.setFallback([&](const Message& m) { sendFailed(m); });
 
-  network_.bind("tcp://*:" + std::to_string(settings.port));
+  LOG(INFO) << "Delegator listening on " << settings.bindAddress;
+}
 
-  LOG(INFO) << "Delegator listening on tcp://*:" << settings.port;
+void Delegator::poll()
+{
+  bool running = false; // poll for one iteration
+  start(running);
 }
 
 void Delegator::start(bool& running)
 {
-  while (running)
-  {
-    poll(std::tie(requester_, worker_), pollWait_);
+  RequesterEndpoint requester{state_};
+  NetworkEndpoint network{state_};
 
-    idle();
-    hb_.idle();
-  }
+  Router<RequesterEndpoint, NetworkEndpoint> router{"delegator", std::tie(requester, network)};
+
+  const auto onIdle = [&network]()
+  {
+    network.idle();
+    // TODO: Ugly.
+    network.socket().heartbeats().idle();
+  };
+
+  do
+  {
+    router.poll(onIdle);
+  } while (running);
 }
 
+/*
 Delegator::Worker* Delegator::bestWorker(uint jobType, uint maxJobs)
 {
   // TODO: can we do this using an STL algorithm?
@@ -203,33 +251,6 @@ Delegator::Worker* Delegator::bestWorker(uint jobType, uint maxJobs)
   return best;
 }
 
-void Delegator::idle()
-{
-  const uint maxJobs = 10;
-  auto i = std::begin(jobQueue_);
-  while (i != std::end(jobQueue_))
-  {
-    auto worker = bestWorker(i->type, maxJobs);
-    if (!worker)
-    {
-      ++i;
-      continue;
-    }
-
-    std::string& data = requests_[i->requesterID].data;
-    network_.send({worker->address, JOB, {std::to_string(i->type), i->id, data}});
-    i->startTime = std::chrono::high_resolution_clock::now();
-    worker->workInProgress.insert(std::make_pair(i->id, *i));
-
-    // TODO: could we avoid removing this? What if we just mark it as being removed,
-    // and ignore it when we're polling? We can reap these 'zombie' jobs whenever
-    // they get removed from the front of the queue (assuming there's no job starvation).
-    // This way, we can keep using a queue instead of a list, so we can get
-    // better performance through cache locality.
-    jobQueue_.erase(i++);
-  }
-}
-
 void Delegator::disconnectWorker(const std::string& addr)
 {
   const auto it = workers_.find(m.address);
@@ -250,8 +271,6 @@ void Delegator::sendFailed(const Message& m)
   LOG(INFO) << "Failed to send to " << m.address;
 
   disconnectWorker(m.address);
-}
+} */
 
-} // namespace stateline
-
-} // namespace comms
+} }

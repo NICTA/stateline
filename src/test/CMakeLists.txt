@@ -22,7 +22,8 @@ ADD_EXECUTABLE(${test_suite_name} EXCLUDE_FROM_ALL
   router.cpp
   agent.cpp
   requester.cpp
-  #delegator.cpp diagnostics.cpp router.cpp socket.cpp
+  delegator.cpp
+  #diagnostics.cpp
   # chainarray.cpp db.cpp
 )
 

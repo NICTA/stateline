@@ -15,13 +15,13 @@ namespace stateline { namespace comms { namespace protocol {
 
 struct Hello
 {
-  std::pair<std::uint8_t, std::uint8_t> jobTypesRange;
+  std::pair<std::uint32_t, std::uint32_t> jobTypesRange;
   std::uint32_t hbTimeoutSecs;
 
   std::string serialise() const
   {
     std::string buffer;
-    buffer.reserve(1 + 1 + 4);
+    buffer.reserve(4 + 4 + 4);
 
     packValue(buffer, jobTypesRange.first);
     packValue(buffer, jobTypesRange.second);

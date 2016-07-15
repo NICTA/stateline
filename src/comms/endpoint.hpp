@@ -59,6 +59,14 @@ public:
         self().onResult(m);
         break;
 
+      case BATCH_JOB:
+        self().onBatchJob(m);
+        break;
+
+      case BATCH_RESULT:
+        self().onBatchResult(m);
+        break;
+
       default:
         // TODO: unrecognised subject
         onDefault(m);
