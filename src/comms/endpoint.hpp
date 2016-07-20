@@ -10,7 +10,6 @@
 #pragma once
 
 #include "comms/socket.hpp"
-#include <iostream>
 
 namespace stateline { namespace comms {
 
@@ -51,6 +50,10 @@ public:
         self().onWelcome(m);
         break;
 
+      case BYE:
+        self().onBye(m);
+        break;
+
       case JOB:
         self().onJob(m);
         break;
@@ -69,14 +72,11 @@ public:
 
       default:
         // TODO: unrecognised subject
-        onDefault(m);
+        self().onDefault(m);
         break;
     }
-
-    onAny(m);
   }
 
-  void onAny(const Message&) { }
   void onDefault(const Message&) { }
   void onHeartbeat(const Message& m) { self().onDefault(m); }
   void onHello(const Message& m) { self().onDefault(m); }
@@ -86,6 +86,14 @@ public:
   void onResult(const Message& m) { self().onDefault(m); }
   void onBatchJob(const Message& m) { self().onDefault(m); }
   void onBatchResult(const Message& m) { self().onDefault(m); }
+
+  void onHeartbeatSend(const std::string& addr) { }
+  void onHeartbeatTimeout(const std::string& addr) { }
+
+  void idle()
+  {
+    // handle heartbeats and disconnects
+  }
 
 private:
   Base& self() { return *static_cast<Base*>(this); }
