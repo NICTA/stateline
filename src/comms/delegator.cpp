@@ -194,12 +194,12 @@ Delegator::Delegator(zmq::context_t& ctx, const DelegatorSettings& settings)
     : state_{ctx, settings}
 {
   // Initialise the local sockets
-  state_.requester.bind(settings.bindAddress);
-  state_.network.connect(settings.networkAddress);
+  state_.requester.bind(settings.requesterAddress);
+  state_.network.bind(settings.networkAddress);
 
   // TODO: network_.setFallback([&](const Message& m) { sendFailed(m); });
 
-  LOG(INFO) << "Delegator listening on " << settings.bindAddress;
+  LOG(INFO) << "Delegator listening on " << settings.networkAddress;
 }
 
 void Delegator::poll()

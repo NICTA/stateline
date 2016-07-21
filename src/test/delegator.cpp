@@ -27,12 +27,12 @@ TEST_CASE("delegator follows protocol", "[delegator]")
   settings.numJobTypes = 3;
 
   Socket network{ctx, zmq::socket_type::dealer, "network"};
-  network.bind(settings.networkAddress);
+  network.connect(settings.networkAddress);
 
   Delegator delegator{ctx, settings};
 
   Socket requester{ctx, zmq::socket_type::dealer, "requester"};
-  requester.connect(settings.bindAddress);
+  requester.connect(settings.requesterAddress);
 
   SECTION("responds to HELLO from worker with WELCOME")
   {

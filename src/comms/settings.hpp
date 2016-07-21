@@ -22,9 +22,9 @@ namespace stateline { namespace comms {
 struct DelegatorSettings
 {
   //! The address of this delegator which the requester connects to.
-  std::string bindAddress;
+  std::string requesterAddress;
 
-  //! The address of the agent to connect to.
+  //! The address for agents to connect to.
   std::string networkAddress;
 
   //! How long without heartbeats is considered time out.
@@ -35,8 +35,8 @@ struct DelegatorSettings
 
   //! Construct default agent settings.
   //!
-  DelegatorSettings(std::string bindAddress, std::string networkAddress)
-    : bindAddress{std::move(bindAddress)}
+  DelegatorSettings(std::string requesterAddress, std::string networkAddress)
+    : requesterAddress{std::move(requesterAddress)}
     , networkAddress{std::move(networkAddress)}
   {
     heartbeatTimeout = std::chrono::seconds{15};
