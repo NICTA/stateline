@@ -20,6 +20,17 @@
 
 namespace stateline { namespace comms {
 
+Delegator::Worker::JobDuration Delegator::Worker::estimatedFinishDurationForNewJob(JobType type) const
+{
+  const auto wipTime = std::accumulate(inProgress.begin(), inProgress.end(), 0.0,
+      [this](const auto& a, const auto& b)
+      {
+        return a + times.at(b.second.type).average();
+      });
+
+  return JobDuration{static_cast<JobDuration::rep>(wipTime + times.at(type).average())};
+}
+
 Delegator::PendingBatch::PendingBatch(std::string address, std::vector<double> data, std::size_t numJobTypes)
   : address{std::move(address)}
   , data{std::move(data)}
@@ -65,6 +76,30 @@ void Delegator::State::addBatch(const std::string& address, JobID id, std::vecto
 
   VLOG(2) << pending.size() << " requests pending";
 }
+
+Delegator::Worker* Delegator::State::bestWorker(const JobType type)
+{
+  Delegator::Worker* bestWorker = nullptr;
+  auto bestDuration = Worker::JobDuration::max();
+  for (auto& it : workers)
+  {
+    auto& worker = it.second;
+    if (type >= worker.jobTypesRange.first &&
+        type <=  worker.jobTypesRange.second &&
+        worker.inProgress.size() < worker.maxJobs)
+    {
+      const auto duration = worker.estimatedFinishDurationForNewJob(type);
+      if (duration < bestDuration ||
+          (duration == bestDuration && worker.inProgress.size() < bestWorker->inProgress.size()))
+      {
+        bestWorker = &worker;
+        bestDuration = duration;
+      }
+    }
+  }
+  return bestWorker;
+}
+
 
 struct Delegator::RequesterEndpoint : Endpoint<RequesterEndpoint>
 {
@@ -119,7 +154,7 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
     for (auto it = delegator.jobQueue.begin(); it != delegator.jobQueue.end(); )
     {
       // TODO: find the best worker
-      Worker *worker = delegator.workers.size() == 0 ? nullptr : &delegator.workers.begin()->second;
+      Worker *worker = delegator.bestWorker(it->type);
       if (!worker)
       {
         ++it;
@@ -152,7 +187,7 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
     Job& job = worker.inProgress.at(result.id);
     PendingBatch& batch = job.batch->second;
 
-    worker.times.at(job.type).add(std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - job.startTime).count());
+    worker.times.at(job.type).add(std::chrono::duration<float, std::micro>(Clock::now() - job.startTime).count());
 
     batch.results[job.type - 1] = result.data; // job types are 1-indexed
     batch.numJobsDone++;
@@ -227,50 +262,5 @@ void Delegator::start(bool& running)
     router.poll(onIdle);
   } while (running);
 }
-
-/*
-Delegator::Worker* Delegator::bestWorker(uint jobType, uint maxJobs)
-{
-  // TODO: can we do this using an STL algorithm?
-  Delegator::Worker* best = nullptr;
-  uint bestTime = std::numeric_limits<uint>::max();
-  for (auto& w : workers_)
-  {
-    if (jobType >= w.second.jobTypesRange.first &&
-        jobType <  w.second.jobTypesRange.second &&
-        w.second.workInProgress.size() < maxJobs)
-    {
-      uint t = usTillDone(w.second, jobType);
-      if (t < bestTime)
-      {
-        best = &w.second;
-        bestTime = t;
-      }
-    }
-  }
-  return best;
-}
-
-void Delegator::disconnectWorker(const std::string& addr)
-{
-  const auto it = workers_.find(m.address);
-  if (it == workers_.end())
-    return;
-
-  LOG(INFO)<< "Worker " << addr << " disconnected: re-assigning their jobs";
-
-  // Push all the unfinished work back into the queue
-  for (const auto& kv : it->wip)
-    jobQueue_.push_front(kv.second);
-
-  workers_.erase(it);
-}
-
-void Delegator::sendFailed(const Message& m)
-{
-  LOG(INFO) << "Failed to send to " << m.address;
-
-  disconnectWorker(m.address);
-} */
 
 } }

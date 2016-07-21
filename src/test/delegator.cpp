@@ -121,3 +121,78 @@ TEST_CASE("delegator follows protocol", "[delegator]")
     }
   }
 }
+
+TEST_CASE("delegator delegates jobs fairly", "[delegator]")
+{
+  zmq::context_t ctx{1};
+
+  DelegatorSettings settings{"ipc://test_delegator", "ipc://test_network"};
+  settings.heartbeatTimeout = 10s;
+  settings.numJobTypes = 2;
+
+  Socket network1{ctx, zmq::socket_type::dealer, "network"};
+  network1.connect(settings.networkAddress);
+
+  Socket network2{ctx, zmq::socket_type::dealer, "network"};
+  network2.connect(settings.networkAddress);
+
+  Delegator delegator{ctx, settings};
+
+  Socket requester{ctx, zmq::socket_type::dealer, "requester"};
+  requester.connect(settings.requesterAddress);
+
+  SECTION("responds to HELLOs from workers")
+  {
+    {
+      protocol::Hello hello;
+      hello.jobTypesRange = std::make_pair(1, 2);
+      hello.hbTimeoutSecs = 20;
+      REQUIRE(network1.send({"", HELLO, serialise(hello)}) == true);
+      REQUIRE(network2.send({"", HELLO, serialise(hello)}) == true);
+    }
+
+    // Poll twice because the messages are from the same socket
+    delegator.poll();
+    delegator.poll();
+
+    {
+      const auto msg1 = network1.recv();
+      REQUIRE(msg1.subject == WELCOME);
+
+      const auto msg2 = network2.recv();
+      REQUIRE(msg2.subject == WELCOME);
+    }
+
+    SECTION("sends jobs to worker when BATCH JOB is received")
+    {
+      {
+        protocol::BatchJob batchJob;
+        batchJob.id = 1;
+        batchJob.data.push_back(1); // Should be sent to worker1
+        batchJob.data.push_back(2); // Should be sent to worker1 again
+        batchJob.data.push_back(3); // Should be sent to worker2
+
+        REQUIRE(requester.send({"", BATCH_JOB, serialise(batchJob)}) == true);
+      }
+
+      delegator.poll();
+
+      {
+        const auto msg1 = network1.recv();
+        REQUIRE(msg1.subject == JOB);
+
+        const auto msg2 = network2.recv();
+        REQUIRE(msg2.subject == JOB);
+
+        const auto job1 = protocol::unserialise<protocol::Job>(msg1.data);
+        const auto job2 = protocol::unserialise<protocol::Job>(msg2.data);
+
+        // The two jobs should be split between the two workers
+        if (job1.id == 1)
+          REQUIRE(job2.id == 2);
+        else
+          REQUIRE(job2.id == 1);
+      }
+    }
+  }
+}

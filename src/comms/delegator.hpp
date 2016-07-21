@@ -73,10 +73,13 @@ private:
 
   struct Worker
   {
+    using JobDuration = std::chrono::microseconds;
+
     std::string address;
     std::pair<JobType, JobType> jobTypesRange;
     std::map<JobID, Job> inProgress;
     std::map<JobType, ExpMovingAverage<float>> times;
+    std::size_t maxJobs = 10; // TODO: make this part of the HELLO msg
 
     Worker(std::string address,
            const std::pair<JobType, JobType>& jobTypesRange)
@@ -84,13 +87,9 @@ private:
       , jobTypesRange{jobTypesRange}
     {
     }
+
+    JobDuration estimatedFinishDurationForNewJob(JobType type) const;
   };
-
-  /*
-  void idle();
-
-  // TODO: does this need to be a member function?
-  Worker* bestWorker(uint jobType, uint maxJobs);*/
 
   struct State
   {
@@ -106,17 +105,14 @@ private:
     void addWorker(const std::string& address, const std::pair<JobType, JobType>& jobTypeRange);
 
     void addBatch(const std::string& address, JobID id, std::vector<double> data);
+
+    Worker* bestWorker(JobType type);
   };
 
   struct RequesterEndpoint;
   struct NetworkEndpoint;
 
   State state_;
-  /*
-  std::map<std::string, Request> requests_;
-  std::list<Job> jobQueue_;
-
-  JobID nextJobId_;*/
 };
 
 } }
