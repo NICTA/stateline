@@ -58,7 +58,8 @@ void Delegator::State::addWorker(const std::string& address, const std::pair<Job
 
   workers.emplace(address, w);
 
-  LOG(INFO)<< "Worker " << address << " connected, supporting jobtypes: "; // TODO
+  LOG(INFO)<< "Worker " << address << " connected, supporting jobtypes: "
+    << jobTypesRange.first << "-" << jobTypesRange.second;
 }
 
 void Delegator::State::addBatch(const std::string& address, JobID id, std::vector<double> data)

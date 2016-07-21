@@ -41,7 +41,16 @@ struct Agent::WorkerEndpoint : Endpoint<WorkerEndpoint>
 
   void onHello(const Message& m)
   {
-    agent.network.send(m); // Forward to delegator
+    // Worker HELLOs do not have heartbeat timeout information.
+    // It is our job to append that to the message.
+    Message copy = m;
+    Packer p{copy.data};
+    p.reserve(m.data.size() + 4);
+    p.value(static_cast<std::uint32_t>(timeout.count()));
+
+    agent.network.send(copy); // Forward to delegator
+
+    std::cout << "Forwarding HELLO" << std::endl;
   }
 
   void onResult(const Message& m)
@@ -102,9 +111,11 @@ Agent::Agent(zmq::context_t& ctx, const AgentSettings& settings)
   , state_{worker_, network_}
 {
   // Initialise the local sockets
+  LOG(INFO) << "Agent binding to " << settings.bindAddress;
   worker_.bind(settings.bindAddress);
+
+  LOG(INFO) << "Agent connecting to delegator at " << settings.networkAddress;
   network_.setIdentity();
-  LOG(INFO) << "Worker connecting to " << settings.networkAddress;
   network_.connect(settings.networkAddress);
 }
 

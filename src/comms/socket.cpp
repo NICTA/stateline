@@ -35,9 +35,9 @@ void SocketBase::bind(const std::string& address)
   {
     socket_.bind(address.c_str());
   }
-  catch(...)
+  catch(const zmq::error_t& err)
   {
-    LOG(FATAL) << "Could not bind to " << address << ". Address already in use";
+    LOG(FATAL) << "Socket '" << name() << "' could not bind to " << address << ". error='" << err.what() << "'";
   }
 }
 

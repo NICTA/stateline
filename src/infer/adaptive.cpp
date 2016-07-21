@@ -11,7 +11,7 @@
 
 #include "infer/adaptive.hpp"
 #include <iostream>
-#include "../app/jsonsettings.hpp"
+#include "../app/json.hpp"
 #include <Eigen/Dense>
 #include <vector>
 #include <deque>    

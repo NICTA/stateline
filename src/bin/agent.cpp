@@ -35,7 +35,8 @@ int main(int argc, const char *argv[])
 {
   // Parse the command line
   auto opt = commandLineOptions();
-  opt.parse(argc, argv);
+  if (!sl::parseCommandLine(opt, argc, argv))
+    return 0;
 
   // Initialise logging
   int logLevel;
@@ -46,7 +47,7 @@ int main(int argc, const char *argv[])
   std::string networkAddr, bindAddr;
   opt.get("-a")->getString(bindAddr);
   opt.get("-n")->getString(networkAddr);
-  sl::comms::AgentSettings settings{bindAddr, networkAddr};
+  sl::comms::AgentSettings settings{bindAddr, "tcp://" + networkAddr};
 
   zmq::context_t ctx{1};
   sl::comms::Agent agent{ctx, settings};

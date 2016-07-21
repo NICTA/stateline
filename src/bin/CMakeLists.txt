@@ -6,8 +6,8 @@
 # Date: 2014 
 
 # Macro for adding CPP binaries
-FUNCTION(ADD_BINARY name library)
-  ADD_EXECUTABLE (${name} ${name}.cpp)
+FUNCTION(ADD_BINARY fname name library)
+  ADD_EXECUTABLE(${name} ${fname})
 
   SET_TARGET_PROPERTIES(${name} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${STATELINE_BINARY_DIR})
@@ -22,9 +22,5 @@ FUNCTION(COPY_FILE name)
   ENDIF()
 ENDFUNCTION()
 
-# no point building this until we have a need for it
-#ADD_BINARY(stateline-server statelineserver)
-
-#ADD_BINARY(stateline-client statelineclient)
-#ADD_BINARY(stateline statelineserver)
-ADD_BINARY(agent statelineclient)
+ADD_BINARY(server.cpp sl-server stateline-server)
+ADD_BINARY(agent.cpp sl-agent stateline-client)

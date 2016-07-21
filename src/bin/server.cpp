@@ -1,7 +1,6 @@
+//! Runs the MCMC and delegator.
 //!
-//! A demo using Stateline to sample from a Gaussian mixture.
-//!
-//! \file stateline.cpp
+//! \file src/bin/server.cpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
@@ -10,18 +9,15 @@
 //!
 
 #include <json.hpp>
+
 #include "ezoptionparser/ezOptionParser.hpp"
 
-#include "../app/serverwrapper.hpp"
-#include "../app/logging.hpp"
-#include "../app/serial.hpp"
-#include "../app/signal.hpp"
-#include "../app/commandline.hpp"
+#include "app/serverwrapper.hpp"
+#include "app/logging.hpp"
+#include "app/signal.hpp"
+#include "app/commandline.hpp"
 
-// Alias namespaces for conciseness
 namespace sl = stateline;
-namespace ph = std::placeholders;
-namespace ch = std::chrono;
 using json = nlohmann::json;
 
 ez::ezOptionParser commandLineOptions()
@@ -61,30 +57,23 @@ int main(int argc, const char *argv[])
   opt.get("-l")->getInt(logLevel);
   sl::initLogging(logLevel);
 
-  // Capture Ctrl+C
-  sl::init::initialiseSignalHandler();
-
   std::string configPath;
   opt.get("-c")->getString(configPath);
-  json config = initConfig(configPath);
+  const auto config = initConfig(configPath);
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
 
   int port;
   opt.get("-p")->getInt(port);
 
-  sl::ServerWrapper s(port, settings);
+  sl::ServerWrapper s{port, settings};
   s.start();
 
-  while(!sl::global::interruptedBySignal && s.isRunning())
+  while(s.isRunning())
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   s.stop();
 
-  // Load the chains here from CSV?
-
   return 0;
-
-
 }

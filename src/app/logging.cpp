@@ -14,8 +14,10 @@
 #include <cstdlib>
 #include <iostream>
 
+#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
 #include <easylogging/easylogging++.h>
 
+// Don't want to get annoying crash messages when we ctrl-c
 INITIALIZE_EASYLOGGINGPP
 
 namespace stateline
@@ -34,7 +36,7 @@ namespace stateline
     defaultConf.setToDefault();
 
     defaultConf.setGlobally(
-        el::ConfigurationType::Format, "%datetime %level %msg");
+        el::ConfigurationType::Format, "%datetime [%level] %msg");
     defaultConf.setGlobally(
         el::ConfigurationType::ToStandardOutput, stdOut ? "true" : "false");
     defaultConf.setGlobally(
@@ -45,6 +47,8 @@ namespace stateline
     // TODO: currently only verbose logging works. Normal hierarchical logging
     // is a bit tricky on easylogging. Will implement if needed.
     el::Loggers::setVerboseLevel(vLevel);
+
+    el::Loggers::reconfigureLogger("default", defaultConf);
 
     LOG(INFO) << "Logging initialised with level " << normLog << " and verbosity " << vLevel;
   }

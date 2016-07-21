@@ -43,6 +43,8 @@ public:
 
   void start(bool& running);
 
+  const DelegatorSettings& settings() const { return state_.settings; }
+
 private:
   using Clock = std::chrono::high_resolution_clock;
 

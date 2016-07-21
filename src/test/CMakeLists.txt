@@ -27,4 +27,4 @@ ADD_EXECUTABLE(${test_suite_name} EXCLUDE_FROM_ALL
   # chainarray.cpp db.cpp
 )
 
-TARGET_LINK_LIBRARIES(${test_suite_name} ${ZMQ_LIBRARY} statelineclient stateline-server)
+TARGET_LINK_LIBRARIES(${test_suite_name} ${ZMQ_LIBRARY} stateline-client stateline-server)

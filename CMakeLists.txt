@@ -129,24 +129,19 @@ ADD_SUBPROJECT(src/bin)
 ##############################################################################
 # Build final libraries for server and client
 ##############################################################################
-ADD_LIBRARY(statelineserver STATIC #SHARED
-  $<TARGET_OBJECTS:commonwrapper> #$<TARGET_OBJECTS:serverwrapper>
-  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
-  $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
-
-TARGET_LINK_LIBRARIES(statelineserver ${Boost_LIBRARIES} ${ZMQ_LIBRARY})
-SET_TARGET_PROPERTIES(statelineserver PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_LIBRARY(stateline-server STATIC
-  $<TARGET_OBJECTS:commonwrapper>
-  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>)
+  $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
+  $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
+  $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
 TARGET_LINK_LIBRARIES(stateline-server ${ZMQ_LIBRARY})
+SET_TARGET_PROPERTIES(stateline-server PROPERTIES LINKER_LANGUAGE CXX)
 
-ADD_LIBRARY(statelineclient STATIC #SHARED
+ADD_LIBRARY(stateline-client STATIC
   $<TARGET_OBJECTS:commonwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:clientcomms>)
-TARGET_LINK_LIBRARIES(statelineclient ${ZMQ_LIBRARY})
-SET_TARGET_PROPERTIES(statelineclient PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(stateline-client ${ZMQ_LIBRARY})
+SET_TARGET_PROPERTIES(stateline-client PROPERTIES LINKER_LANGUAGE CXX)
 
 ##############################################################################
 # Move the frontend code to the build folder
@@ -156,9 +151,9 @@ FILE(COPY frontend DESTINATION ${STATELINE_BINARY_DIR})
 ##############################################################################
 # Install binaries
 ##############################################################################
-install (TARGETS statelineserver
+install (TARGETS stateline-server
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)
-install (TARGETS statelineclient
+install (TARGETS stateline-client
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib)

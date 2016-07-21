@@ -76,16 +76,17 @@ public:
   template <class IdleCallback>
   void poll(const IdleCallback& callback)
   {
+    LOG(DEBUG) << "Polling";
     zmq::poll(pollList_.data(), pollList_.size(), pollWaitTime());
 
     // Handle each poll event
-    meta::enumerateAll(endpoints_, [&pollList = pollList_](const auto i, auto& endpoint)
+    meta::enumerateAll(endpoints_, [&pollList = pollList_, &name = name_](const auto i, auto& endpoint)
     {
       bool newMsg = pollList[i].revents & ZMQ_POLLIN;
       if (newMsg)
       {
-        //TODO LOG(INFO) << "Router " << name_ << " received new message from endpoint "
-          //<< endpoint.socket().name();
+        LOG(DEBUG) << "Router " << name << " received new message from endpoint "
+          << endpoint.socket().name();
 
         endpoint.accept();
       }

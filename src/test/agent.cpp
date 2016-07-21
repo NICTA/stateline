@@ -17,6 +17,20 @@
 using namespace stateline::comms;
 using namespace std::chrono_literals;
 
+// Special HELLO sent from the worker
+struct WorkerHello
+{
+  std::pair<std::uint32_t, std::uint32_t> jobTypesRange;
+
+  template <class Pack>
+  void pack(Pack& p)
+  {
+    p.reserve(4 + 4);
+    p.value(jobTypesRange.first);
+    p.value(jobTypesRange.second);
+  }
+};
+
 TEST_CASE("agent can connect to network and worker", "[agent]")
 {
   zmq::context_t ctx{1};
@@ -35,11 +49,10 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
   SECTION("forwards HELLO from worker to network")
   {
     {
-      protocol::Hello hello;
+      WorkerHello hello;
       hello.jobTypesRange = std::make_pair(1, 3);
-      hello.hbTimeoutSecs = 10;
 
-      REQUIRE(worker.send({"", HELLO, serialise(hello)}) == true);
+      REQUIRE(worker.send({"", HELLO, protocol::serialise(hello)}) == true);
     }
 
     agent.poll();
@@ -64,7 +77,7 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
       REQUIRE(network.send({ agentAddress, WELCOME, serialise(welcome) }) == true);
       agent.poll();
 
-      // TODO:
+      // TODO: check heartbeats
 
       SECTION("forwards JOB from network to worker")
       {
