@@ -34,7 +34,7 @@ public:
   using Clock = std::chrono::high_resolution_clock;
 
   using HeartbeatCallback = std::function<void(const std::string&)>;
-  using DisconnectCallback = std::function<void(const std::string&)>;
+  using DisconnectCallback = std::function<void(const std::string&, DisconnectReason reason)>;
 
   //! Construct a heartbeat manager.
   //!

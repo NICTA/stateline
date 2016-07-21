@@ -19,7 +19,16 @@ using namespace std::chrono_literals;
 
 TEST_CASE("heartbeat can connect and disconnect", "[heartbeat]")
 {
+  bool disconnectCalled = false;
+
   Heartbeat hb;
+  hb.bindDisconnect(
+      [&disconnectCalled](const auto& addr, auto reason)
+      {
+        REQUIRE((reason == DisconnectReason::USER_REQUESTED));
+        REQUIRE(addr == "foo");
+        disconnectCalled = true;
+      });
 
   SECTION("defaults to no connections")
   {
@@ -37,10 +46,15 @@ TEST_CASE("heartbeat can connect and disconnect", "[heartbeat]")
       REQUIRE(hb.numConnections() == 1);
     }
 
-    SECTION("disconnect updates connections")
+    SECTION("disconnect calls disconnect callback")
     {
       hb.disconnect("foo");
-      REQUIRE(hb.numConnections() == 0);
+      REQUIRE(disconnectCalled == true);
+
+      SECTION("update connections")
+      {
+        REQUIRE(hb.numConnections() == 0);
+      }
 
       SECTION("disconnecting same address does nothing")
       {
@@ -49,10 +63,100 @@ TEST_CASE("heartbeat can connect and disconnect", "[heartbeat]")
       }
     }
   }
-
-  /*
-  std::this_thread::sleep_for(500ms);
-  hb.connect("bar", 1s);
-
-  REQUIRE(hb.idle() < 500ms);*/
 }
+
+TEST_CASE("heartbeats timeout when no heartbeats are sent", "[heartbeat]")
+{
+  bool timeoutCalled = false;
+
+  Heartbeat hb;
+  hb.bindDisconnect(
+      [&timeoutCalled](const auto& addr, auto reason)
+      {
+        REQUIRE(timeoutCalled == false);
+        timeoutCalled = true;
+        REQUIRE(addr == "foo");
+        REQUIRE(reason == DisconnectReason::TIMEOUT);
+      });
+
+  hb.connect("foo", 1s);
+
+  SECTION("calls timeout callback")
+  {
+    std::this_thread::sleep_for(1s);
+    hb.idle();
+
+    REQUIRE(timeoutCalled == true);
+
+    SECTION("removes the connection")
+    {
+      REQUIRE(hb.numConnections() == 0);
+    }
+  }
+}
+
+TEST_CASE("heartbeats don't timeout when heartbeats are sent", "[heartbeat]")
+{
+  int heartbeatCalled = 0;
+
+  Heartbeat hb;
+  hb.bindHeartbeat(
+      [&heartbeatCalled](const auto& addr)
+      {
+        REQUIRE(addr == "foo");
+        heartbeatCalled++;
+      });
+  hb.bindDisconnect([](const auto&, auto) { REQUIRE(false); });
+
+  hb.connect("foo", 1s);
+
+  SECTION("calls heartbeat callback on idle")
+  {
+    std::this_thread::sleep_for(500ms);
+    hb.updateLastRecvTime("foo");
+    hb.idle();
+
+    REQUIRE(heartbeatCalled == 1);
+
+    SECTION("keeps the connection")
+    {
+      REQUIRE(hb.numConnections() == 1);
+    }
+
+    SECTION("calls heartbeat callback on second idle")
+    {
+      std::this_thread::sleep_for(500ms);
+      hb.updateLastRecvTime("foo");
+      hb.idle();
+
+      REQUIRE(heartbeatCalled == 2);
+
+      SECTION("keeps the connection")
+      {
+        REQUIRE(hb.numConnections() == 1);
+      }
+
+      SECTION("times out when we miss a heartbeat")
+      {
+        bool timeoutCalled = false;
+        hb.bindDisconnect(
+            [&timeoutCalled](const auto& addr, auto reason)
+            {
+              timeoutCalled = true;
+              REQUIRE(addr == "foo");
+              REQUIRE(reason == DisconnectReason::TIMEOUT);
+            });
+
+        std::this_thread::sleep_for(1s);
+        hb.idle();
+
+        SECTION("removes the connection")
+        {
+          REQUIRE(hb.numConnections() == 0);
+        }
+      }
+    }
+  }
+}
+
+// TODO: add test with multiple connections

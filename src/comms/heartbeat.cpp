@@ -16,7 +16,7 @@ namespace stateline { namespace comms {
 
 Heartbeat::Heartbeat()
   : heartbeatCallback_{[](const auto&) { }}
-  , disconnectCallback_{[](const auto&) { }}
+  , disconnectCallback_{[](const auto&, auto) { }}
 {
 }
 
@@ -43,7 +43,7 @@ void Heartbeat::disconnect(const std::string& addr, DisconnectReason reason)
       break;
   }
 
-  disconnectCallback_(addr);
+  disconnectCallback_(addr, reason);
   conns_.erase(addr);
 }
 
@@ -87,7 +87,7 @@ void Heartbeat::idle()
     if (it->second.lastRecvTime + it->second.interval * 2 < now)
     {
       VLOG(1) << it->first << " timed out";
-      disconnectCallback_(it->first);
+      disconnectCallback_(it->first, DisconnectReason::TIMEOUT);
       it = conns_.erase(it);
     }
     else
