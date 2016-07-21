@@ -51,7 +51,7 @@ private:
     std::string address; // need to know who to send this back to
     std::vector<double> data; // the batch job data
     std::vector<double> results; // table of pending results
-    int numJobsDone; // number of completed jobs so far
+    std::size_t numJobsDone; // number of completed jobs so far
 
     PendingBatch(std::string address, std::vector<double> data, std::size_t numJobTypes);
   };

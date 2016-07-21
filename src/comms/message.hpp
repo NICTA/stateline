@@ -13,11 +13,7 @@
 #include <ostream>
 #include <string>
 
-namespace stateline
-{
-
-namespace comms
-{
+namespace stateline { namespace comms {
 
 //! Represents all the message types used in Stateline.
 enum Subject : std::uint8_t // TODO: make this an enum class
@@ -55,6 +51,4 @@ struct Message
 
 std::ostream& operator<<(std::ostream& os, const Message& m);
 
-}
-
-}
+} }

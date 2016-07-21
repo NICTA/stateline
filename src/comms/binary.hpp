@@ -57,7 +57,7 @@ public:
   {
   }
 
-  void reserve(std::size_t capacity)
+  void reserve(std::size_t /*capacity*/)
   {
     // Does nothing
   }

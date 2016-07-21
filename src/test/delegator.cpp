@@ -70,7 +70,7 @@ TEST_CASE("delegator follows protocol", "[delegator]")
 
       {
         std::vector<protocol::Job> jobs;
-        for (auto i = 0; i < settings.numJobTypes; i++)
+        for (std::size_t i = 0; i < settings.numJobTypes; i++)
         {
           const auto msg = network.recv();
           REQUIRE(msg.subject == JOB);
@@ -82,7 +82,7 @@ TEST_CASE("delegator follows protocol", "[delegator]")
 
         std::sort(jobs.begin(), jobs.end(), [](auto&& a, auto&& b) { return a.id < b.id; });
 
-        for (auto i = 0; i < settings.numJobTypes; i++)
+        for (std::size_t i = 0; i < settings.numJobTypes; i++)
         {
           REQUIRE(jobs[i].id == i + 1);
           REQUIRE(jobs[i].data.size() == 3);
