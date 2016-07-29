@@ -144,11 +144,6 @@ TARGET_LINK_LIBRARIES(stateline-client ${ZMQ_LIBRARY})
 SET_TARGET_PROPERTIES(stateline-client PROPERTIES LINKER_LANGUAGE CXX)
 
 ##############################################################################
-# Move the frontend code to the build folder
-##############################################################################
-FILE(COPY frontend DESTINATION ${STATELINE_BINARY_DIR})
-
-##############################################################################
 # Install binaries
 ##############################################################################
 install (TARGETS stateline-server
