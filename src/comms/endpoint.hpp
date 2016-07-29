@@ -26,6 +26,10 @@ public:
   explicit Endpoint(Socket& socket)
     : socket_{socket}
   {
+    socket.heartbeats().bindHeartbeat(
+        [this](const std::string& addr) { onHeartbeatSend(addr); });
+    socket.heartbeats().bindDisconnect(
+        [this](const std::string& addr, DisconnectReason reason) { onHeartbeatDisconnect(addr, reason); });
   }
 
   Socket& socket() { return socket_; }
@@ -74,7 +78,9 @@ public:
         break;
 
       default:
-        // TODO: unrecognised subject
+        SL_LOG(WARNING) << "Received message with unknown subject "
+          << pprint("subject", m.subject);
+
         self().onDefault(m);
         break;
     }
@@ -90,8 +96,14 @@ public:
   void onBatchJob(const Message& m) { self().onDefault(m); }
   void onBatchResult(const Message& m) { self().onDefault(m); }
 
-  void onHeartbeatSend(const std::string& addr) { }
-  void onHeartbeatTimeout(const std::string& addr) { }
+  void onHeartbeatSend(const std::string& addr)
+  {
+    // Default behaviour is to send an empty heartbeat msg
+    SL_LOG(TRACE) << "Sending empty heartbeat " << pprint("addr", addr);
+    socket_.send({ addr, HEARTBEAT, "" });
+  }
+
+  void onHeartbeatDisconnect(const std::string&, DisconnectReason) { }
 
   void forwardMessage(Socket& s, const Message &m)
   {
@@ -101,7 +113,7 @@ public:
 
   void idle()
   {
-    // handle heartbeats and disconnects
+    socket_.heartbeats().idle();
   }
 
 private:
@@ -110,6 +122,4 @@ private:
   Socket& socket_;
 };
 
-} // namespace stateline
-
-}// namespace comms
+} }

@@ -22,7 +22,7 @@ Heartbeat::Heartbeat()
 
 void Heartbeat::connect(const std::string& addr, std::chrono::seconds timeout)
 {
-  SL_LOG(INFO) << addr << " connected " << pprint("timeout", timeout);
+  SL_LOG(INFO) << "New connection " << pprint("addr", addr, "timeout", timeout);
 
   // We send 2 heartbeats per timeout
   const auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(timeout) / 2;
@@ -37,11 +37,11 @@ void Heartbeat::disconnect(const std::string& addr, DisconnectReason reason)
   switch (reason)
   {
     case DisconnectReason::USER_REQUESTED:
-      SL_LOG(INFO) << addr << " disconnected by request";
+      SL_LOG(INFO) << "Connection closed by request " << pprint("addr", addr);
       break;
 
     case DisconnectReason::TIMEOUT:
-      SL_LOG(INFO) << addr << " disconnected by time out";
+      SL_LOG(INFO) << "Connection closed by timeout " << pprint("addr", addr);
       break;
   }
 
@@ -94,7 +94,7 @@ void Heartbeat::idle()
     // Disconnect if they missed 2 heartbeat intervals.
     if (it->second.lastRecvTime + it->second.interval * 2 < now)
     {
-      SL_LOG(INFO) << it->first << " disconnected by timeout " << pprint("timeout", it->second.interval * 2);
+      SL_LOG(INFO) << "Connection closed by timeout " << pprint("addr", it->first);
       disconnectCallback_(it->first, DisconnectReason::TIMEOUT);
       it = conns_.erase(it);
     }

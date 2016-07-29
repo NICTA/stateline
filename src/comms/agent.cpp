@@ -79,7 +79,7 @@ struct Agent::NetworkEndpoint : Endpoint<NetworkEndpoint>
   void onWelcome(const Message& m)
   {
     const auto welcome = protocol::unserialise<protocol::Welcome>(m.data);
-    agent.network.startHeartbeats("delegator", std::chrono::seconds{welcome.hbTimeoutSecs});
+    agent.network.startHeartbeats(m.address, std::chrono::seconds{welcome.hbTimeoutSecs});
   }
 
   void onJob(const Message& m)
@@ -129,11 +129,7 @@ void Agent::start(bool& running)
 
   Router<WorkerEndpoint, NetworkEndpoint> router{"agent", std::tie(worker, network)};
 
-  const auto onIdle = [&network]()
-  {
-    // TODO: Ugly.
-    network.socket().heartbeats().idle();
-  };
+  const auto onIdle = [&network]() { network.idle(); };
 
   do
   {

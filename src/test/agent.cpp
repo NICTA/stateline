@@ -12,9 +12,12 @@
 #include "comms/agent.hpp"
 #include "comms/protocol.hpp"
 
+#include "testsocket.hpp"
+
 #include <chrono>
 
 using namespace stateline::comms;
+using namespace stateline::test;
 using namespace std::chrono_literals;
 
 // Special HELLO sent from the worker
@@ -38,7 +41,7 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
   AgentSettings settings{"ipc://test_agent", "ipc://test_network"};
   settings.heartbeatTimeout = 10s;
 
-  Socket network{ctx, zmq::socket_type::router, "network"};
+  TestSocket network{ctx, zmq::socket_type::router, "network"};
   network.bind(settings.networkAddress);
 
   Agent agent{ctx, settings};
@@ -76,8 +79,6 @@ TEST_CASE("agent can connect to network and worker", "[agent]")
 
       REQUIRE(network.send({ agentAddress, WELCOME, serialise(welcome) }) == true);
       agent.poll();
-
-      // TODO: check heartbeats
 
       SECTION("forwards JOB from network to worker")
       {

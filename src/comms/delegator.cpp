@@ -179,6 +179,9 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
       // TODO: investigate lazy removal
       it = delegator.jobQueue.erase(it);
     }
+
+    // Call base class idle
+    Endpoint<NetworkEndpoint>::idle();
   }
 
   void onResult(const Message& m)
@@ -211,6 +214,25 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
     // Remove job from work in progress store
     worker.inProgress.erase(result.id);
   }
+
+  void onBye(const Message& m)
+  {
+    socket().heartbeats().disconnect(m.address, DisconnectReason::USER_REQUESTED);
+  }
+
+  void onHeartbeatDisconnect(const std::string& addr, DisconnectReason)
+  {
+    auto it = delegator.workers.find(addr);
+    if (it == delegator.workers.end())
+      return;
+
+    // Requeue the in progress jobs of this worker
+    SL_LOG(INFO) << "Re-queuing " << it->second.inProgress.size() << " jobs from " << addr;
+    for (const auto& kv : it->second.inProgress)
+      delegator.jobQueue.emplace_front(kv.second);
+
+    delegator.workers.erase(it);
+  }
 };
 
 Delegator::Delegator(zmq::context_t& ctx, const DelegatorSettings& settings)
@@ -238,12 +260,7 @@ void Delegator::start(bool& running)
 
   Router<RequesterEndpoint, NetworkEndpoint> router{"delegator", std::tie(requester, network)};
 
-  const auto onIdle = [&network]()
-  {
-    network.idle();
-    // TODO: Ugly.
-    network.socket().heartbeats().idle();
-  };
+  const auto onIdle = [&network]() { network.idle(); };
 
   do
   {

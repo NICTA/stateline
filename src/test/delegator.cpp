@@ -12,10 +12,13 @@
 #include "comms/delegator.hpp"
 #include "comms/protocol.hpp"
 
+#include "testsocket.hpp"
+
 #include <chrono>
 #include <iostream>
 
 using namespace stateline::comms;
+using namespace stateline::test;
 using namespace std::chrono_literals;
 
 TEST_CASE("delegator follows protocol", "[delegator]")
@@ -26,7 +29,7 @@ TEST_CASE("delegator follows protocol", "[delegator]")
   settings.heartbeatTimeout = 10s;
   settings.numJobTypes = 3;
 
-  Socket network{ctx, zmq::socket_type::dealer, "network"};
+  TestSocket network{ctx, zmq::socket_type::dealer, "network"};
   network.connect(settings.networkAddress);
 
   Delegator delegator{ctx, settings};
@@ -130,10 +133,10 @@ TEST_CASE("delegator delegates jobs fairly", "[delegator]")
   settings.heartbeatTimeout = 10s;
   settings.numJobTypes = 2;
 
-  Socket network1{ctx, zmq::socket_type::dealer, "network"};
+  TestSocket network1{ctx, zmq::socket_type::dealer, "network"};
   network1.connect(settings.networkAddress);
 
-  Socket network2{ctx, zmq::socket_type::dealer, "network"};
+  TestSocket network2{ctx, zmq::socket_type::dealer, "network"};
   network2.connect(settings.networkAddress);
 
   Delegator delegator{ctx, settings};

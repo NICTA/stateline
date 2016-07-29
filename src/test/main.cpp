@@ -3,7 +3,7 @@
 
 #include "app/logging.hpp"
 
-const int logLevel = -3;
+const std::string logLevel = "TEST";
 const bool stdErr = false;
 const std::string filename = "test.log";
 
