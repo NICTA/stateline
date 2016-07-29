@@ -104,7 +104,7 @@ private:
 
     State(zmq::context_t& ctx, const DelegatorSettings& settings);
 
-    void addWorker(const std::string& address, const std::pair<JobType, JobType>& jobTypeRange);
+    void addWorker(const std::string& address, std::pair<JobType, JobType> jobTypeRange);
 
     void addBatch(const std::string& address, JobID id, std::vector<double> data);
 

@@ -14,13 +14,13 @@
 #pragma once
 
 #include "common/meta.hpp"
+#include "common/logging.hpp"
 #include "comms/message.hpp"
 #include "comms/socket.hpp"
 
 #include <array>
 #include <chrono>
 #include <future>
-#include <easylogging/easylogging++.h>
 
 namespace stateline { namespace comms {
 
@@ -76,8 +76,9 @@ public:
   template <class IdleCallback>
   void poll(const IdleCallback& callback)
   {
-    LOG(DEBUG) << "Polling";
-    zmq::poll(pollList_.data(), pollList_.size(), pollWaitTime());
+    const auto waitTime = pollWaitTime();
+    SL_LOG(TRACE) << "Begin polling " << pprint("waitTime", waitTime);
+    zmq::poll(pollList_.data(), pollList_.size(), waitTime);
 
     // Handle each poll event
     meta::enumerateAll(endpoints_, [&pollList = pollList_, &name = name_](const auto i, auto& endpoint)
@@ -85,13 +86,14 @@ public:
       bool newMsg = pollList[i].revents & ZMQ_POLLIN;
       if (newMsg)
       {
-        LOG(DEBUG) << "Router " << name << " received new message from endpoint "
-          << endpoint.socket().name();
+        SL_LOG(DEBUG) << "Router " << name << " received new message "
+          << pprint("endpoint", endpoint.socket().name());
 
         endpoint.accept();
       }
     });
 
+    SL_LOG(TRACE) << "Finished polling. Calling idle callback...";
     callback();
   }
 

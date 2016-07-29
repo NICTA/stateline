@@ -1,7 +1,7 @@
 //!
 //! Helper functions for setting up logging.
 //!
-//! \file app/console.hpp
+//! \file app/logging.hpp
 //! \author Lachlan McCalman
 //! \date 2014
 //! \license Lesser General Public License version 3 or later
@@ -16,12 +16,10 @@ namespace stateline
 {
   //! Initialise the logging system
   //
-  //! \param appName The name of the executable
-  //! \param logLevel The numerical level of logging. <0 gets increasingly
-  //!        verbose for debugging. 0 is release logging, and >0 is 
+  //! \param logLevel The level of logging. Can be TEST, INFO, DEBUG, TRACE.
   //!        increasingly quiet.
   //! \param stdErr Switch to enable logging to stdError.
   //! \param directory The directory to log to if stdErr logging is disabled.
   //!
-  void initLogging(int logLevel, bool stdOut=true, const std::string& filename=".");
+  void initLogging(const std::string& logLevel, bool stdOut=true, const std::string& filename=".");
 } // namespace stateline

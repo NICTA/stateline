@@ -25,7 +25,7 @@ ez::ezOptionParser commandLineOptions()
   ez::ezOptionParser opt;
   opt.overview = "Demo options";
   opt.add("", 0, 0, 0, "Print help message", "-h", "--help");
-  opt.add("0", 0, 1, 0, "Logging level", "-l", "--log-level");
+  opt.add("INFO", 0, 1, 0, "Logging level (INFO/DEBUG/TRACE)", "-l", "--log-level");
   opt.add("5555", 0, 1, 0, "Port on which to accept worker connections", "-p", "--port");
   opt.add("config.json", 0, 1, 0, "Path to configuration file", "-c", "--config");
   return opt;
@@ -53,8 +53,8 @@ int main(int argc, const char *argv[])
     return 0;
 
   // Initialise logging
-  int logLevel;
-  opt.get("-l")->getInt(logLevel);
+  std::string logLevel;
+  opt.get("-l")->getString(logLevel);
   sl::initLogging(logLevel);
 
   std::string configPath;

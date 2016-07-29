@@ -10,9 +10,10 @@
 
 #include "comms/socket.hpp"
 
+#include "common/logging.hpp"
+
 #include <sstream>
 #include <iomanip>
-#include <easylogging/easylogging++.h>
 #include <random>
 
 namespace stateline { namespace comms {
@@ -37,7 +38,8 @@ void SocketBase::bind(const std::string& address)
   }
   catch(const zmq::error_t& err)
   {
-    LOG(FATAL) << "Socket '" << name() << "' could not bind to " << address << ". error='" << err.what() << "'";
+    LOG(FATAL) << "Socket '" << name() << "' could not bind to " << address << " "
+      << pprint("err", err.what());
   }
 }
 
@@ -53,8 +55,11 @@ bool SocketBase::send(const std::string& address, const std::string& data)
     hb_.updateLastSendTime(address);
     return true;
   }
-  catch(zmq::error_t)
+  catch(const zmq::error_t& err)
   {
+    LOG(ERROR) << "Socket '" << name() << "' could not send to " << address << " "
+      << pprint("err", err.what());
+
     // TODO: disconnect heartbeat immediately
     return false;
   }
@@ -116,7 +121,7 @@ Socket::Socket(zmq::context_t& ctx, zmq::socket_type type, std::string name, int
 
 bool Socket::send(const Message& m)
 {
-  VLOG(5) << "Socket " << name() << " sending " << m;
+  SL_LOG(TRACE) << "Socket " << name() << " sending " << m;
 
   // Pack the subject and the data together
   std::string buffer(sizeof(Subject) + m.data.size(), ' ');
@@ -136,7 +141,7 @@ Message Socket::recv()
   std::string data{msg.second.data() + sizeof(Subject), msg.second.data() + msg.second.size()};
 
   Message m{msg.first, subject, std::move(data)};
-  VLOG(5) << "Socket " << name() << " received " << m;
+  SL_LOG(TRACE) << "Socket " << name() << " received " << m;
   return m;
 }
 

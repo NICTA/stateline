@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "common/logging.hpp"
 #include "comms/socket.hpp"
 
 namespace stateline { namespace comms {
@@ -36,6 +37,8 @@ public:
 
   void handle(const Message& m)
   {
+    SL_LOG(DEBUG) << "Handling message " << pprint("msg", m);
+
     switch (m.subject)
     {
       case HEARTBEAT:
@@ -89,6 +92,12 @@ public:
 
   void onHeartbeatSend(const std::string& addr) { }
   void onHeartbeatTimeout(const std::string& addr) { }
+
+  void forwardMessage(Socket& s, const Message &m)
+  {
+    SL_LOG(DEBUG) << "Forwarding message to " << s.name() << " " << pprint("msg", m);
+    s.send(m);
+  }
 
   void idle()
   {

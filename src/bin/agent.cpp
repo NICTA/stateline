@@ -25,7 +25,7 @@ ez::ezOptionParser commandLineOptions()
   ez::ezOptionParser opt;
   opt.overview = "Stateline agent options";
   opt.add("", 0, 0, 0, "Print help message", "-h", "--help");
-  opt.add("0", 0, 1, 0, "Logging level", "-l", "--log-level");
+  opt.add("INFO", 0, 1, 0, "Logging level (INFO/DEBUG/TRACE)", "-l", "--log-level");
   opt.add("localhost:5555", 0, 1, 0, "Address of delegator", "-n", "--network-addr");
   opt.add("ipc:///tmp/sl_agent.sock", 0, 1, 0, "Address of agent for worker to connect to", "-a", "--agent-addr");
   return opt;
@@ -39,8 +39,8 @@ int main(int argc, const char *argv[])
     return 0;
 
   // Initialise logging
-  int logLevel;
-  opt.get("-l")->getInt(logLevel);
+  std::string logLevel;
+  opt.get("-l")->getString(logLevel);
   sl::initLogging(logLevel);
 
   // Initialise the agent

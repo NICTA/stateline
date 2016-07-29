@@ -10,7 +10,7 @@
 
 #include "comms/heartbeat.hpp"
 
-#include <easylogging/easylogging++.h>
+#include "common/logging.hpp"
 
 namespace stateline { namespace comms {
 
@@ -22,6 +22,8 @@ Heartbeat::Heartbeat()
 
 void Heartbeat::connect(const std::string& addr, std::chrono::seconds timeout)
 {
+  SL_LOG(INFO) << addr << " connected " << pprint("timeout", timeout);
+
   // We send 2 heartbeats per timeout
   const auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(timeout) / 2;
 
@@ -35,11 +37,11 @@ void Heartbeat::disconnect(const std::string& addr, DisconnectReason reason)
   switch (reason)
   {
     case DisconnectReason::USER_REQUESTED:
-      VLOG(1) << addr << " disconnected by request";
+      SL_LOG(INFO) << addr << " disconnected by request";
       break;
 
     case DisconnectReason::TIMEOUT:
-      VLOG(1) << addr << " disconnected by time out";
+      SL_LOG(INFO) << addr << " disconnected by time out";
       break;
   }
 
@@ -49,6 +51,8 @@ void Heartbeat::disconnect(const std::string& addr, DisconnectReason reason)
 
 void Heartbeat::updateLastSendTime(const std::string& addr)
 {
+  SL_LOG(TRACE) << "Update last send time " << pprint("addr", addr);
+
   auto it = conns_.find(addr);
   if (it == conns_.end())
     return;
@@ -58,6 +62,8 @@ void Heartbeat::updateLastSendTime(const std::string& addr)
 
 void Heartbeat::updateLastRecvTime(const std::string& addr)
 {
+  SL_LOG(TRACE) << "Update last receive time " << pprint("addr", addr);
+
   auto it = conns_.find(addr);
   if (it == conns_.end())
     return;
@@ -67,6 +73,8 @@ void Heartbeat::updateLastRecvTime(const std::string& addr)
 
 void Heartbeat::idle()
 {
+  SL_LOG(TRACE) << "Heartbeat idle";
+
   const auto now = Clock::now();
 
   // Send any outstanding heartbeats.
@@ -86,7 +94,7 @@ void Heartbeat::idle()
     // Disconnect if they missed 2 heartbeat intervals.
     if (it->second.lastRecvTime + it->second.interval * 2 < now)
     {
-      VLOG(1) << it->first << " timed out";
+      SL_LOG(INFO) << it->first << " disconnected by timeout " << pprint("timeout", it->second.interval * 2);
       disconnectCallback_(it->first, DisconnectReason::TIMEOUT);
       it = conns_.erase(it);
     }
@@ -99,7 +107,7 @@ void Heartbeat::idle()
 
 void Heartbeat::sendHeartbeat(ConnMap::value_type& kv)
 {
-  VLOG(4) << "Sending HEARTBEAT to " << kv.first;
+  SL_LOG(TRACE) << "Calling heartbeat callback " << pprint("addr", kv.first);
 
   heartbeatCallback_(kv.first);
   kv.second.lastSendTime = Clock::now();

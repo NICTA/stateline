@@ -8,6 +8,7 @@
 
 #include "comms/delegator.hpp"
 
+#include "common/logging.hpp"
 #include "comms/datatypes.hpp"
 #include "comms/endpoint.hpp"
 #include "comms/protocol.hpp"
@@ -15,7 +16,6 @@
 
 #include <string>
 
-#include <easylogging/easylogging++.h>
 #include <numeric>
 
 namespace stateline { namespace comms {
@@ -46,8 +46,15 @@ Delegator::State::State(zmq::context_t& ctx, const DelegatorSettings& settings)
 {
 }
 
-void Delegator::State::addWorker(const std::string& address, const std::pair<JobType, JobType>& jobTypesRange)
+void Delegator::State::addWorker(const std::string& address, std::pair<JobType, JobType> jobTypesRange)
 {
+  // 0 is a special job type indicating a wildcard
+  if (jobTypesRange.first == 0)
+    jobTypesRange.first = 1;
+
+  if (jobTypesRange.second == 0)
+    jobTypesRange.second = settings.numJobTypes;
+
   Worker w{address, jobTypesRange};
 
   // TODO: why not create lazily?
@@ -58,8 +65,8 @@ void Delegator::State::addWorker(const std::string& address, const std::pair<Job
 
   workers.emplace(address, w);
 
-  LOG(INFO)<< "Worker " << address << " connected, supporting jobtypes: "
-    << jobTypesRange.first << "-" << jobTypesRange.second;
+  SL_LOG(INFO)<< "New worker connected "
+    << pprint("address", address, "jobTypes", jobTypesRange);
 }
 
 void Delegator::State::addBatch(const std::string& address, JobID id, std::vector<double> data)
@@ -75,7 +82,7 @@ void Delegator::State::addBatch(const std::string& address, JobID id, std::vecto
     jobQueue.emplace_back(ret.first, i + 1);
   }
 
-  VLOG(2) << pending.size() << " requests pending";
+  SL_LOG(DEBUG) << pending.size() << " requests pending";
 }
 
 Delegator::Worker* Delegator::State::bestWorker(const JobType type)
@@ -86,7 +93,7 @@ Delegator::Worker* Delegator::State::bestWorker(const JobType type)
   {
     auto& worker = it.second;
     if (type >= worker.jobTypesRange.first &&
-        type <=  worker.jobTypesRange.second &&
+        type <= worker.jobTypesRange.second &&
         worker.inProgress.size() < worker.maxJobs)
     {
       const auto duration = worker.estimatedFinishDurationForNewJob(type);
@@ -115,7 +122,6 @@ struct Delegator::RequesterEndpoint : Endpoint<RequesterEndpoint>
   void onBatchJob(const Message& m)
   {
     auto batchJob = protocol::unserialise<protocol::BatchJob>(m.data);
-    VLOG(2) << "Received batch";
 
     delegator.addBatch(m.address, batchJob.id, std::move(batchJob.data));
   }
@@ -154,7 +160,6 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
   {
     for (auto it = delegator.jobQueue.begin(); it != delegator.jobQueue.end(); )
     {
-      // TODO: find the best worker
       Worker *worker = delegator.bestWorker(it->type);
       if (!worker)
       {
@@ -166,7 +171,7 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
       job.id = ++lastJobID;
       job.data = it->batch->second.data;
 
-      delegator.network.send({worker->address, JOB, serialise(job)});
+      forwardMessage(delegator.network, {worker->address, JOB, serialise(job)});
 
       it->startTime = Clock::now();
       worker->inProgress.emplace(job.id, std::move(*it));
@@ -206,24 +211,6 @@ struct Delegator::NetworkEndpoint : Endpoint<NetworkEndpoint>
     // Remove job from work in progress store
     worker.inProgress.erase(result.id);
   }
-
-  /*
-  void onBye(const Message& m) { hb.disconnect(m.address); }
-
-  void onAny(const Message& m) { hb.update(m.address); }
-};
-
-  // TODO: could we compute these lazily? i.e. each time a new job is assigned,
-  // we update the expected finishing time?
-  uint usTillDone(const Delegator::Worker& w, uint jobType)
-  {
-    uint t = 0;
-    for (auto const& i : w.workInProgress)
-      t += timeForJob(w, i.second.type);
-    //now add the expected time for the new job
-    t += timeForJob(w, jobType);
-    return t;
-  }*/
 };
 
 Delegator::Delegator(zmq::context_t& ctx, const DelegatorSettings& settings)

@@ -10,13 +10,12 @@
 
 #include "comms/agent.hpp"
 
+#include "common/logging.hpp"
 #include "comms/endpoint.hpp"
 #include "comms/router.hpp"
 #include "comms/protocol.hpp"
 
 #include <queue>
-
-#include <easylogging/easylogging++.h>
 
 namespace stateline { namespace comms {
 
@@ -48,14 +47,12 @@ struct Agent::WorkerEndpoint : Endpoint<WorkerEndpoint>
     p.reserve(m.data.size() + 4);
     p.value(static_cast<std::uint32_t>(timeout.count()));
 
-    agent.network.send(copy); // Forward to delegator
-
-    std::cout << "Forwarding HELLO" << std::endl;
+    forwardMessage(agent.network, copy);
   }
 
   void onResult(const Message& m)
   {
-    agent.network.send(m); // Forward result to delegator
+    forwardMessage(agent.network, m);
 
     if (agent.queue.empty())
     {
@@ -82,14 +79,14 @@ struct Agent::NetworkEndpoint : Endpoint<NetworkEndpoint>
   void onWelcome(const Message& m)
   {
     const auto welcome = protocol::unserialise<protocol::Welcome>(m.data);
-    agent.network.startHeartbeats(m.address, std::chrono::seconds{welcome.hbTimeoutSecs});
+    agent.network.startHeartbeats("delegator", std::chrono::seconds{welcome.hbTimeoutSecs});
   }
 
   void onJob(const Message& m)
   {
     if (agent.workerWaiting)
     {
-      agent.worker.send(m); // Forward job to worker
+      forwardMessage(agent.worker, m);
       agent.workerWaiting = false;
     }
     else
