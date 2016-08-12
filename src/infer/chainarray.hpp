@@ -88,7 +88,7 @@ namespace stateline
         //! \param id The id of the chain (see \ref id).
         //! \return The most recent state in the chain.
         //!
-        State lastState(uint id) const;
+        const State& lastState(uint id) const;
 
         //! Attempt to swap the states in two different chains.
         //!

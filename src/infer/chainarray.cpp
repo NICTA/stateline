@@ -154,7 +154,7 @@ namespace stateline
       cache_[id].push_back(recent);
     }
 
-    State ChainArray::lastState(uint id) const
+    const State& ChainArray::lastState(uint id) const
     {
       return cache_[id].back();
     }
