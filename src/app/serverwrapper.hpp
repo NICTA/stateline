@@ -56,7 +56,7 @@ struct StatelineSettings
 
   std::size_t heartbeatTimeoutSec;
 
-  std::string outputPath;
+  db::DBSettings db;
 
   static StatelineSettings fromJSON(const nlohmann::json& j)
   {
@@ -67,7 +67,6 @@ struct StatelineSettings
     readFields(j, "swapInterval", s.swapInterval);
     readFields(j, "loggingRateSec", s.loggingRateSec);
     readFields(j, "nJobTypes", s.nJobTypes);
-    readFields(j, "outputPath", s.outputPath);
     readFields(j, "optimalAcceptRate", s.optimalAcceptRate);
     readFields(j, "optimalSwapRate", s.optimalSwapRate);
     readFieldsWithDefault(j, "useInitial", s.useInitial, false);
@@ -86,6 +85,13 @@ struct StatelineSettings
 
     s.proposalBounds = mcmc::ProposalBoundsFromJSON(j);
     s.ndims = s.proposalBounds.min.size(); //ProposalBounds checks they're the same
+
+    // DB settings
+    readFields(j, "outputPath", s.db.filename);
+    s.db.numChains = s.nstacks / s.ntemps;
+    s.db.numDims = s.ndims;
+    s.db.chunkSize = 100; // TODO make this a setting
+
     return s;
   }
 };

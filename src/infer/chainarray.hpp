@@ -46,7 +46,7 @@ namespace stateline
         //! \param nTemps The number of chains in each stack.
         //! \param settings The Chain array settings object
         //
-        ChainArray(uint nStacks, uint nTemps, const std::string& outputPath);
+        ChainArray(uint nStacks, uint nTemps, const db::DBSettings& settings);
 
         // Move constructor only
         ChainArray(ChainArray&& other);
@@ -161,8 +161,7 @@ namespace stateline
         //!
         void recoverFromDisk(uint id);
 
-        //mutable db::Database db_; // Mutable so that chain queries can be const
-        db::CSVChainArrayWriter writer_;
+        db::DBWriter writer_;
         uint nstacks_;
         uint ntemps_;
         std::vector<uint> lengthOnDisk_;
