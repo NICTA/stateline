@@ -45,7 +45,7 @@ ENDIF(LOCAL_INSTALL)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 14)
 
-SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP -std=c++11 -fPIC")
+SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP")
 SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
 SET(sl_debug     "-ggdb -g")
 SET(sl_release   "-DNDEBUG -O2")
