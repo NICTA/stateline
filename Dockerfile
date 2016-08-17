@@ -6,15 +6,7 @@ RUN apt-get update && apt-get install -y \
   cmake \
   libeigen3-dev \
   libzmq3-dev \
-  libboost-program-options-dev \
-  libboost-system-dev \
-  libboost-filesystem-dev \
-  libboost-regex-dev \
-  libboost-coroutine-dev \
-  libboost-thread-dev \
-  libboost-date-time-dev \
-  libboost-context-dev \
-  libgtest-dev
+  libhdf5-dev
 
 ENV BUILD_DIR=/tmp/stateline LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
