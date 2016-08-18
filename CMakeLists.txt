@@ -45,7 +45,7 @@ ENDIF(LOCAL_INSTALL)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 14)
 
-SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP -std=c++11 -fPIC")
+SET(sl_flags     "-D_GLIBCXX_USE_NANOSLEEP")
 SET(sl_warnings  "-Wall -Wno-unused-local-typedefs -Wextra -pedantic")
 SET(sl_debug     "-ggdb -g")
 SET(sl_release   "-DNDEBUG -O2")
@@ -78,6 +78,9 @@ FIND_PACKAGE(ZMQ REQUIRED)
 # Eigen
 FIND_PACKAGE(Eigen3 3.2.0 REQUIRED)
 
+# HDF5
+FIND_PACKAGE(HDF5 REQUIRED COMPONENTS CXX)
+
 ##############################################################################
 # INCLUDE DIRECTORIES
 ##############################################################################
@@ -87,9 +90,9 @@ INCLUDE_DIRECTORIES("${STATELINE_SOURCE_DIR}/src"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/cppzmq"
                     SYSTEM "${STATELINE_SOURCE_DIR}/external/json"
-                    SYSTEM "${STATELINE_SOURCE_DIR}/external/simple-web-server"
                     SYSTEM "${ZMQ_INCLUDE_DIR}"
-                    SYSTEM "${EIGEN3_INCLUDE_DIR}")
+                    SYSTEM "${EIGEN3_INCLUDE_DIR}"
+                    SYSTEM "${HDF5_INCLUDE_DIRS}")
 
 ADD_SUBDIRECTORY(src/test)
 
@@ -134,13 +137,13 @@ ADD_LIBRARY(stateline-server STATIC
   $<TARGET_OBJECTS:commonwrapper> $<TARGET_OBJECTS:serverwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:servercomms>
   $<TARGET_OBJECTS:db> $<TARGET_OBJECTS:mcmc>)
-TARGET_LINK_LIBRARIES(stateline-server ${ZMQ_LIBRARY})
+TARGET_LINK_LIBRARIES(stateline-server)
 SET_TARGET_PROPERTIES(stateline-server PROPERTIES LINKER_LANGUAGE CXX)
 
 ADD_LIBRARY(stateline-client STATIC
   $<TARGET_OBJECTS:commonwrapper>
   $<TARGET_OBJECTS:commoncomms> $<TARGET_OBJECTS:clientcomms>)
-TARGET_LINK_LIBRARIES(stateline-client ${ZMQ_LIBRARY})
+TARGET_LINK_LIBRARIES(stateline-client)
 SET_TARGET_PROPERTIES(stateline-client PROPERTIES LINKER_LANGUAGE CXX)
 
 ##############################################################################

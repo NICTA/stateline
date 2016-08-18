@@ -75,11 +75,15 @@ void pprintImpl(std::ostringstream& s, const std::string& key, const T& val, Arg
 template <class... Args>
 std::string pprint(Args&&... args)
 {
+#ifdef NDEBUG
+  return "";
+#else
   std::ostringstream ss;
   ss << "[";
   detail::pprintImpl<true>(ss, std::forward<Args>(args)...);
   ss << "]";
   return ss.str();
+#endif
 }
 
 }

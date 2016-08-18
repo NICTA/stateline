@@ -56,7 +56,7 @@ void runSampler(const StatelineSettings& s, zmq::context_t& ctx, comms::Delegato
   mcmc::RegressionAdapter sigmaAdapter(s.nstacks, s.ntemps, s.optimalAcceptRate, min_log_ratio, max_log_ratio);
   mcmc::RegressionAdapter betaAdapter(s.nstacks, s.ntemps, s.optimalSwapRate, 0., max_log_ratio);
   mcmc::GaussianProposal proposal(s.nstacks, s.ntemps, s.ndims, s.proposalBounds, initial_count);
-  mcmc::ChainArray chains(s.nstacks, s.ntemps, s.outputPath);
+  mcmc::ChainArray chains(s.nstacks, s.ntemps, s.db);
   comms::Requester requester{ctx, delegator.settings().requesterAddress};
 
   // Initialise chains to valid states
