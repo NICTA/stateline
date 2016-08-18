@@ -15,9 +15,8 @@
 #include "../infer/datatypes.hpp"
 #include "../infer/adaptive.hpp"
 #include "../infer/chainarray.hpp"
-#include "../app/jsonsettings.hpp"
+#include "../app/json.hpp"
 
-#include <json.hpp>
 #include <random>
 
 namespace stateline
@@ -31,31 +30,27 @@ namespace stateline
     //! Settings for the defining a hard boundary on the samples produced
     //! by the proposal function.
 
+    // TODO: this should not be here.
     static ProposalBounds ProposalBoundsFromJSON(const nlohmann::json& j)
     {
-        ProposalBounds b;
-        std::vector<double> vmin = readSettings<std::vector<double>>(j, "min");
-        std::vector<double> vmax = readSettings<std::vector<double>>(j, "max");
+        std::vector<double> vmin, vmax;
+        readFields(j, "min", vmin);
+        readFields(j, "max", vmax);
 
-        uint nMin = vmin.size();
-        uint nMax = vmax.size();
-        if (nMin != nMax)
+        if (vmin.size() != vmax.size())
         {
             LOG(FATAL) << "Proposal bounds dimension mismatch: nMin=" 
-                << nMin << ", nMax=" << nMax;
-        }
-        else
-        {
-            uint nDims = nMax;
-            b.min.resize(nDims);
-            b.max.resize(nDims);
-            for (uint i=0; i < nDims; ++i)
-            {
-                b.min[i] = vmin[i];
-                b.max[i] = vmax[i];
-            }
+                << vmin.size() << ", nMax=" << vmax.size();
         }
 
+        ProposalBounds b;
+        b.min.resize(vmin.size());
+        b.max.resize(vmax.size());
+        for (std::size_t i = 0; i < vmin.size(); i++)
+        {
+          b.min(i) = vmin[i];
+          b.max(i) = vmax[i];
+        }
         return b;
     }
 
@@ -89,7 +84,6 @@ namespace stateline
       public:
         // look into ProposalFunction& proposal
         Sampler(comms::Requester& requester, 
-                std::vector<uint> jobTypes,
                 ChainArray& chainArray,
                 mcmc::GaussianProposal& proposal, 
                 RegressionAdapter& sigmaAdapter,
@@ -109,8 +103,6 @@ namespace stateline
         void unlock(uint id);
 
         comms::Requester& requester_;
-
-        std::vector<uint> jobTypes_;
 
         // The MCMC chain wrapper
         ChainArray& chains_;

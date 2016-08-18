@@ -1,5 +1,4 @@
-//!
-//! Main entry point for using stateline -- server side
+//! Wrapper around the inference enginer and a delegator.
 //!
 //! \file app/serverwrapper.hpp
 //! \author Lachlan McCalman
@@ -7,17 +6,18 @@
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2015, NICTA
 //!
+
 #pragma once
 
 #include <future>
 #include <zmq.hpp>
 #include <json.hpp>
-#include "jsonsettings.hpp"
-#include "api.hpp"
-#include "../infer/adaptive.hpp"
-#include "../infer/chainarray.hpp"
-#include "../infer/sampler.hpp"
-#include "../comms/delegator.hpp"
+
+#include "app/json.hpp"
+#include "comms/delegator.hpp"
+#include "infer/adaptive.hpp"
+#include "infer/chainarray.hpp"
+#include "infer/sampler.hpp"
 
 // Ideal config file should look like:
 // {
@@ -33,82 +33,87 @@
 // "swapInterval": 10
 // }
 
-namespace stateline
+namespace stateline {
+
+struct StatelineSettings
 {
-  struct StatelineSettings
+  std::size_t ndims;
+  std::size_t nstacks;
+
+  std::size_t ntemps;
+  std::size_t nsamples;
+  std::size_t swapInterval;
+  std::size_t loggingRateSec;
+  comms::JobType nJobTypes;
+
+  bool useInitial;
+  Eigen::VectorXd initial;
+
+  double optimalAcceptRate;
+  double optimalSwapRate;
+
+  mcmc::ProposalBounds proposalBounds;
+
+  std::size_t heartbeatTimeoutSec;
+
+  db::DBSettings db;
+
+  static StatelineSettings fromJSON(const nlohmann::json& j)
   {
-      uint ndims;
-      uint nstacks;
-      // uint nchains;
-      uint ntemps;
-      // uint annealLength;
-      uint nsamples;
-      uint swapInterval;
-      // int msLoggingRefresh;
-      uint msLoggingRefresh;
-      uint nJobTypes;
+    StatelineSettings s;
+    readFields(j, "nStacks", s.nstacks);
+    readFields(j, "nTemperatures", s.ntemps);
+    readFields(j, "nSamplesTotal", s.nsamples);
+    readFields(j, "swapInterval", s.swapInterval);
+    readFields(j, "loggingRateSec", s.loggingRateSec);
+    readFields(j, "nJobTypes", s.nJobTypes);
+    readFields(j, "optimalAcceptRate", s.optimalAcceptRate);
+    readFields(j, "optimalSwapRate", s.optimalSwapRate);
+    readFieldsWithDefault(j, "useInitial", s.useInitial, false);
 
-      bool useInitial;
+    if (s.useInitial)
+    {
+      std::vector<double> initial;
+      readFields(j, "initial", initial);
 
-      Eigen::VectorXd initial;
+      s.initial.resize(initial.size());
+      for (std::size_t i = 0; i < initial.size(); i++)
+        s.initial(i) = initial[i];
+    }
 
-      // mcmc::SlidingWindowSigmaSettings sigmaSettings;
-      // mcmc::SlidingWindowBetaSettings betaSettings;
-      double optimalAcceptRate;
-      double optimalSwapRate;
-      std::string outputPath;
-      // mcmc::ChainSettings chainSettings;
-      mcmc::ProposalBounds proposalBounds;
-      
+    readFieldsWithDefault(j, "heartbeatTimeoutSec", s.heartbeatTimeoutSec, 15);
 
-      static StatelineSettings fromJSON(const nlohmann::json& j)
-      {
-        StatelineSettings s;
-        s.nstacks = readSettings<uint>(j, "nStacks");
-        s.ntemps = readSettings<uint>(j, "nTemperatures");
-        s.nsamples = readSettings<uint>(j, "nSamplesTotal");
-        s.swapInterval = readSettings<uint>(j,"swapInterval");
-        s.msLoggingRefresh = (uint)(readSettings<double>(j, "loggingRateSec")*1000.0);
-        s.nJobTypes = readSettings<uint>(j, "nJobTypes");
-        s.outputPath = readSettings<std::string>(j, "outputPath");
-        s.optimalAcceptRate = readSettings<double>(j, "optimalAcceptRate");
-        s.optimalSwapRate = readSettings<double>(j, "optimalSwapRate");
-        s.useInitial = readSettings<bool>(j, "useInitial");
+    s.proposalBounds = mcmc::ProposalBoundsFromJSON(j);
+    s.ndims = s.proposalBounds.min.size(); //ProposalBounds checks they're the same
 
-        if (s.useInitial)
-        {
-            std::vector<double> tmp;
-            tmp = readSettings<std::vector<double>>(j, "initial");
-            uint nDims = tmp.size();
-            s.initial.resize(nDims);
-            for (uint i=0; i < nDims; ++i)
-                s.initial[i] = tmp[i];
-        }
+    // DB settings
+    readFields(j, "outputPath", s.db.filename);
+    s.db.numChains = s.nstacks / s.ntemps;
+    s.db.numDims = s.ndims;
+    s.db.chunkSize = 100; // TODO make this a setting
 
-        s.proposalBounds = mcmc::ProposalBoundsFromJSON(j);
-        s.ndims = (uint)s.proposalBounds.min.size(); //ProposalBounds checks they're the same
-        return s;
-      }
-  };
+    return s;
+  }
+};
 
-  class ServerWrapper
-  {
+class ServerWrapper
+{
+public:
+  ServerWrapper(int port, const StatelineSettings& s);
+  ~ServerWrapper();
 
-    public:
-      ServerWrapper(uint port, const StatelineSettings& s);
-      ~ServerWrapper();
-      void start();
-      void stop();
-      bool isRunning();
+  void start();
+  void stop();
 
-    private:
-      StatelineSettings settings_;
-      bool running_;
-      zmq::context_t* context_;
-      ApiResources api_;
-      comms::Delegator delegator_;
-      std::future<void> serverThread_;
-      std::future<void> samplerThread_;
-      std::future<void> apiServerThread_;
-  };
+  bool isRunning() const;
+
+private:
+  StatelineSettings settings_;
+  bool running_;
+  zmq::context_t context_;
+  comms::Delegator delegator_;
+  std::future<void> serverThread_;
+  std::future<void> samplerThread_;
+};
+
 }

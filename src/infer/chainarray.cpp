@@ -67,8 +67,8 @@ namespace stateline
     }
 
 
-    ChainArray::ChainArray(uint nStacks, uint nTemps, const std::string& outputPath)
-        : writer_(outputPath, nStacks),
+    ChainArray::ChainArray(uint nStacks, uint nTemps, const db::DBSettings& settings)
+        : writer_(settings),
           nstacks_(nStacks),
           ntemps_(nTemps),
           lengthOnDisk_(nStacks * nTemps, 0),
@@ -141,7 +141,7 @@ namespace stateline
       if (chainIndex(id) == 0)
       {
         VLOG(3) << "Flushing cache of chain " << id << ". new length on disk: " << newLength;
-        writer_.append(id / numTemps(), std::begin(cache_[id]), 
+        writer_.appendStates(id / numTemps(), std::begin(cache_[id]), 
             std::end(cache_[id])-1);
       }
 
@@ -154,7 +154,7 @@ namespace stateline
       cache_[id].push_back(recent);
     }
 
-    State ChainArray::lastState(uint id) const
+    const State& ChainArray::lastState(uint id) const
     {
       return cache_[id].back();
     }

@@ -1,4 +1,3 @@
-//!
 //! \file comms/requester.cpp
 //! \author Lachlan McCalman
 //! \date 2014
@@ -7,52 +6,35 @@
 //!
 
 #include "comms/requester.hpp"
-#include "comms/delegator.hpp"
-#include "common/string.hpp"
 
-#include <iterator>
+#include "comms/protocol.hpp"
+
 #include <string>
 
-namespace stateline
+namespace stateline { namespace comms {
+
+Requester::Requester(zmq::context_t& ctx, const std::string& addr)
+  : socket_{ctx, zmq::socket_type::dealer, "toDelegator"}
 {
-  namespace comms
-  {
-    Requester::Requester(zmq::context_t& context)
-        : socket_(context, ZMQ_DEALER ,"toDelegator")
-    {
-      socket_.setIdentifier();
-      socket_.connect(DELEGATOR_SOCKET_ADDR.c_str());
-    }
+  socket_.setIdentity();
+  socket_.connect(addr);
+}
 
-    void Requester::submit(uint id, const std::vector<uint>& jobTypes, const Eigen::VectorXd& data)
-    {
-      std::vector<std::string> jobTypesStr;
-      std::transform(jobTypes.begin(), jobTypes.end(),
-                     std::back_inserter(jobTypesStr),
-                     [](uint x) { return std::to_string(x); });
-      std::string jtstring = joinStr(jobTypesStr, ":");
+void Requester::submit(BatchID id, const std::vector<double>& data)
+{
+  protocol::BatchJob batchJob;
+  batchJob.id = id;
+  batchJob.data = data;
 
-      std::vector<std::string> dataVectorStr;
-      for (uint i = 0; i < data.size(); i++) {
-        dataVectorStr.push_back(std::to_string(data(i)));
-      }
+  socket_.send({"", BATCH_JOB, serialise(batchJob)});
+}
 
-      socket_.send({{ std::to_string(id)}, REQUEST, { jtstring, joinStr(dataVectorStr, ":") }});
-    }
+std::pair<BatchID, std::vector<double>> Requester::retrieve()
+{
+  const auto msg = socket_.recv();
+  const auto batchResult = protocol::unserialise<protocol::BatchResult>(msg.data);
 
-    std::pair<uint, std::vector<double>> Requester::retrieve()
-    {
-      Message r = socket_.receive();
-      uint id = std::stoul(r.address[0]);
+  return {batchResult.id, std::move(batchResult.data)};
+}
 
-      std::vector<double> results;
-      for (const auto& x : r.data)
-      {
-        results.push_back(std::stod(x));
-      }
-
-      return std::make_pair(id, results);
-    }
-
-  } // namespace comms
-} // namespace stateline
+} }

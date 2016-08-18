@@ -1,8 +1,8 @@
+//! Implementation of ZMQ socket wrappers.
 //!
-//! Contains the implementation of the ZMQ socket wrapper.
-//!
-//! \file comms/socket.cpp
+//! \file src/comms/socket.cpp
 //! \author Lachlan McCalman
+//! \author Darren Shen
 //! \date 2014
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
@@ -10,197 +10,139 @@
 
 #include "comms/socket.hpp"
 
+#include "common/logging.hpp"
+
 #include <sstream>
 #include <iomanip>
-#include <easylogging/easylogging++.h>
 #include <random>
 
-namespace stateline
+namespace stateline { namespace comms {
+
+SocketBase::SocketBase(zmq::context_t& context, zmq::socket_type type, std::string name, int linger)
+  : socket_{context, type}
+  , name_{std::move(name)}
 {
-  namespace comms
+  socket_.setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+}
+
+void SocketBase::connect(const std::string& address)
+{
+  socket_.connect(address.c_str());
+}
+
+void SocketBase::bind(const std::string& address)
+{
+  try
   {
-    std::string receiveString(zmq::socket_t & socket)
-    {
-      zmq::message_t message;
-      std::string result = "";
-      try
-      {
-        socket.recv(&message);
-        result = std::string(static_cast<char*>(message.data()), message.size());
-      }
-      catch(const zmq::error_t& e) 
-      {
-        VLOG(1) << "ZMQ receive has thrown with type " << e.what();
-        throw;
-      }
-      return result;
-    }
+    socket_.bind(address.c_str());
+  }
+  catch(const zmq::error_t& err)
+  {
+    LOG(FATAL) << "Socket '" << name() << "' could not bind to " << address << " "
+      << pprint("err", err.what());
+  }
+}
 
-    bool sendString(zmq::socket_t & socket, const std::string & string)
-    {
-      // Taken from zhelpers.hpp
-      zmq::message_t message(string.size());
-      memcpy(message.data(), string.data(), string.size());
+bool SocketBase::send(const std::string& address, const std::string& data)
+{
+  // Send the message
+  try
+  {
+    if (!address.empty())
+      socket_.send(address.c_str(), address.size(), ZMQ_SNDMORE);
+    socket_.send(data.c_str(), data.size());
 
-      return socket.send(message);
-    }
+    hb_.updateLastSendTime(address);
+    return true;
+  }
+  catch(const zmq::error_t& err)
+  {
+    LOG(ERROR) << "Socket '" << name() << "' could not send to " << address << " "
+      << pprint("err", err.what());
 
-    bool sendStringPart(zmq::socket_t & socket, const std::string & string)
-    {
-      // Taken from zhelpers.hpp
-      zmq::message_t message(string.size());
-      memcpy(message.data(), string.data(), string.size());
+    // TODO: disconnect heartbeat immediately
+    return false;
+  }
+}
 
-      return socket.send(message, ZMQ_SNDMORE);
-    }
+std::pair<std::string, std::string> SocketBase::recv()
+{
+  zmq::message_t msg1, msg2;
+  std::string address, data;
 
-    Socket::Socket(zmq::context_t& context, int type, const std::string& name, int linger)
-      : socket_(context, type),
-        name_(name),
-        onFailedSend_(nullptr) // TODO: default on failed send
-    {
-      setLinger(linger);
-    }
+  // Get the address and data. We expect either one frame (data only) or two frames
+  // (address and data)
+  socket_.recv(&msg1);
+  if (msg1.more())
+  {
+    socket_.recv(&msg2);
+    assert(!msg2.more());
 
-    void Socket::connect(const std::string& address)
-    {
-      socket_.connect(address.c_str());
-    }
+    address = std::string{msg1.data<char>(), msg1.size()};
+    data = std::string{msg2.data<char>(), msg2.size()};
+  }
+  else
+  {
+    data = std::string{msg1.data<char>(), msg1.size()};
+  }
 
-    void Socket::bind(const std::string& address)
-    {
-      try
-      {
-        socket_.bind(address.c_str());
-      }
-      catch(...)
-      {
-        LOG(FATAL) << "Could not bind to " << address << ". Address already in use";
-      }
-    }
+  hb_.updateLastRecvTime(address);
 
-    void Socket::send(const Message& m)
-    {
-      VLOG(5) << "Socket " << name_ << " sending " << m;
+  return {std::move(address), std::move(data)};
+}
 
-      try
-      {
-        // Remember we're using the vector as a stack, so iterate through the
-        // address in reverse.
-        for (auto it = m.address.rbegin(); it != m.address.rend(); ++it)
-        {
-          sendStringPart(socket_, *it);
-        }
+void SocketBase::setIdentity()
+{
+  // Inspired by zhelpers.hpp
+  std::random_device rd;
+  std::mt19937 gen{rd()};
+  std::uniform_int_distribution<> dis{0, 0x10000};
+  std::stringstream ss;
+  ss << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << dis(gen) << "-" << std::setw(4) << std::setfill('0')
+      << dis(gen);
 
-        // Send delimiter
-        sendStringPart(socket_, "");
+  setIdentity(ss.str());
+}
 
-        // Send subject, then data if there is any
-        auto subjectString = std::to_string(m.subject);
-        uint dataSize = m.data.size();
-        if (dataSize > 0)
-        {
-          // The subject
-          sendStringPart(socket_, subjectString);
+void SocketBase::setIdentity(const std::string& id)
+{
+  socket_.setsockopt(ZMQ_IDENTITY, id.c_str(), id.length());
+}
 
-          // The data -- multipart
-          for (auto it = m.data.begin(); it != std::prev(m.data.end()); ++it)
-          {
-            sendStringPart(socket_, *it);
-          }
+void SocketBase::startHeartbeats(const std::string& address, std::chrono::seconds timeout)
+{
+  hb_.connect(address, timeout);
+}
 
-          // final or only part
-          sendString(socket_, m.data.back());
-        }
-        else
-        {
-          // The subject
-          sendString(socket_, subjectString);
-        }
-      }
-      catch(...)
-      {
-        if (onFailedSend_)
-        {
-          onFailedSend_(m);
-        }
-        else
-        {
-          throw;
-        }
-      }
-    }
+Socket::Socket(zmq::context_t& ctx, zmq::socket_type type, std::string name, int linger)
+  : SocketBase(ctx, type, std::move(name), linger)
+{
+}
 
-    Message Socket::receive()
-    {
-      std::vector<std::string> address;
-      std::string frame = receiveString(socket_);
-      // Do we have an address?
-      while (frame.compare("") != 0)
-      {
-        address.push_back(frame);
-        frame = receiveString(socket_);
-      }
-      // address is a stack, so reverse it to get the right way around
-      std::reverse(address.begin(), address.end());
+bool Socket::send(const Message& m)
+{
+  SL_LOG(TRACE) << "Socket " << name() << " sending " << m;
 
-      // We've just read the delimiter, so now get subject
-      auto subjectString = receiveString(socket_);
-      //the underlying representation is (explicitly) an int so fairly safe
-      Subject subject = (Subject)std::stoi(subjectString);
-      std::vector<std::string> data;
-      while (true)
-      {
-        int isMore = 0;
-        size_t moreSize = sizeof(isMore);
-        socket_.getsockopt(ZMQ_RCVMORE, &isMore, &moreSize);
-        if (!isMore)
-          break;
-        data.push_back(receiveString(socket_));
-      }
+  // Pack the subject and the data together
+  std::string buffer(sizeof(Subject) + m.data.size(), ' ');
+  memcpy(&buffer[0], reinterpret_cast<const char*>(&m.subject), sizeof(Subject));
+  memcpy(&buffer[0] + sizeof(Subject), m.data.data(), m.data.size());
 
-      Message message{std::move(address), subject, std::move(data)};
-      VLOG(5) << "Socket " << name_ << " received " << message;
-      return message;
-    }
+  return SocketBase::send(m.address, buffer);
+}
 
-    // Options
-    void Socket::setFallback(const std::function<void(const Message& m)>& sendCallback)
-    {
-      onFailedSend_ = sendCallback;
-    }
+Message Socket::recv()
+{
+  auto msg = SocketBase::recv();
+  assert(msg.second.size() >= sizeof(Subject));
 
-    void Socket::setLinger(int l)
-    {
-      socket_.setsockopt(ZMQ_LINGER, &l, sizeof(int));
-    }
-    
-    void Socket::setHWM(int n)
-    {
-      socket_.setsockopt(ZMQ_SNDHWM, &n, sizeof(int));
-    }
+  // Unpack the subject and data
+  const auto subject = *reinterpret_cast<Subject*>(&msg.second[0]);
+  std::string data{msg.second.data() + sizeof(Subject), msg.second.data() + msg.second.size()};
 
-    std::string Socket::name() const
-    {
-      return name_;
-    }
+  Message m{msg.first, subject, std::move(data)};
+  SL_LOG(TRACE) << "Socket " << name() << " received " << m;
+  return m;
+}
 
-    void Socket::setIdentifier()
-    {
-      // Inspired by zhelpers.hpp
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<> dis(0, 0x10000);
-      std::stringstream ss;
-      ss << std::hex << std::uppercase << std::setw(4) << std::setfill('0') << dis(gen) << "-" << std::setw(4) << std::setfill('0')
-          << dis(gen);
-      setIdentifier(ss.str());
-    }
-
-    void Socket::setIdentifier(const std::string& id)
-    {
-      socket_.setsockopt(ZMQ_IDENTITY, id.c_str(), id.length());
-    }
-
-  } // namespace comms
-} // namespace stateline
+} }

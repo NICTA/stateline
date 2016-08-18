@@ -10,33 +10,37 @@
 
 #pragma once
 
+#include "infer/datatypes.hpp"
+
 #include <string>
 #include <vector>
-#include <fstream>
-#include <cassert>
 
-#include "settings.hpp"
-#include "../infer/datatypes.hpp"
+#include "H5Cpp.h"
 
-#include <iostream>
+namespace stateline { namespace db {
 
-namespace stateline
+struct DBSettings
 {
-  namespace db
-  {
-    std::ostream& operator<<(std::ostream& os, const mcmc::State& s);
+  std::string filename;
+  std::size_t numChains;
+  std::size_t numDims;
+  std::size_t chunkSize;
+};
 
-    // Database writer interface
-    class CSVChainArrayWriter
-    {
-      public:
-        CSVChainArrayWriter(const std::string& directory, uint numChains);
-        void append(int id, std::vector<mcmc::State>::iterator start,
-          std::vector<mcmc::State>::iterator end);
+// Database writer interface
+class DBWriter
+{
+public:
+  DBWriter(const DBSettings& settings);
+  void appendStates(std::size_t id, std::vector<mcmc::State>::iterator start,
+    std::vector<mcmc::State>::iterator end);
 
-      private:
-        std::vector<std::fstream> chainFiles_;
-    };
+private:
+  DBSettings settings_;
+  H5::H5File file_;
+  std::vector<H5::Group> groups_;
+  std::vector<H5::DataSet> datasets_;
+  std::vector<double> sbuffer_;
+};
 
-  } // namespace db
-} // namespace stateline
+} }

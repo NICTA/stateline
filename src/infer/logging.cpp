@@ -86,28 +86,5 @@ namespace stateline
       }
     }
 
-    void TableLogger::updateApi(ApiResources& res, const ChainArray& chains)
-    {
-      res.set("config", json({
-        { "stacks", chains.numStacks() },
-        { "chainsPerStack", chains.numTemps() }
-      }));
-
-      json result;
-      for (uint i = 0; i < lengths_.size(); i++)
-      {
-        result.push_back(json({
-          { "id", i },
-          { "length", lengths_[i] },
-          { "energy", energies_[i] },
-          { "minEnergy", minEnergies_[i] },
-          { "sigma", chains.sigma(i) },
-          { "acceptRate", nAcceptsGlobal_[i] / (double)lengths_[i] },
-          { "beta", chains.beta(i) },
-          { "swapRate", nSwapsGlobal_[i] / (double)nSwapAttemptsGlobal_[i] }
-        }));
-      }
-      res.set("chains", result);
-    }
   } // namespace mcmc
 } // namespace stateline

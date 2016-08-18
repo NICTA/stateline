@@ -104,14 +104,12 @@ namespace stateline
     
     //ProposalFunction& proposal,
     Sampler::Sampler(comms::Requester& requester, 
-                     std::vector<uint> jobTypes,
                      ChainArray& chainArray,
                      mcmc::GaussianProposal& proposal, 
                      RegressionAdapter& sigmaAdapter,
                      RegressionAdapter& betaAdapter,
                      uint swapInterval)
       : requester_(requester),
-        jobTypes_(std::move(jobTypes)),
         chains_(chainArray),
         proposal_(proposal),
         sigmaAdapter_(sigmaAdapter),
@@ -207,8 +205,10 @@ namespace stateline
     {
       // todo(Al) - should we be getting this from the chains directly?
       double sigma = sigmaAdapter_.values()[id];
-      propStates_[id] = proposal_(id, chains_.lastState(id).sample, sigma);
-      requester_.submit(id, jobTypes_, propStates_[id]);
+      const auto prop = proposal_(id, chains_.lastState(id).sample, sigma);
+      std::vector<double> data(prop.data(), prop.data() + prop.size());
+      requester_.submit(id, data);
+      propStates_[id] = prop;
       numOutstandingJobs_++;
     }
 

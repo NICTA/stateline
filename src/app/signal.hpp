@@ -10,19 +10,18 @@
 
 #pragma once
 
+// DO NOT USE
+// C++ std::signal causes undefined behaviour in multithreaded programs
+// http://en.cppreference.com/w/cpp/utility/program/signal
+
+/*
 #include <atomic>
 
-namespace stateline
-{
-  namespace global
-  {
-    extern std::atomic_bool interruptedBySignal;
-  }
+namespace stateline {
 
-  namespace init
-  {
-    void handleSignal(int sig);
-    void threadHandle();
-    void initialiseSignalHandler();
-  }
-}
+// TODO use atomic
+void initialiseSignalHandler();
+
+bool isRunning();
+
+}*/

@@ -1,7 +1,6 @@
+//! Runs the MCMC and delegator.
 //!
-//! A demo using Stateline to sample from a Gaussian mixture.
-//!
-//! \file stateline.cpp
+//! \file src/bin/server.cpp
 //! \author Lachlan McCalman
 //! \author Darren Shen
 //! \date 2014
@@ -10,18 +9,15 @@
 //!
 
 #include <json.hpp>
+
 #include "ezoptionparser/ezOptionParser.hpp"
 
-#include "../app/serverwrapper.hpp"
-#include "../app/logging.hpp"
-#include "../app/serial.hpp"
-#include "../app/signal.hpp"
-#include "../app/commandline.hpp"
+#include "app/serverwrapper.hpp"
+#include "app/logging.hpp"
+#include "app/signal.hpp"
+#include "app/commandline.hpp"
 
-// Alias namespaces for conciseness
 namespace sl = stateline;
-namespace ph = std::placeholders;
-namespace ch = std::chrono;
 using json = nlohmann::json;
 
 ez::ezOptionParser commandLineOptions()
@@ -29,7 +25,7 @@ ez::ezOptionParser commandLineOptions()
   ez::ezOptionParser opt;
   opt.overview = "Demo options";
   opt.add("", 0, 0, 0, "Print help message", "-h", "--help");
-  opt.add("0", 0, 1, 0, "Logging level", "-l", "--log-level");
+  opt.add("INFO", 0, 1, 0, "Logging level (INFO/DEBUG/TRACE)", "-l", "--log-level");
   opt.add("5555", 0, 1, 0, "Port on which to accept worker connections", "-p", "--port");
   opt.add("config.json", 0, 1, 0, "Path to configuration file", "-c", "--config");
   return opt;
@@ -57,34 +53,27 @@ int main(int argc, const char *argv[])
     return 0;
 
   // Initialise logging
-  int logLevel;
-  opt.get("-l")->getInt(logLevel);
+  std::string logLevel;
+  opt.get("-l")->getString(logLevel);
   sl::initLogging(logLevel);
-
-  // Capture Ctrl+C
-  sl::init::initialiseSignalHandler();
 
   std::string configPath;
   opt.get("-c")->getString(configPath);
-  json config = initConfig(configPath);
+  const auto config = initConfig(configPath);
   sl::StatelineSettings settings = sl::StatelineSettings::fromJSON(config);
 
   int port;
   opt.get("-p")->getInt(port);
 
-  sl::ServerWrapper s(port, settings);
+  sl::ServerWrapper s{port, settings};
   s.start();
 
-  while(!sl::global::interruptedBySignal && s.isRunning())
+  while(s.isRunning())
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   s.stop();
 
-  // Load the chains here from CSV?
-
   return 0;
-
-
 }

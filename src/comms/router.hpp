@@ -5,57 +5,103 @@
 //!
 //! \file comms/router.hpp
 //! \author Lachlan McCalman
-//! \date 2014
+//! \author Darren Shen
+//! \date 2016
 //! \license Lesser General Public License version 3 or later
 //! \copyright (c) 2014, NICTA
 //!
 
 #pragma once
 
-// Standard Library
-#include <memory>
+#include "common/meta.hpp"
+#include "common/logging.hpp"
+#include "comms/message.hpp"
+#include "comms/socket.hpp"
+
+#include <array>
+#include <chrono>
 #include <future>
-// Project
-#include "messages.hpp"
-#include "socket.hpp"
 
-namespace stateline
+namespace stateline { namespace comms {
+
+namespace detail {
+
+inline bool compSocketTimeouts(const SocketBase* a, const SocketBase* b)
 {
-  namespace comms
+  if (!a->heartbeats().hasTimeout()) return false;
+  if (!b->heartbeats().hasTimeout()) return true;
+  return a->heartbeats().nextTimeout() < b->heartbeats().nextTimeout();
+}
+
+}
+
+//! Implements a reactor pattern dispatcher. Use this class to attach event handlers
+//! to sockets.
+//!
+template <class... Endpoints>
+class Router
+{
+public:
+  static_assert(sizeof...(Endpoints) > 0, "Must have at least one endpoint");
+
+  //! Create a new router.
+  //!
+  Router(std::string name, const std::tuple<Endpoints&...>& endpoints)
+    : name_{std::move(name)}
+    , endpoints_{endpoints}
+    , sockets_{meta::mapAll(endpoints, [](auto& e) { return static_cast<SocketBase*>(&e.socket()); })}
+    , pollList_{meta::mapAll(endpoints, [](auto &e) { return zmq::pollitem_t{(void *)e.socket().zmqSocket(), 0, ZMQ_POLLIN, 0}; })}
   {
+  }
 
-    //! The callback function upon receipt of a message
-    typedef std::function<void(const Message& m)> Callback;
+  int pollWaitTime()
+  {
+    const auto it = std::min_element(sockets_.begin(), sockets_.end(),
+        detail::compSocketTimeouts);
 
-    //! Implements polling and configurable routing between an
-    //! arbitrary number of (pre-constructed) sockets. Functionality
-    //! is attached through a signal interface.
-    //!
-    class SocketRouter
+    if ((*it)->heartbeats().hasTimeout())
     {
-      public:
-        //! Create a new socket router.
-        //!
-        SocketRouter(const std::string& name, const std::vector<Socket*>& sockets);
+      const auto wait = std::chrono::duration_cast<std::chrono::milliseconds>(
+          (*it)->heartbeats().nextTimeout() - Heartbeat::Clock::now());
 
-        //! Clean up resources used by the socket router.
-        //!
-        ~SocketRouter();
+      return std::max(wait, std::chrono::milliseconds{0}).count(); // 0 for return immediately if we have to heartbeat
+    }
+    else
+    {
+      // Poll indefinitely
+      return -1;
+    }
+  }
 
-        void bind(uint socketIndex, const Subject& s, const Callback& f);
+  template <class IdleCallback>
+  void poll(const IdleCallback& callback)
+  {
+    const auto waitTime = pollWaitTime();
+    SL_LOG(TRACE) << "Begin polling " << pprint("waitTime", waitTime);
+    zmq::poll(pollList_.data(), pollList_.size(), waitTime);
 
-        void bindOnPoll(const std::function<void(void)>& f);
+    // Handle each poll event
+    meta::enumerateAll(endpoints_, [&pollList = pollList_, &name = name_](const auto i, auto& endpoint)
+    {
+      bool newMsg = pollList[i].revents & ZMQ_POLLIN;
+      if (newMsg)
+      {
+        SL_LOG(DEBUG) << "Router " << name << " received new message "
+          << pprint("endpoint", endpoint.socket().name());
 
-        //! Start the router polling with a polling loop frequency
-        void poll(int msPerPoll, bool& running);
+        endpoint.accept();
+      }
+    });
 
-      private:
-        std::string name_;
-        std::vector<Socket*> sockets_; // TODO: do we need to store the sockets?
-        std::vector<zmq::pollitem_t> pollList_;
-        std::vector<Callback> callbacks_;
-        std::function<void(void)> onPoll_;
-    };
+    SL_LOG(TRACE) << "Finished polling. Calling idle callback...";
+    callback();
+  }
 
-  } // namespace stateline
-}// namespace comms
+private:
+  std::string name_;
+  std::tuple<Endpoints&...> endpoints_;
+  std::array<SocketBase*, sizeof...(Endpoints)> sockets_;
+  std::array<zmq::pollitem_t, sizeof...(Endpoints)> pollList_;
+};
+
+} }

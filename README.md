@@ -151,9 +151,7 @@ To build stateline, you will need the following:
 
 You will need install the following libraries through your operating system's package manager:
 
-* Boost 1.58+
 * Eigen 3.2.0+
-* google-test 1.7.0+
 * zeromq 4.0+
 
 To run the python demos, you will also need:

@@ -6,5 +6,4 @@
 # Date: 2014
 
 ADD_LIBRARY(commonwrapper OBJECT logging.cpp signal.cpp)
-ADD_LIBRARY(workerwrapper OBJECT workerwrapper.cpp)
-ADD_LIBRARY(serverwrapper OBJECT serverwrapper.cpp api.cpp)
+ADD_LIBRARY(serverwrapper OBJECT serverwrapper.cpp)
