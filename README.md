@@ -79,7 +79,7 @@ Here Ti is the temperature of the i’th temperature chain, 𝛷 is the target d
 Chain convergence can be inferred by independently running multiple MCMC chains (stacks) and comparing their statistical measures. If the chains are exploring a different set of modes, this can be detected. Otherwise we must assume they are adequately mixing, although there is a possibility that all the chains have failed to discover a mode (parallel tempering reduces the probability of this happening). Stateline employs the approach of [Brooks98](#references).
 
 
-###Why Stateline
+### Why Stateline
 
 Stateline is designed specifically for difficult inference problems in computational science. We assume that a target distribution may be highly non-Gaussian, that the data we are conditioning on is highly non-linearly related to the model parameters, and that the observation models might be expensive ‘black box’ functions such as the solutions to numerical simulations. Numerous innovative technical capabilities have been incorporated into the Stateline codebase, specifically to improve usability and functionality in scientific applications:
 
@@ -458,7 +458,7 @@ Use this as a diagnostic to ensure that a chain is achieving an effective rate (
 
 ##### Beta
 
-Beta is the inverse temperature. Specifically, the chain with a particular Beta `sees' the probability distribution raised to the power of Beta, making the distribution increasingly uniform as it approaches 0. Like Sigma, the Beta values are generated per-tier, but only updated on a swap allowing them to be slightly different at any given time to their equivalent chains in other stacks. Beta is adapted as a strictly decreasing ladder, with the base chains at a constant 1.0, targeting a desired swap rate (0.4 in this case).
+Beta is the inverse temperature. Specifically, the chain with a particular Beta 'sees' the probability distribution raised to the power of Beta, making the distribution increasingly uniform as it approaches 0. Like Sigma, the Beta values are generated per-tier, but only updated on a swap allowing them to be slightly different at any given time to their equivalent chains in other stacks. Beta is adapted as a strictly decreasing ladder, with the base chains at a constant 1.0, targeting a desired swap rate (0.4 in this case).
 
 ##### SwapRt,  GlbSwapRt
 
@@ -598,7 +598,7 @@ can form a criterion for selecting the number of temperature tiers (see below).
 
 ##### How many temperature tiers should I use?
 
-If a high temperature chain has a large sigma and a higher-than-targeted accept rate, as seen in chains 4 and 9 of the example logging, this suggests that the high temperature distribution is becoming uniform. The proposal is using the `bouncy bounds' to essentially draw indepenent random samples from the input space, and they are still geting accepted. This is not a problem, but does suggest there will be little further benefit in adding additional temperature tiers.
+If a high temperature chain has a large sigma and a higher-than-targeted accept rate, as seen in chains 4 and 9 of the example logging, this suggests that the high temperature distribution is becoming uniform. The proposal is using the 'bouncy bounds' to essentially draw indepenent random samples from the input space, and they are still geting accepted. This is not a problem, but does suggest there will be little further benefit in adding additional temperature tiers.
 
 After the betas have adapted, you want the tiers to span all the way from the
 true distribution (Beta=1) to a uniform distribution (Beta -> 0). Thus, we
@@ -651,7 +651,7 @@ while working:
 send 'goodbye' message to stateline-client
 ```
 
-###stateline-client
+### stateline-client
 The `stateline-client` binds (in the ZeroMQ sense) to the socket given in its argument. This socket cannot already exist. For example:
 
 ```bash
