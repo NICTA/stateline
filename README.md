@@ -21,7 +21,7 @@
 - [Contributing to Development](#contributing-to-development)
 
 
-##Introduction
+## Introduction
 
 Stateline is a framework for distributed Markov Chain Monte Carlo (MCMC) sampling written in C++. It implements random walk Metropolis-Hastings with parallel tempering to improve chain mixing, provides an adaptive proposal distribution to speed up convergence, and allows the user to factorise their likelihoods (eg. over sensors or data). For a brief introduction to these concepts, see the [MCMC Sampling primer](#primer-mcmc-sampling) below.
 
@@ -140,7 +140,7 @@ Detailed logging is available (even when the system is deployed on a cluster):
 Finally, Stateline's  [output](#mcmc-output) is provided in csv format, so it is simple to load and analyse. The output is written in intermediate steps in case of early termination.
 
 
-##System Requirements
+## System Requirements
 
 Stateline has been sucsessfully compiled on Linux and OSX machines. We don't currently support Windows. For large-scale deployments, we recommend using Docker (and the dockerfile included in this repo).
 
@@ -163,7 +163,7 @@ To run the python demos, you will also need:
 * numpy
 * corner-plot (python library)
 
-##Installation
+## Installation
 
 First clone the repository and create a directory in which to build it:
 
@@ -205,9 +205,9 @@ $ make install
 
 which will output headers, libraries and binaries into an `install` subdirectory of the build directory. From there you may copy them to the appropriate folders in your operating system.
 
-##Getting Started
+## Getting Started
 
-###Configuration
+### Configuration
 
 Stateline is configured through a json file. An example file is given below:
 
@@ -252,7 +252,7 @@ Stateline is configured through a json file. An example file is given below:
 
 `loggingRateSec`: The number of seconds between logging the state of the MCMC. Faster logging looks good in standard out, slower logging will save you disk space if you're redirecting to a file.
 
-###C++ Example
+### C++ Example
 
 
 The following code gives a minimal example of building a stateline
@@ -331,7 +331,7 @@ Then in a new terminal, run one or more workers:
 $ ./demo-worker
 ```
 
-###Python Example
+### Python Example
 
 The following code gives an close to minimal example of building a stateline
 worker with a custom likelihood in Python.
@@ -408,12 +408,12 @@ Then, in another terminal, run one or more workers:
 $ python ./demo-worker.py
 ```
 
-###Other Languages
+### Other Languages
 
 For details of implementing workers for other languages, see [Workers in Other Languages](#workers-in-other-languages).
 
 
-##Interpreting Logging
+## Interpreting Logging
 
 While stateline is running, a table of diagnostic values are printed to the console. For cluster deployments, this output is to stdout, and can be piped over ssh using ncat (the Clusterous demo provides an example of how to do this). The table will look something like the demo's output below:
 
@@ -470,7 +470,7 @@ The convergece test of [Brooks98](#references) is applied between stacks when po
 
 
 
-##MCMC Output
+## MCMC Output
 
 Stateline outputs raw states in CSV format without removing any for burn-in or
 decorrelation. The format of the csv is as follows
@@ -502,7 +502,7 @@ will launch a Python script that visualises the samples of the first chain. You'
 Viewing the raw histograms of the parameters is informative for a low dimensional problem like this demo.
 
 
-##Cluster Deployment
+## Cluster Deployment
 
 Stateline is designed to take advantage of many computers performing likelihood evaluations in parallel. The idea is to run a server on a single machine and many workers communicating with the server over TCP. Workers can be ephemeral -- if a worker dissapears mid-job that job will be reassinged to another worker by the server (after a few seconds). At the moment the server does not support recovering from early termination, so place it on a reliable machine if possible. The server also needs at least 2 cores to work effectively, so provision it with decent hardware.
 
@@ -512,7 +512,7 @@ There is a Dockerfile ready to go which has both the server and the worker
 built. Feel free to use this as a base image when deploying your code.
 
 
-##Tips and Tricks
+## Tips and Tricks
 
 This section addresses some common questions about configuring and using
 Stateline for a scientific problem:
@@ -635,7 +635,7 @@ code to run models on the sampled parameters. This enables marginalisation of
 derived properties of the model outputs with respect to the parameters.
 
 
-##Workers in Other Languages
+## Workers in Other Languages
 
 Creating in a worker in a language other than C++ should be fairly simple as long as that library has access to ZeroMQ bindings. For the impatient, the approach is the same as the Python example given above. The way other language bindings work is to run a copy of `stateline-client` for every worker, then each worker communicates with its stateline-client via a local unix socket using ZeroMQ. This means all the complex logic for handling job requests, server heartbeating and asynchronous messages are invisible, leaving only a very simple loop. In pseudocode:
 
@@ -659,7 +659,7 @@ $ ./stateline-client -w ipc:///tmp/my_socket.sock
 ```
 binds the stateline-client to `/tmp/my_socket.sock`. The general form is `ipc://<filesystem_path>`. Note that, as in the Python example, if you intend to run many copies of your worker script you will need some way to randomise the socket name each instance of stateline-client doesn't conflict. Remember that's 1 stateline-client *per worker*, even if they're on the same machine.
 
-###ZeroMQ
+### ZeroMQ
 
 
 Create a ZeroMQ context and a `dealer` socket. Then connect it to the socket given to stateline-client. Now you are ready to send the `hello` message. This is a multi-part message of the following form (and noting that all parts must be c-type strings):
@@ -699,17 +699,17 @@ Finally, if you would like to cleanly disconnect the worker (not required-- the 
 
 Here "5" is the stateline code for the message subject `GOODBYE`.
 
-##Contributing to Development
+## Contributing to Development
 
 Contributions and comments are welcome. Please read our [style guide](https://github.com/NICTA/stateline/wiki/Coding-Style-Guidelines) before submitting a pull request.
 
-###Licence
+### Licence
 Please see the LICENSE file, and COPYING and COPYING.LESSER.
 
-###Bug Reports
+### Bug Reports
 If you find a bug, please open an [issue](http://github.com/NICTA/stateline/issues).
 
-###References
+### References
 
 G. Altekar et al. (2004), Parallel Metropolis coupled Markov chain Monte Carlo for Bayesian phylogenetic inference, Bioinformatics, Vol 20 No. 3, pp 407-415.
 
